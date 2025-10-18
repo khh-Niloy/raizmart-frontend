@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -118,5 +119,84 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Enhanced dialog animations */
+  .dialog-enter {
+    animation: dialog-enter 300ms ease-out;
+  }
+
+  .dialog-exit {
+    animation: dialog-exit 200ms ease-in;
+  }
+
+  @keyframes dialog-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translate(-50%, -48%);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translate(-50%, -50%);
+    }
+  }
+
+  @keyframes dialog-exit {
+    from {
+      opacity: 1;
+      transform: scale(1) translate(-50%, -50%);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95) translate(-50%, -48%);
+    }
+  }
+
+  /* Smooth hover transitions */
+  .smooth-hover {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .smooth-hover:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Custom color utilities */
+  .bg-custom {
+    background-color: #32B5B3;
+  }
+
+  .text-custom {
+    color: #32B5B3;
+  }
+
+  .border-custom {
+    border-color: #32B5B3;
+  }
+
+  .hover\:bg-custom:hover {
+    background-color: #32B5B3;
+  }
+
+  .hover\:text-custom:hover {
+    color: #32B5B3;
+  }
+
+  .hover\:border-custom:hover {
+    border-color: #32B5B3;
+  }
+
+  .focus\:ring-custom:focus {
+    --tw-ring-color: #32B5B3;
+  }
+
+  .bg-custom\/10 {
+    background-color: rgba(50, 181, 179, 0.1);
+  }
+
+  .bg-custom\/20 {
+    background-color: rgba(50, 181, 179, 0.2);
   }
 }

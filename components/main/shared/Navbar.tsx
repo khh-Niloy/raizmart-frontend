@@ -11,6 +11,8 @@ export default function Navbar() {
   const [cartItems, setCartItems] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  
+
   const navbarLinks = [
     {
       label: "Blog",
@@ -59,7 +61,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-white hover:text-[#32B5B3] transition-colors duration-200"
+                  className="text-white hover:text-custom transition-colors duration-200"
                 >
                   <span className="text-lg font-bold">{link.label}</span>
                 </Link>
