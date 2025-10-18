@@ -5,15 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, ShoppingCart } from "lucide-react";
 import NavbarPofile from "./NavbarCompo/NavbarPofile";
+import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 
 export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [cartItems, setCartItems] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  
-
-  const navbarLinks = [
+  const initialNavbarLinks = [
     {
       label: "Blog",
       href: "/blog",
@@ -23,6 +22,16 @@ export default function Navbar() {
       href: "/offers",
     },
   ];
+
+  const { data: userInfo } = useUserInfoQuery(undefined);
+
+  const navbarLinks =
+    userInfo?.role === "ADMIN"
+      ? [
+          ...initialNavbarLinks,
+          { label: "Dashboard", href: "/admin/dashboard" },
+        ]
+      : initialNavbarLinks;
 
   return (
     <>
