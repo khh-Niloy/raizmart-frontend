@@ -1,5 +1,5 @@
 import React from "react";
-import { ProfileSidebar } from "@/components/profile-sidebar";
+import { ProfileSidebar } from "@/components/main/profile/profile-sidebar";
 
 export default function ProfileLayout({
   children,

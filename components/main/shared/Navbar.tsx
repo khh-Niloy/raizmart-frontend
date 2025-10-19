@@ -40,9 +40,9 @@ export default function Navbar() {
         <div className="w-full mx-auto py-2 px-4 sm:px-6 lg:px-12">
           <div className="flex items-center justify-between h-16">
             {/* Logo Section */}
-            <Link href="/" className="flex items-center group">
+            {/* <Link href="/" className="flex items-center group">
               <Image src="/logo.png" alt="RaizMart" width={200} height={200} />
-            </Link>
+            </Link> */}
 
             {/* Search Bar - Hidden on mobile, shown on tablet+ */}
             <div className="hidden md:flex flex-1 max-w-lg mx-8">
