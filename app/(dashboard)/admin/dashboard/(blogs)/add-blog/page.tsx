@@ -7,17 +7,18 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TiptapEditor from '@/components/ui/tiptap-editor';
 import { toast } from 'sonner';
+import { useGetBlogCategoriesQuery } from '@/app/redux/features/blog-category/blog-category.api';
 
 // Form validation schema
 const blogSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title must be less than 100 characters'),
-  slug: z.string().min(1, 'Slug is required').max(100, 'Slug must be less than 100 characters'),
-  excerpt: z.string().min(1, 'Excerpt is required').max(200, 'Excerpt must be less than 200 characters'),
   category: z.string().min(1, 'Category is required'),
   tags: z.string().optional(),
+  thumbnail: z.any().optional(),
   content: z.string().min(1, 'Content is required'),
-  status: z.enum(['draft', 'published']),
 });
 
 type BlogFormData = z.infer<typeof blogSchema>;
@@ -29,28 +30,22 @@ export default function AddBlogPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    watch,
     setValue,
+    watch,
   } = useForm<BlogFormData>({
     resolver: zodResolver(blogSchema),
     defaultValues: {
-      status: 'draft',
+      content: '',
     },
   });
 
-  // Auto-generate slug from title
-  const title = watch('title');
-  React.useEffect(() => {
-    if (title) {
-      const slug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-      setValue('slug', slug);
-    }
-  }, [title, setValue]);
+  const content = watch('content');
+  const thumbnail = watch('thumbnail') as File | undefined;
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Load blog categories
+  const { data: blogCategoriesResp, isFetching: isBlogCategoriesLoading } = useGetBlogCategoriesQuery(undefined);
+  const blogCategories: any[] = (blogCategoriesResp?.data ?? blogCategoriesResp ?? []) as any[];
 
   const onSubmit = async (data: BlogFormData) => {
     try {
@@ -65,10 +60,21 @@ export default function AddBlogPage() {
       console.log('Blog data to submit:', blogData);
       
       // TODO: Replace with actual API call
-      // await createBlog(blogData);
+      // const formData = new FormData();
+      // Object.entries(blogData).forEach(([key, value]) => {
+      //   if (key === 'thumbnail' && value instanceof File) {
+      //     formData.append('thumbnail', value);
+      //   } else if (Array.isArray(value)) {
+      //     formData.append(key, JSON.stringify(value));
+      //   } else if (value != null) {
+      //     formData.append(key, String(value));
+      //   }
+      // });
+      // await createBlog(formData);
       
       toast.success('Blog created successfully!');
       reset();
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
       console.error('Error creating blog:', error);
       toast.error('Failed to create blog. Please try again.');
@@ -99,41 +105,6 @@ export default function AddBlogPage() {
           )}
         </div>
 
-        {/* Slug Field */}
-        <div className="space-y-2">
-          <Label htmlFor="slug" className="text-sm font-medium">
-            URL Slug *
-          </Label>
-          <Input
-            id="slug"
-            {...register('slug')}
-            placeholder="url-friendly-slug"
-            className="w-full"
-          />
-          {errors.slug && (
-            <p className="text-sm text-red-600">{errors.slug.message}</p>
-          )}
-          <p className="text-xs text-gray-500">
-            This will be used in the URL. Auto-generated from title.
-          </p>
-        </div>
-
-        {/* Excerpt Field */}
-        <div className="space-y-2">
-          <Label htmlFor="excerpt" className="text-sm font-medium">
-            Excerpt *
-          </Label>
-          <textarea
-            id="excerpt"
-            {...register('excerpt')}
-            placeholder="Brief description of your blog post"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            rows={3}
-          />
-          {errors.excerpt && (
-            <p className="text-sm text-red-600">{errors.excerpt.message}</p>
-          )}
-        </div>
 
         {/* Category and Tags Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -141,23 +112,20 @@ export default function AddBlogPage() {
             <Label htmlFor="category" className="text-sm font-medium">
               Category *
             </Label>
-            <select
-              id="category"
-              {...register('category')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select a category</option>
-              <option value="technology">Technology</option>
-              <option value="business">Business</option>
-              <option value="lifestyle">Lifestyle</option>
-              <option value="health">Health</option>
-              <option value="travel">Travel</option>
-              <option value="food">Food</option>
-              <option value="fashion">Fashion</option>
-              <option value="sports">Sports</option>
-              <option value="education">Education</option>
-              <option value="other">Other</option>
-            </select>
+            <Select onValueChange={(value) => setValue('category', value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={isBlogCategoriesLoading ? 'Loading categories...' : 'Select a category'} />
+              </SelectTrigger>
+              <SelectContent>
+                {blogCategories.map((c: any) => {
+                  const id = (c.id ?? c._id) as string;
+                  const name = (c.name ?? c.categoryName ?? 'Unnamed') as string;
+                  return (
+                    <SelectItem key={id} value={id}>{name}</SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
             {errors.category && (
               <p className="text-sm text-red-600">{errors.category.message}</p>
             )}
@@ -179,19 +147,46 @@ export default function AddBlogPage() {
           </div>
         </div>
 
-        {/* Status Field */}
+        {/* Thumbnail Image */}
         <div className="space-y-2">
-          <Label htmlFor="status" className="text-sm font-medium">
-            Status
+          <Label htmlFor="thumbnail" className="text-sm font-medium">
+            Thumbnail Image
           </Label>
-          <select
-            id="status"
-            {...register('status')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <Input
+              id="thumbnail"
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setValue('thumbnail', file);
+                // Allow re-selecting the same file by clearing the input value
+                e.currentTarget.value = '';
+              }}
+            />
+            {thumbnail && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setValue('thumbnail', undefined);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          {thumbnail && (
+            <div className="mt-2">
+              <img
+                src={URL.createObjectURL(thumbnail)}
+                alt="Thumbnail preview"
+                className="max-h-40 rounded border"
+              />
+            </div>
+          )}
         </div>
 
         {/* Blog Content */}
@@ -199,16 +194,14 @@ export default function AddBlogPage() {
           <Label htmlFor="content" className="text-sm font-medium">
             Blog Content *
           </Label>
-          <textarea
-            id="content"
-            {...register('content')}
+          <TiptapEditor
+            value={content}
+            onChange={(value) => setValue('content', value)}
             placeholder="Start writing your blog post..."
-            rows={12}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
-          <p className="text-xs text-gray-500">
-            Write your blog content here. You can use basic formatting.
-          </p>
+          {errors.content && (
+            <p className="text-sm text-red-600">{errors.content.message}</p>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -226,6 +219,7 @@ export default function AddBlogPage() {
             variant="outline"
             onClick={() => {
               reset();
+              if (fileInputRef.current) fileInputRef.current.value = '';
             }}
             className="flex-1 sm:flex-none"
           >

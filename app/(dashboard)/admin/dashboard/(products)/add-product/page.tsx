@@ -44,6 +44,7 @@ const variantSchema = z.object({
   region: z.string().min(1, "Region is required"),
   type: z.string().min(1, "Type is required"),
   network: z.string().min(1, "Network is required"),
+  images: z.array(z.instanceof(File)).optional(),
 });
 
 const specificationSchema = z.object({
@@ -52,7 +53,6 @@ const specificationSchema = z.object({
 });
 
 const productSchema = z.object({
-  productName: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
@@ -63,8 +63,6 @@ const productSchema = z.object({
   // Warranty & Return Policy
   warranty: z.string().optional(),
   returnPolicy: z.string().optional(),
-  // Images
-  thumbnail: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -81,7 +79,6 @@ export default function AddProductPage() {
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      productName: "",
       description: "",
       brand: "",
       category: "",
@@ -97,14 +94,13 @@ export default function AddProductPage() {
           region: "",
           type: "",
           network: "",
+          images: [],
         },
       ],
       specifications: [{ left: "", right: "" }],
       // Warranty & Return Policy
       warranty: "",
       returnPolicy: "",
-      // Images
-      thumbnail: "",
     },
   });
 
@@ -201,21 +197,6 @@ export default function AddProductPage() {
                   )}
                 </div>
 
-                {/* Product Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="productName" className="text-sm font-medium text-gray-700">
-                    Product Name
-                  </Label>
-                  <Input
-                    id="productName"
-                    {...register("productName")}
-                    placeholder="Enter product name"
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  {errors.productName && (
-                    <p className="text-sm text-red-600">{errors.productName.message}</p>
-                  )}
-                </div>
 
                 {/* Product Description */}
                 <div className="space-y-2">
@@ -326,6 +307,7 @@ export default function AddProductPage() {
                       region: "",
                       type: "",
                       network: "",
+                      images: [],
                     })
                   }
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
@@ -501,6 +483,76 @@ export default function AddProductPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Product Images for this Variant */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-md font-medium text-gray-900">Product Images</h4>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const fileInput = document.getElementById(`image-upload-${index}`) as HTMLInputElement;
+                            fileInput?.click();
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Images
+                        </Button>
+                      </div>
+
+                      <input
+                        id={`image-upload-${index}`}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          const currentImages = watch(`variants.${index}.images`) || [];
+                          setValue(`variants.${index}.images`, [...currentImages, ...files]);
+                        }}
+                      />
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {watch(`variants.${index}.images`)?.map((file: File, imageIndex: number) => (
+                          <div key={imageIndex} className="relative group">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Variant ${index + 1} image ${imageIndex + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const currentImages = watch(`variants.${index}.images`) || [];
+                                const updatedImages = currentImages.filter((_: File, i: number) => i !== imageIndex);
+                                setValue(`variants.${index}.images`, updatedImages);
+                              }}
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {watch(`variants.${index}.images`)?.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <div className="flex flex-col items-center space-y-2">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                              <Plus className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <span className="text-sm">No images uploaded</span>
+                            <span className="text-xs">Click "Add Images" to upload photos</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -605,25 +657,6 @@ export default function AddProductPage() {
                     placeholder="Enter return policy"
                       className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
-                </div>
-              </div>
-            </div>
-
-            {/* Thumbnail Image Section */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Thumbnail Image</h2>
-              
-              <div className="max-w-md">
-                {/* Thumbnail */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Thumbnail</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                    <div className="flex flex-col items-center space-y-2">
-                      <Plus className="h-8 w-8 text-gray-400" />
-                      <span className="text-sm text-gray-600">Click to upload</span>
-                      <span className="text-xs text-gray-500">Supported: .png, .jpg, .svg, .ico (max: 3MB)</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

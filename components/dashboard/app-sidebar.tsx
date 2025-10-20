@@ -67,6 +67,21 @@ const data = {
     },
 
     {
+      title: "Blog Categories",
+      icon: Tag,
+      items: [
+        {
+          title: "All Blog Category",
+          url: "/admin/dashboard/all-blog-category",
+        },
+        {
+          title: "Add Blog Category",
+          url: "/admin/dashboard/add-blog-category",
+        },
+      ],
+    },
+
+    {
       title: "Categories",
       // url: "#",
       icon: List,
