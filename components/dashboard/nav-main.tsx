@@ -18,6 +18,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 export function NavMain({
   items,
@@ -33,15 +34,19 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const pathname = usePathname()
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {items.map((item) => {
+          const isSectionOpen =
+            item.isActive || item.items?.some((s) => pathname.startsWith(s.url || ""))
+          return (
           <Collapsible
             key={item.title}
             asChild
-            defaultOpen={item.isActive}
+            defaultOpen={isSectionOpen}
             className="group/collapsible"
           >
             <SidebarMenuItem>
@@ -54,20 +59,24 @@ export function NavMain({
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
+                  {item.items?.map((subItem) => {
+                    const isActive = pathname === (subItem.url || "")
+                    return (
                     <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild>
+                      <SidebarMenuSubButton asChild className={isActive ? "font-semibold" : undefined}>
                         <Link href={subItem.url || ""}>
                           <span>{subItem.title || ""}</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
-                  ))}
+                    )
+                  })}
                 </SidebarMenuSub>
               </CollapsibleContent>
             </SidebarMenuItem>
           </Collapsible>
-        ))}
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

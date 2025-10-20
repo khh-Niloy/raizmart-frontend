@@ -17,30 +17,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useGetCategoriesQuery, useGetSubcategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 
 // Dynamically import Tiptap to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), { ssr: false });
 
-// Mock data for categories
-const categories = [
-  { id: "electronics", name: "Electronics" },
-  { id: "fashion", name: "Fashion" },
-  { id: "home", name: "Home & Kitchen" },
-  { id: "sports", name: "Sports" },
-  { id: "books", name: "Books" },
-  { id: "toys", name: "Toys & Games" },
-  { id: "beauty", name: "Health & Beauty" },
-  { id: "automotive", name: "Automotive" },
-];
-
-const subCategories = [
-  { id: "smartphones", name: "Smartphones", parentId: "electronics" },
-  { id: "laptops", name: "Laptops", parentId: "electronics" },
-  { id: "clothing", name: "Clothing", parentId: "fashion" },
-  { id: "shoes", name: "Shoes", parentId: "fashion" },
-  { id: "furniture", name: "Furniture", parentId: "home" },
-  { id: "appliances", name: "Appliances", parentId: "home" },
-];
+// Categories and subcategories come from API
 
 const offerTags = [
   { id: "sale", name: "Sale" },
@@ -71,6 +54,7 @@ const specificationSchema = z.object({
 const productSchema = z.object({
   productName: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
+  brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().min(1, "Sub Category is required"),
   searchTags: z.string().optional(),
@@ -92,11 +76,14 @@ export default function AddProductPage() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       productName: "",
       description: "",
+      brand: "",
       category: "",
       subCategory: "",
       searchTags: "",
@@ -144,6 +131,36 @@ export default function AddProductPage() {
     // Handle form submission here
   };
 
+  // Load brands, categories and subcategories
+  const { data: brandsResp, isFetching: isBrandsLoading } = useGetBrandsQuery(undefined)
+  const { data: categoriesResp, isFetching: isCategoriesLoading } = useGetCategoriesQuery(undefined)
+  const { data: subcategoriesResp, isFetching: isSubcategoriesLoading } = useGetSubcategoriesQuery(undefined)
+
+  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[]
+  const categories: any[] = (categoriesResp?.data ?? categoriesResp ?? []) as any[]
+  const allSubcategories: any[] = (subcategoriesResp?.data ?? subcategoriesResp ?? []) as any[]
+
+  // Watch selected category to filter subcategories
+  const selectedCategoryId = watch("category")
+
+  const filteredSubcategories = React.useMemo(() => {
+    if (!selectedCategoryId) return []
+    return allSubcategories.filter((sc: any) => {
+      if (typeof sc.category === "string") return sc.category === selectedCategoryId
+      if (sc.category && typeof sc.category === "object") {
+        const id = (sc.category.id ?? sc.category._id) as string
+        return id === selectedCategoryId
+      }
+      // fallback to potential parentId field
+      return sc.parentCategoryId === selectedCategoryId
+    })
+  }, [allSubcategories, selectedCategoryId])
+
+  // Clear subCategory when category changes
+  React.useEffect(() => {
+    setValue("subCategory", "")
+  }, [selectedCategoryId, setValue])
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,6 +173,34 @@ export default function AddProductPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Information</h2>
               
               <div className="space-y-6">
+                {/* Brand Selection */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Brand *</Label>
+                  <Controller
+                    control={control}
+                    name="brand"
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isBrandsLoading}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={isBrandsLoading ? "Loading brands..." : "Select a brand"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {brands.map((brand: any) => {
+                            const id = (brand.id ?? brand._id) as string
+                            const name = (brand.brandName ?? brand.name ?? "Unnamed") as string
+                            return (
+                              <SelectItem key={id} value={id}>{name}</SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.brand && (
+                    <p className="text-sm text-red-600">{errors.brand.message}</p>
+                  )}
+                </div>
+
                 {/* Product Name */}
                 <div className="space-y-2">
                   <Label htmlFor="productName" className="text-sm font-medium text-gray-700">
@@ -184,7 +229,7 @@ export default function AddProductPage() {
                       <TiptapEditor
                         value={field.value || ""}
                         onChange={field.onChange}
-                        placeholder="Enter product description"
+                    placeholder="Enter product description"
                       />
                     )}
                   />
@@ -205,16 +250,18 @@ export default function AddProductPage() {
                       control={control}
                       name="category"
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCategoriesLoading}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
+                            {categories.map((c: any) => {
+                              const id = (c.id ?? c._id) as string
+                              const name = (c.name ?? c.categoryName ?? "Unnamed") as string
+                              return (
+                                <SelectItem key={id} value={id}>{name}</SelectItem>
+                              )
+                            })}
                           </SelectContent>
                         </Select>
                       )}
@@ -230,16 +277,18 @@ export default function AddProductPage() {
                       control={control}
                       name="subCategory"
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCategoryId || isSubcategoriesLoading}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a sub category" />
+                            <SelectValue placeholder={!selectedCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredSubcategories.length ? "Select a sub category" : "No sub categories"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {subCategories.map((subCategory) => (
-                              <SelectItem key={subCategory.id} value={subCategory.id}>
-                                {subCategory.name}
-                              </SelectItem>
-                            ))}
+                            {filteredSubcategories.map((sc: any) => {
+                              const id = (sc.id ?? sc._id) as string
+                              const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string
+                              return (
+                                <SelectItem key={id} value={id}>{name}</SelectItem>
+                              )
+                            })}
                           </SelectContent>
                         </Select>
                       )}

@@ -29,7 +29,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { Home, Tag } from "lucide-react";
 
 // This is sample data.
 const data = {
@@ -41,12 +41,12 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Add Product",
-          url: "/admin/dashboard/add-product",
-        },
-        {
           title: "All Product",
           url: "/admin/dashboard/all-product",
+        },
+        {
+          title: "Add Product",
+          url: "/admin/dashboard/add-product",
         },
       ],
     },
@@ -113,6 +113,21 @@ const data = {
         },
       ],
     },
+
+    {
+      title: "Brand",
+      icon: Tag,
+      items: [
+        {
+          title: "All Brand",
+          url: "/admin/dashboard/all-brand",
+        },
+        {
+          title: "Create Brand",
+          url: "/admin/dashboard/create-brand",
+        },
+      ],
+    }
   ],
 };
 

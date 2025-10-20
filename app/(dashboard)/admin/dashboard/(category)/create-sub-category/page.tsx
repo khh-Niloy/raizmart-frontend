@@ -14,44 +14,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useGetCategoriesQuery, useCreateSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 
-// Mock data for parent categories (in real app, this would come from API)
-const parentCategories = [
-  { id: "1", name: "Electronics" },
-  { id: "2", name: "Fashion" },
-  { id: "3", name: "Home & Kitchen" },
-  { id: "4", name: "Sports" },
-  { id: "5", name: "Books" },
-  { id: "6", name: "Toys & Games" },
-  { id: "7", name: "Health & Beauty" },
-  { id: "8", name: "Automotive" },
-];
+// Parent categories will be fetched from API
 
 // Validation schema
 const subCategorySchema = z.object({
-  subCategoryName: z.string().min(1, "Sub-category name is required"),
-  parentCategoryId: z.string().min(1, "Please select a parent category"),
+  name: z.string().min(1, "Sub-category name is required"),
+  category: z.string().min(1, "Please select a parent category"),
 });
 
 type SubCategoryFormData = z.infer<typeof subCategorySchema>;
 
 export default function CreateSubCategoryPage() {
+  const { data: categoriesResponse, isFetching: isCategoriesLoading } = useGetCategoriesQuery(undefined);
+  const [createSubcategory, { isLoading: isCreating }] = useCreateSubcategoryMutation();
+
   const {
     register,
     control,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<SubCategoryFormData>({
     resolver: zodResolver(subCategorySchema),
     defaultValues: {
-      subCategoryName: "",
-      parentCategoryId: "",
+      name: "",
+      category: "",
     },
   });
 
-  const onSubmit = (data: SubCategoryFormData) => {
-    console.log("Sub-category data:", data);
-    // Handle form submission here
+  const onSubmit = async (data: SubCategoryFormData) => {
+    try {
+      const payload = {
+        name: data.name,
+        category: data.category,
+      };
+      console.log(payload)
+      const res = await createSubcategory(payload).unwrap();
+      console.log("Sub-category created:", res);
+      reset();
+    } catch (error) {
+      console.error("Create sub-category failed:", error);
+    }
   };
 
   return (
@@ -66,45 +71,45 @@ export default function CreateSubCategoryPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
             {/* Sub-Category Name */}
             <div className="space-y-2">
-              <Label htmlFor="subCategoryName" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                 Sub-Category Name *
               </Label>
               <Input
-                id="subCategoryName"
-                {...register("subCategoryName")}
+                id="name"
+                {...register("name")}
                 placeholder="Enter sub-category name"
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.subCategoryName && (
-                <p className="text-sm text-red-600">{errors.subCategoryName.message}</p>
+              {errors.name && (
+                <p className="text-sm text-red-600">{errors.name.message}</p>
               )}
             </div>
 
             {/* Parent Category Selection */}
             <div className="space-y-2">
-              <Label htmlFor="parentCategoryId" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="category" className="text-sm font-medium text-gray-700">
                 Parent Category *
               </Label>
               <Controller
                 control={control}
-                name="parentCategoryId"
+                name="category"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCategoriesLoading}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a parent category" />
+                      <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a parent category"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {parentCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
+                      {(categoriesResponse?.data ?? categoriesResponse ?? []).map((category: any) => (
+                        <SelectItem key={category.id ?? category._id} value={(category.id ?? category._id) as string}>
+                          {category.name ?? category.categoryName ?? "Unnamed"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {errors.parentCategoryId && (
-                <p className="text-sm text-red-600">{errors.parentCategoryId.message}</p>
+              {errors.category && (
+                <p className="text-sm text-red-600">{errors.category.message}</p>
               )}
             </div>
 
@@ -112,9 +117,10 @@ export default function CreateSubCategoryPage() {
             <div className="flex justify-end pt-6">
               <Button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2"
+                disabled={isCreating}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 disabled:opacity-60"
               >
-                Create Sub-Category
+                {isCreating ? "Creating..." : "Create Sub-Category"}
               </Button>
             </div>
           </form>
