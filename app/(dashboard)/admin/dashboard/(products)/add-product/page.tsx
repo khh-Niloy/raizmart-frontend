@@ -17,11 +17,17 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useGetCategoriesQuery, useGetSubcategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import {
+  useGetCategoriesQuery,
+  useGetSubcategoriesQuery,
+} from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
+import { useCreateProductMutation } from "@/app/redux/features/product/product.api";
 
 // Dynamically import Tiptap to avoid SSR issues
-const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), { ssr: false });
+const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
+  ssr: false,
+});
 
 // Categories and subcategories come from API
 
@@ -32,7 +38,6 @@ const offerTags = [
   { id: "featured", name: "Featured" },
   { id: "limited", name: "Limited" },
 ];
-
 
 // Validation schema
 const variantSchema = z.object({
@@ -53,21 +58,22 @@ const specificationSchema = z.object({
 });
 
 const productSchema = z.object({
+  name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().min(1, "Sub Category is required"),
   searchTags: z.string().optional(),
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
-  specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
-  // Warranty & Return Policy
-  warranty: z.string().optional(),
-  returnPolicy: z.string().optional(),
+  specifications: z
+    .array(specificationSchema)
+    .min(1, "At least one specification is required"),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
 
 export default function AddProductPage() {
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
 
   const {
     control,
@@ -79,7 +85,11 @@ export default function AddProductPage() {
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      description: "",
+      name: "",
+      description: JSON.stringify({
+        type: "doc",
+        content: []
+      }),
       brand: "",
       category: "",
       subCategory: "",
@@ -98,9 +108,6 @@ export default function AddProductPage() {
         },
       ],
       specifications: [{ left: "", right: "" }],
-      // Warranty & Return Policy
-      warranty: "",
-      returnPolicy: "",
     },
   });
 
@@ -122,85 +129,192 @@ export default function AddProductPage() {
     name: "specifications",
   });
 
-  const onSubmit = (data: ProductFormData) => {
-    console.log("Form data:", data);
-    // Handle form submission here
+  const onSubmit = async (data: ProductFormData) => {
+    try {
+      console.log(data);
+      // Create FormData for multer backend
+      const formData = new FormData();
+
+      // Add basic product data
+      formData.append("name", data.name);
+      formData.append("brand", data.brand);
+      formData.append("category", data.category);
+      formData.append("subCategory", data.subCategory);
+      formData.append("searchTags", data.searchTags || "");
+
+      // Add description (JSON string) - already in JSON format from TiptapEditor
+      if (data.description) {
+        formData.append("description", data.description);
+      }
+
+      // Add specifications (convert left/right to key/value for backend)
+      const specifications = data.specifications.map((spec) => ({
+        key: spec.left,
+        value: spec.right,
+      }));
+      formData.append("specifications", JSON.stringify(specifications));
+
+      // Handle variants with images
+      data.variants.forEach((variant, variantIndex) => {
+        // Add variant data
+        formData.append(`variants[${variantIndex}][price]`, variant.price);
+        formData.append(`variants[${variantIndex}][stock]`, variant.stock);
+        formData.append(
+          `variants[${variantIndex}][colorName]`,
+          variant.colorName
+        );
+        formData.append(
+          `variants[${variantIndex}][colorCode]`,
+          variant.colorCode
+        );
+        formData.append(`variants[${variantIndex}][storage]`, variant.storage);
+        formData.append(`variants[${variantIndex}][region]`, variant.region);
+        formData.append(`variants[${variantIndex}][type]`, variant.type);
+        formData.append(`variants[${variantIndex}][network]`, variant.network);
+
+        // Add variant images as files
+        if (variant.images && variant.images.length > 0) {
+          variant.images.forEach((image, imageIndex) => {
+            formData.append(
+              `variants[${variantIndex}][images][${imageIndex}]`,
+              image
+            );
+          });
+        }
+      });
+
+      console.log("FormData prepared for backend:", formData);
+
+      // Send to API
+      const result = await createProduct(formData).unwrap();
+      console.log("Product created successfully:", result);
+
+      // TODO: Show success message and redirect
+    } catch (error) {
+      console.error("Error creating product:", error);
+      // TODO: Show error message
+    }
   };
 
   // Load brands, categories and subcategories
-  const { data: brandsResp, isFetching: isBrandsLoading } = useGetBrandsQuery(undefined)
-  const { data: categoriesResp, isFetching: isCategoriesLoading } = useGetCategoriesQuery(undefined)
-  const { data: subcategoriesResp, isFetching: isSubcategoriesLoading } = useGetSubcategoriesQuery(undefined)
+  const { data: brandsResp, isFetching: isBrandsLoading } =
+    useGetBrandsQuery(undefined);
+  const { data: categoriesResp, isFetching: isCategoriesLoading } =
+    useGetCategoriesQuery(undefined);
+  const { data: subcategoriesResp, isFetching: isSubcategoriesLoading } =
+    useGetSubcategoriesQuery(undefined);
 
-  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[]
-  const categories: any[] = (categoriesResp?.data ?? categoriesResp ?? []) as any[]
-  const allSubcategories: any[] = (subcategoriesResp?.data ?? subcategoriesResp ?? []) as any[]
+  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[];
+  const categories: any[] = (categoriesResp?.data ??
+    categoriesResp ??
+    []) as any[];
+  const allSubcategories: any[] = (subcategoriesResp?.data ??
+    subcategoriesResp ??
+    []) as any[];
 
   // Watch selected category to filter subcategories
-  const selectedCategoryId = watch("category")
+  const selectedCategoryId = watch("category");
 
   const filteredSubcategories = React.useMemo(() => {
-    if (!selectedCategoryId) return []
+    if (!selectedCategoryId) return [];
     return allSubcategories.filter((sc: any) => {
-      if (typeof sc.category === "string") return sc.category === selectedCategoryId
+      if (typeof sc.category === "string")
+        return sc.category === selectedCategoryId;
       if (sc.category && typeof sc.category === "object") {
-        const id = (sc.category.id ?? sc.category._id) as string
-        return id === selectedCategoryId
+        const id = (sc.category.id ?? sc.category._id) as string;
+        return id === selectedCategoryId;
       }
       // fallback to potential parentId field
-      return sc.parentCategoryId === selectedCategoryId
-    })
-  }, [allSubcategories, selectedCategoryId])
+      return sc.parentCategoryId === selectedCategoryId;
+    });
+  }, [allSubcategories, selectedCategoryId]);
 
   // Clear subCategory when category changes
   React.useEffect(() => {
-    setValue("subCategory", "")
-  }, [selectedCategoryId, setValue])
+    setValue("subCategory", "");
+  }, [selectedCategoryId, setValue]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-gray-900">Create Product</h1>
-          
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Product Information Card */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Information</h2>
-              
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">
+                Product Information
+              </h2>
+
               <div className="space-y-6">
+                {/* Product Name */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Product Name *
+                  </Label>
+                  <Input
+                    {...register("name")}
+                    placeholder="Enter product name"
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-red-600">{errors.name.message}</p>
+                  )}
+                </div>
+
                 {/* Brand Selection */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Brand *</Label>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Brand *
+                  </Label>
                   <Controller
                     control={control}
                     name="brand"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isBrandsLoading}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        disabled={isBrandsLoading}
+                      >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder={isBrandsLoading ? "Loading brands..." : "Select a brand"} />
+                          <SelectValue
+                            placeholder={
+                              isBrandsLoading
+                                ? "Loading brands..."
+                                : "Select a brand"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {brands.map((brand: any) => {
-                            const id = (brand.id ?? brand._id) as string
-                            const name = (brand.brandName ?? brand.name ?? "Unnamed") as string
+                            const id = (brand.id ?? brand._id) as string;
+                            const name = (brand.brandName ??
+                              brand.name ??
+                              "Unnamed") as string;
                             return (
-                              <SelectItem key={id} value={id}>{name}</SelectItem>
-                            )
+                              <SelectItem key={id} value={id}>
+                                {name}
+                              </SelectItem>
+                            );
                           })}
                         </SelectContent>
                       </Select>
                     )}
                   />
                   {errors.brand && (
-                    <p className="text-sm text-red-600">{errors.brand.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.brand.message}
+                    </p>
                   )}
                 </div>
 
-
                 {/* Product Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                  <Label
+                    htmlFor="description"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Description
                   </Label>
                   <Controller
@@ -208,9 +322,9 @@ export default function AddProductPage() {
                     name="description"
                     render={({ field }) => (
                       <TiptapEditor
-                        value={field.value || ""}
+                        value={field.value || JSON.stringify({ type: "doc", content: [] })}
                         onChange={field.onChange}
-                    placeholder="Enter product description"
+                        placeholder="Enter product description"
                       />
                     )}
                   />
@@ -220,67 +334,113 @@ export default function AddProductPage() {
 
             {/* General Setup Card */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">General Setup</h2>
-              
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">
+                General Setup
+              </h2>
+
               <div className="space-y-6">
                 {/* Row 1: Category, Sub Category, Search Tags */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Category</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Category
+                    </Label>
                     <Controller
                       control={control}
                       name="category"
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCategoriesLoading}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={isCategoriesLoading}
+                        >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
+                            <SelectValue
+                              placeholder={
+                                isCategoriesLoading
+                                  ? "Loading categories..."
+                                  : "Select a category"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.map((c: any) => {
-                              const id = (c.id ?? c._id) as string
-                              const name = (c.name ?? c.categoryName ?? "Unnamed") as string
+                              const id = (c.id ?? c._id) as string;
+                              const name = (c.name ??
+                                c.categoryName ??
+                                "Unnamed") as string;
                               return (
-                                <SelectItem key={id} value={id}>{name}</SelectItem>
-                              )
+                                <SelectItem key={id} value={id}>
+                                  {name}
+                                </SelectItem>
+                              );
                             })}
                           </SelectContent>
                         </Select>
                       )}
                     />
                     {errors.category && (
-                      <p className="text-sm text-red-600">{errors.category.message}</p>
+                      <p className="text-sm text-red-600">
+                        {errors.category.message}
+                      </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Sub Category</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Sub Category
+                    </Label>
                     <Controller
                       control={control}
                       name="subCategory"
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCategoryId || isSubcategoriesLoading}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={
+                            !selectedCategoryId || isSubcategoriesLoading
+                          }
+                        >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={!selectedCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredSubcategories.length ? "Select a sub category" : "No sub categories"} />
+                            <SelectValue
+                              placeholder={
+                                !selectedCategoryId
+                                  ? "Select a category first"
+                                  : isSubcategoriesLoading
+                                  ? "Loading sub categories..."
+                                  : filteredSubcategories.length
+                                  ? "Select a sub category"
+                                  : "No sub categories"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {filteredSubcategories.map((sc: any) => {
-                              const id = (sc.id ?? sc._id) as string
-                              const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string
+                              const id = (sc.id ?? sc._id) as string;
+                              const name = (sc.name ??
+                                sc.subCategoryName ??
+                                "Unnamed") as string;
                               return (
-                                <SelectItem key={id} value={id}>{name}</SelectItem>
-                              )
+                                <SelectItem key={id} value={id}>
+                                  {name}
+                                </SelectItem>
+                              );
                             })}
                           </SelectContent>
                         </Select>
                       )}
                     />
                     {errors.subCategory && (
-                      <p className="text-sm text-red-600">{errors.subCategory.message}</p>
+                      <p className="text-sm text-red-600">
+                        {errors.subCategory.message}
+                      </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Search Tags</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Search Tags
+                    </Label>
                     <Input
                       {...register("searchTags")}
                       placeholder="Enter your search tags"
@@ -294,7 +454,9 @@ export default function AddProductPage() {
             {/* Product Variants Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Product Variants</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Product Variants
+                </h2>
                 <Button
                   type="button"
                   onClick={() =>
@@ -319,10 +481,7 @@ export default function AddProductPage() {
 
               <div className="space-y-4">
                 {variantFields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className=""
-                  >
+                  <div key={field.id} className="">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">
                         Variant {index + 1}
@@ -338,14 +497,14 @@ export default function AddProductPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                  </div>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
+                      <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
                           Price *
                         </Label>
-                    <Input
+                        <Input
                           {...register(`variants.${index}.price`)}
                           placeholder="Enter price"
                           className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -354,14 +513,14 @@ export default function AddProductPage() {
                           <p className="text-sm text-red-600">
                             {errors.variants[index]?.price?.message}
                           </p>
-                    )}
-                  </div>
+                        )}
+                      </div>
 
-                  <div className="space-y-2">
+                      <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
                           Color Name *
                         </Label>
-                    <Input
+                        <Input
                           {...register(`variants.${index}.colorName`)}
                           placeholder="Enter color name"
                           className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -371,9 +530,9 @@ export default function AddProductPage() {
                             {errors.variants[index]?.colorName?.message}
                           </p>
                         )}
-                </div>
+                      </div>
 
-                  <div className="space-y-2">
+                      <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
                           Color Code *
                         </Label>
@@ -383,10 +542,10 @@ export default function AddProductPage() {
                             placeholder="#000000"
                             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           />
-                      <Controller
-                        control={control}
+                          <Controller
+                            control={control}
                             name={`variants.${index}.colorCode`}
-                        render={({ field }) => (
+                            render={({ field }) => (
                               <div
                                 className="w-10 h-10 border border-gray-300 rounded cursor-pointer"
                                 style={{
@@ -487,11 +646,15 @@ export default function AddProductPage() {
                     {/* Product Images for this Variant */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-md font-medium text-gray-900">Product Images</h4>
+                        <h4 className="text-md font-medium text-gray-900">
+                          Product Images
+                        </h4>
                         <Button
                           type="button"
                           onClick={() => {
-                            const fileInput = document.getElementById(`image-upload-${index}`) as HTMLInputElement;
+                            const fileInput = document.getElementById(
+                              `image-upload-${index}`
+                            ) as HTMLInputElement;
                             fileInput?.click();
                           }}
                           variant="outline"
@@ -511,34 +674,48 @@ export default function AddProductPage() {
                         className="hidden"
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          const currentImages = watch(`variants.${index}.images`) || [];
-                          setValue(`variants.${index}.images`, [...currentImages, ...files]);
+                          const currentImages =
+                            watch(`variants.${index}.images`) || [];
+                          setValue(`variants.${index}.images`, [
+                            ...currentImages,
+                            ...files,
+                          ]);
                         }}
                       />
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {watch(`variants.${index}.images`)?.map((file: File, imageIndex: number) => (
-                          <div key={imageIndex} className="relative group">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Variant ${index + 1} image ${imageIndex + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                            />
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const currentImages = watch(`variants.${index}.images`) || [];
-                                const updatedImages = currentImages.filter((_: File, i: number) => i !== imageIndex);
-                                setValue(`variants.${index}.images`, updatedImages);
-                              }}
-                              variant="destructive"
-                              size="sm"
-                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                        {watch(`variants.${index}.images`)?.map(
+                          (file: File, imageIndex: number) => (
+                            <div key={imageIndex} className="relative group">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`Variant ${index + 1} image ${
+                                  imageIndex + 1
+                                }`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  const currentImages =
+                                    watch(`variants.${index}.images`) || [];
+                                  const updatedImages = currentImages.filter(
+                                    (_: File, i: number) => i !== imageIndex
+                                  );
+                                  setValue(
+                                    `variants.${index}.images`,
+                                    updatedImages
+                                  );
+                                }}
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )
+                        )}
                       </div>
 
                       {watch(`variants.${index}.images`)?.length === 0 && (
@@ -548,7 +725,9 @@ export default function AddProductPage() {
                               <Plus className="h-6 w-6 text-gray-400" />
                             </div>
                             <span className="text-sm">No images uploaded</span>
-                            <span className="text-xs">Click "Add Images" to upload photos</span>
+                            <span className="text-xs">
+                              Click "Add Images" to upload photos
+                            </span>
                           </div>
                         </div>
                       )}
@@ -561,7 +740,9 @@ export default function AddProductPage() {
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Specifications</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Specifications
+                </h2>
                 <Button
                   type="button"
                   onClick={() => appendSpec({ left: "", right: "" })}
@@ -574,10 +755,7 @@ export default function AddProductPage() {
 
               <div className="space-y-4">
                 {specFields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className=""
-                  >
+                  <div key={field.id} className="">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-gray-900">
                         Specification {index + 1}
@@ -610,9 +788,9 @@ export default function AddProductPage() {
                             {errors.specifications[index]?.left?.message}
                           </p>
                         )}
-                  </div>
+                      </div>
 
-                  <div className="space-y-2">
+                      <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
                           Right Field *
                         </Label>
@@ -633,41 +811,14 @@ export default function AddProductPage() {
               </div>
             </div>
 
-
-            {/* Warranty & Return Policy Section */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">Warranty & Return Policy (Optional)</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Warranty */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Warranty</Label>
-                  <Input
-                    {...register("warranty")}
-                    placeholder="Enter warranty details"
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Return Policy */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Return Policy</Label>
-                    <Input
-                    {...register("returnPolicy")}
-                    placeholder="Enter return policy"
-                      className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                </div>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <div className="flex justify-end">
               <Button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2"
+                disabled={isCreating}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 disabled:opacity-50"
               >
-                Create Product
+                {isCreating ? "Creating Product..." : "Create Product"}
               </Button>
             </div>
           </form>

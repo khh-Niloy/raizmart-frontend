@@ -19,7 +19,34 @@ export const blogCategoryApi = baseApi.injectEndpoints({
       transformResponse: (response: any) => response?.data ?? response,
       providesTags: ["BLOG_CATEGORIES"],
     }),
+
+    // Blog endpoints
+    createBlog: builder.mutation({
+      query: (formData) => ({
+        url: "/blogs",
+        method: "POST",
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }),
+      invalidatesTags: ["BLOGS"],
+    }),
+
+    getBlogs: builder.query({
+      query: () => ({
+        url: "/blogs",
+        method: "GET",
+      }),
+      transformResponse: (response: any) => response?.data ?? response,
+      providesTags: ["BLOGS"],
+    }),
   }),
 })
 
-export const { useCreateBlogCategoryMutation, useGetBlogCategoriesQuery } = blogCategoryApi
+export const { 
+  useCreateBlogCategoryMutation, 
+  useGetBlogCategoriesQuery,
+  useCreateBlogMutation,
+  useGetBlogsQuery 
+} = blogCategoryApi

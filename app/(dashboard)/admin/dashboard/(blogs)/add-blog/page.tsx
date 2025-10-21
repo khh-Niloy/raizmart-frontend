@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TiptapEditor from '@/components/ui/tiptap-editor';
 import { toast } from 'sonner';
-import { useGetBlogCategoriesQuery } from '@/app/redux/features/blog-category/blog-category.api';
+import { useGetBlogCategoriesQuery, useCreateBlogMutation } from '@/app/redux/features/blog-category/blog-category.api';
 
 // Form validation schema
 const blogSchema = z.object({
@@ -47,30 +47,44 @@ export default function AddBlogPage() {
   const { data: blogCategoriesResp, isFetching: isBlogCategoriesLoading } = useGetBlogCategoriesQuery(undefined);
   const blogCategories: any[] = (blogCategoriesResp?.data ?? blogCategoriesResp ?? []) as any[];
 
+  // Create blog mutation
+  const [createBlog, { isLoading: isCreatingBlog }] = useCreateBlogMutation();
+
   const onSubmit = async (data: BlogFormData) => {
     try {
-      // Prepare blog data
-      const blogData = {
-        ...data,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      console.log('Blog data to submit:', blogData);
+      // Create FormData for file upload
+      const formData = new FormData();
       
-      // TODO: Replace with actual API call
-      // const formData = new FormData();
-      // Object.entries(blogData).forEach(([key, value]) => {
-      //   if (key === 'thumbnail' && value instanceof File) {
-      //     formData.append('thumbnail', value);
-      //   } else if (Array.isArray(value)) {
-      //     formData.append(key, JSON.stringify(value));
-      //   } else if (value != null) {
-      //     formData.append(key, String(value));
-      //   }
-      // });
-      // await createBlog(formData);
+      // Add basic fields
+      formData.append('title', data.title);
+      formData.append('category', data.category);
+      formData.append('content', data.content);
+      
+      // Add tags as JSON string
+      if (data.tags) {
+        const tagsArray = data.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        formData.append('tags', JSON.stringify(tagsArray));
+      }
+      
+      // Add thumbnail file if present
+      if (data.thumbnail && data.thumbnail instanceof File) {
+        formData.append('thumbnail', data.thumbnail);
+      }
+      
+      // Add timestamps
+      formData.append('createdAt', new Date().toISOString());
+      formData.append('updatedAt', new Date().toISOString());
+
+      console.log('Blog FormData to submit:', {
+        title: data.title,
+        category: data.category,
+        content: data.content,
+        tags: data.tags,
+        hasThumbnail: !!data.thumbnail
+      });
+      
+      // Call the API
+      await createBlog(formData).unwrap();
       
       toast.success('Blog created successfully!');
       reset();
@@ -208,10 +222,10 @@ export default function AddBlogPage() {
         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCreatingBlog}
             className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-2"
           >
-            {isSubmitting ? 'Creating...' : 'Create Blog Post'}
+            {isSubmitting || isCreatingBlog ? 'Creating...' : 'Create Blog Post'}
           </Button>
           
           <Button

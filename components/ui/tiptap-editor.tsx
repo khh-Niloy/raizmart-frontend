@@ -38,7 +38,8 @@ function TiptapEditor({ value, onChange, placeholder }: TiptapEditorProps) {
     ],
     content: value || '',
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const jsonContent = editor.getJSON();
+      onChange(JSON.stringify(jsonContent));
     },
     immediatelyRender: false,
     editorProps: {
@@ -51,8 +52,22 @@ function TiptapEditor({ value, onChange, placeholder }: TiptapEditorProps) {
 
   // Update editor content when value prop changes
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '');
+    if (editor) {
+      try {
+        // Try to parse as JSON first, if it fails, treat as HTML
+        const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
+        const currentContent = editor.getJSON();
+        
+        // Only update if the content is different
+        if (JSON.stringify(currentContent) !== JSON.stringify(parsedValue)) {
+          editor.commands.setContent(parsedValue || { type: 'doc', content: [] });
+        }
+      } catch {
+        // If JSON parsing fails, treat as HTML (for backward compatibility)
+        if (value !== editor.getHTML()) {
+          editor.commands.setContent(value || '');
+        }
+      }
     }
   }, [editor, value]);
 

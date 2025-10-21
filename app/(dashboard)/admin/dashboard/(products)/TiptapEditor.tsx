@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 import { 
   Bold, 
   Italic, 
@@ -25,14 +26,22 @@ interface TiptapEditorProps {
 }
 
 function TiptapEditor({ value, onChange, placeholder }: TiptapEditorProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
     ],
-    content: value,
+    content: value || '',
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const jsonContent = editor.getJSON();
+      onChange(JSON.stringify(jsonContent));
     },
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[200px] p-4 border border-gray-300 rounded-md',
@@ -41,8 +50,33 @@ function TiptapEditor({ value, onChange, placeholder }: TiptapEditorProps) {
     },
   });
 
-  if (!editor) {
-    return null;
+  // Update editor content when value prop changes
+  useEffect(() => {
+    if (editor) {
+      try {
+        // Try to parse as JSON first, if it fails, treat as HTML
+        const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
+        const currentContent = editor.getJSON();
+        
+        // Only update if the content is different
+        if (JSON.stringify(currentContent) !== JSON.stringify(parsedValue)) {
+          editor.commands.setContent(parsedValue || { type: 'doc', content: [] });
+        }
+      } catch {
+        // If JSON parsing fails, treat as HTML (for backward compatibility)
+        if (value !== editor.getHTML()) {
+          editor.commands.setContent(value || '');
+        }
+      }
+    }
+  }, [editor, value]);
+
+  if (!isMounted || !editor) {
+    return (
+      <div className="border border-gray-300 rounded-lg min-h-[200px] p-4 bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">Loading editor...</div>
+      </div>
+    );
   }
 
   return (
