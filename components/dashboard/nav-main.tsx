@@ -63,7 +63,10 @@ export function NavMain({
                     const isActive = pathname === (subItem.url || "")
                     return (
                     <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild className={isActive ? "font-semibold" : undefined}>
+                      <SidebarMenuSubButton 
+                        asChild 
+                        className={isActive ? "font-semibold bg-[#02C1BE]/7 text-[#02C1BE]" : undefined}
+                      >
                         <Link href={subItem.url || ""}>
                           <span>{subItem.title || ""}</span>
                         </Link>
