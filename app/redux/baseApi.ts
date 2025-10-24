@@ -13,5 +13,7 @@ export const baseApi = createApi({
     "BLOG_CATEGORIES",
     "BLOGS",
     "PRODUCTS",
+    "SLIDERS",
+    "OTHERS_IMAGES",
   ],
 });

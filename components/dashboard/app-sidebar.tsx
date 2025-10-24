@@ -9,6 +9,7 @@ import {
   FileText,
   Frame,
   GalleryVerticalEnd,
+  Landmark,
   List,
   Map,
   PieChart,
@@ -29,7 +30,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home, Tag } from "lucide-react";
+import { Home, LayoutDashboard, Tag } from "lucide-react";
 
 // This is sample data.
 const data = {
@@ -112,7 +113,7 @@ const data = {
         },
       ],
     },
-    
+
     {
       title: "Offers and Free delivery",
       // url: "#",
@@ -142,7 +143,30 @@ const data = {
           url: "/admin/dashboard/create-brand",
         },
       ],
-    }
+    },
+
+    {
+      title: "Landing Page",
+      icon: LayoutDashboard,
+      items: [
+        {
+          title: "Create Slider Images",
+          url: "/admin/dashboard/create-slider-page",
+        },
+        {
+          title: "All Slider Images",
+          url: "/admin/dashboard/all-slider-images",
+        },
+        {
+          title: "Create Others Images",
+          url: "/admin/dashboard/create-others-images",
+        },
+        {
+          title: "All Others Images",
+          url: "/admin/dashboard/all-other-images",
+        },
+      ],
+    },
   ],
 };
 
