@@ -117,7 +117,7 @@ export default function Navbar() {
       </nav>
 
       {/* Fixed Category Navigation Bar */}
-      <div className="hidden lg:block fixed top-16 left-0 right-0 z-40 bg-[#02c1be]/8">
+      <div className="hidden lg:block fixed top-16 left-0 right-0 z-40 bg-[#02c1be]">
         <div className="max-w-full mx-auto px-4 py-1 sm:px-6 lg:px-22">
           <MegaMenu />
         </div>

@@ -81,7 +81,7 @@ export default function MegaMenu() {
             >
               <Link
                 href={`/category/${category.slug}`}
-                className="flex items-center space-x-1 text-gray-600 hover:text-[#02C1BE] transition-all duration-300 ease-in-out font-medium py-2 hover:font-semibold"
+                className="flex items-center space-x-1 text-white hover:font-bold transition-all duration-300 ease-in-out font-medium py-2 hover:font-semibold"
               >
                 <span className="transition-transform duration-300 ease-in-out">
                   {category.name}
@@ -101,7 +101,7 @@ export default function MegaMenu() {
                     <Link
                       key={subcategory._id}
                       href={`/category/${category.slug}/${subcategory.slug}`}
-                      className="block px-4 py-2 text-gray-700 rounded-lg hover:bg-[#02C1BE] hover:text-white transition-all duration-200 ease-in-out"
+                      className="block px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
                       style={{
                         animationDelay: `${index * 50}ms`,
                         animation: "slideInFromLeft 0.3s ease-out forwards",
