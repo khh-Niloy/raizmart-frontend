@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useGetSubSubcategoriesQuery, useDeleteSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { toast } from "sonner";
 
 export default function AllSubSubCategoryPage() {
   const { data: subSubCategoriesResponse, isFetching } = useGetSubSubcategoriesQuery(undefined);
@@ -18,9 +19,10 @@ export default function AllSubSubCategoryPage() {
     if (window.confirm("Are you sure you want to delete this sub-sub-category?")) {
       try {
         await deleteSubSubcategory(id).unwrap();
-        console.log("Sub-sub-category deleted successfully");
+        toast.success("Sub-sub-category deleted successfully");
       } catch (error) {
         console.error("Delete failed:", error);
+        toast.error("Failed to delete sub-sub-category. Please try again.");
       }
     }
   };

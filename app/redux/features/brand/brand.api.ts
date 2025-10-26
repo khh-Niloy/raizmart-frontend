@@ -21,10 +21,21 @@ export const brandApi = baseApi.injectEndpoints({
       transformResponse: (response: any) => response?.data ?? response,
       providesTags: ["BRANDS"],
     }),
+
+    // Update Brand
+    updateBrand: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/brands/${id}`,
+        method: "PATCH",
+        data: payload,
+      }),
+      invalidatesTags: ["BRANDS"],
+    }),
   }),
 })
 
 export const {
   useCreateBrandMutation,
+  useUpdateBrandMutation,
   useGetBrandsQuery,
 } = brandApi

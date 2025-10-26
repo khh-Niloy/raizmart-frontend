@@ -3,6 +3,8 @@
 import React from "react";
 import { useGetSubcategoriesQuery, useGetCategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Edit } from "lucide-react";
 
 export default function AllSubCategoryPage() {
   const { data, isFetching } = useGetSubcategoriesQuery(undefined);
@@ -54,7 +56,14 @@ export default function AllSubCategoryPage() {
                           <span className="text-gray-900 font-medium">{subName}</span>
                           <span className="text-xs text-gray-500">Parent: {parentLabel}</span>
                         </div>
-                        <Button type="button" variant="outline" className="px-4 py-1 h-9">Update</Button>
+                        <div className="flex gap-2">
+                          <Link href={`/admin/dashboard/edit-sub-category/${sc.id ?? sc._id}`}>
+                            <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </li>
                   );

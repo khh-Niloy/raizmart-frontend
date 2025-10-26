@@ -3,6 +3,8 @@
 import React from "react";
 import { useGetCategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Edit } from "lucide-react";
 
 export default function AllCategoryPage() {
   const { data, isFetching } = useGetCategoriesQuery(undefined);
@@ -28,7 +30,14 @@ export default function AllCategoryPage() {
                   <li key={cat.id ?? cat._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-gray-900 font-medium">{cat.name ?? cat.categoryName ?? "Unnamed"}</span>
-                      <Button type="button" variant="outline" className="px-4 py-1 h-9">Update</Button>
+                      <div className="flex gap-2">
+                        <Link href={`/admin/dashboard/edit-category/${cat.id ?? cat._id}`}>
+                          <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </li>
                 ))}

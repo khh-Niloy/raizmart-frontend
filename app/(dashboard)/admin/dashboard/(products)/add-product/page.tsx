@@ -21,6 +21,7 @@ import dynamic from "next/dynamic";
 import {
   useGetCategoriesQuery,
   useGetSubcategoriesQuery,
+  useGetSubSubcategoriesQuery,
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 import { useCreateProductMutation } from "@/app/redux/features/product/product.api";
@@ -53,7 +54,6 @@ const attributeValueSchema = z.object({
   value: z.string().min(1, "Value is required"),
   colorCode: z.string().optional(),
   images: z.array(z.instanceof(File)).optional(),
-  priceModifier: z.string().min(1, "Price modifier is required"),
   isDefault: z.boolean().optional(),
 });
 
@@ -70,7 +70,7 @@ const manualVariantSchema = z.object({
   storage: z.string().optional(),
   ram: z.string().optional(),
   region: z.string().optional(),
-  customPrice: z.string().optional(),
+  price: z.string().min(1, "Price is required"),
   stock: z.string().min(1, "Stock is required"),
 });
 
@@ -85,8 +85,8 @@ const productSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().min(1, "Sub Category is required"),
+  subSubCategory: z.string().optional(),
   searchTags: z.string().optional(),
-  basePrice: z.string().min(1, "Base price is required"),
   attributes: z.array(attributeSchema).min(1, "At least one attribute is required"),
   manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
   specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
@@ -110,6 +110,7 @@ interface AttributeValueManagerProps {
   attrIndex: number;
   valueIndex: number;
   attributeType: string;
+  control: Control<ProductFormData>;
   register: UseFormRegister<ProductFormData>;
   watch: UseFormWatch<ProductFormData>;
   setValue: UseFormSetValue<ProductFormData>;
@@ -125,7 +126,6 @@ interface VariantPreviewProps {
 
 interface VariantCreatorProps {
   attributes: any[];
-  basePrice: string;
   onAddVariant: (variant: any) => void;
 }
 
@@ -157,8 +157,8 @@ export default function AddProductPage() {
       brand: "",
       category: "",
       subCategory: "",
+      subSubCategory: "",
       searchTags: "",
-      basePrice: "",
       attributes: [],
       manualVariants: [],
       specifications: [],
@@ -211,8 +211,8 @@ export default function AddProductPage() {
       formData.append("brand", data.brand);
       formData.append("category", data.category);
       formData.append("subCategory", data.subCategory);
+      formData.append("subSubCategory", data.subSubCategory || "");
       formData.append("searchTags", data.searchTags || "");
-      formData.append("basePrice", data.basePrice);
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
       if (data.description) {
@@ -232,7 +232,6 @@ export default function AddProductPage() {
         attribute.values.forEach((value, valueIndex) => {
           formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
           formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][priceModifier]`, value.priceModifier);
           formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
           
           if (value.colorCode) {
@@ -254,12 +253,12 @@ export default function AddProductPage() {
       // Handle manual variants
       const manualVariants = data.manualVariants.map(variant => ({
         attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== 'customPrice' && key !== 'stock' && value)
+          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
           .map(([key, value]) => ({
             attributeType: key,
             selectedValue: value
           })),
-        customPrice: variant.customPrice ? parseInt(variant.customPrice) : undefined,
+        price: parseInt(variant.price),
         stock: parseInt(variant.stock)
       }));
       
@@ -279,13 +278,15 @@ export default function AddProductPage() {
     }
   };
 
-  // Load brands, categories and subcategories
+  // Load brands, categories, subcategories and sub-subcategories
   const { data: brandsResp, isFetching: isBrandsLoading } =
     useGetBrandsQuery(undefined);
   const { data: categoriesResp, isFetching: isCategoriesLoading } =
     useGetCategoriesQuery(undefined);
   const { data: subcategoriesResp, isFetching: isSubcategoriesLoading } =
     useGetSubcategoriesQuery(undefined);
+  const { data: subSubcategoriesResp, isFetching: isSubSubcategoriesLoading } =
+    useGetSubSubcategoriesQuery(undefined);
 
   const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[];
   const categories: any[] = (categoriesResp?.data ??
@@ -294,9 +295,13 @@ export default function AddProductPage() {
   const allSubcategories: any[] = (subcategoriesResp?.data ??
     subcategoriesResp ??
     []) as any[];
+  const allSubSubcategories: any[] = (subSubcategoriesResp?.data ??
+    subSubcategoriesResp ??
+    []) as any[];
 
-  // Watch selected category to filter subcategories
+  // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");
+  const selectedSubCategoryId = watch("subCategory");
 
   const filteredSubcategories = React.useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -312,10 +317,30 @@ export default function AddProductPage() {
     });
   }, [allSubcategories, selectedCategoryId]);
 
+  const filteredSubSubcategories = React.useMemo(() => {
+    if (!selectedSubCategoryId) return [];
+    return allSubSubcategories.filter((ssc: any) => {
+      if (typeof ssc.subcategory === "string")
+        return ssc.subcategory === selectedSubCategoryId;
+      if (ssc.subcategory && typeof ssc.subcategory === "object") {
+        const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
+        return id === selectedSubCategoryId;
+      }
+      // fallback to potential parentId field
+      return ssc.parentSubcategoryId === selectedSubCategoryId;
+    });
+  }, [allSubSubcategories, selectedSubCategoryId]);
+
   // Clear subCategory when category changes
   React.useEffect(() => {
     setValue("subCategory", "");
+    setValue("subSubCategory", "");
   }, [selectedCategoryId, setValue]);
+
+  // Clear subSubCategory when subCategory changes
+  React.useEffect(() => {
+    setValue("subSubCategory", "");
+  }, [selectedSubCategoryId, setValue]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -346,24 +371,6 @@ export default function AddProductPage() {
                   )}
                 </div>
 
-                {/* Base Price */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Base Price *
-                  </Label>
-                  <Input
-                    {...register("basePrice")}
-                    placeholder="Enter base price"
-                    type="number"
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  {errors.basePrice && (
-                    <p className="text-sm text-red-600">{errors.basePrice.message}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Starting price before attribute modifiers (e.g., storage upgrades)
-                  </p>
-                </div>
 
                 {/* Brand Selection */}
                 <div className="space-y-2">
@@ -441,7 +448,7 @@ export default function AddProductPage() {
               </h2>
 
               <div className="space-y-6">
-                {/* Row 1: Category, Sub Category, Search Tags */}
+                {/* Row 1: Category, Sub Category, Sub Sub Category */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">
@@ -541,6 +548,60 @@ export default function AddProductPage() {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">
+                      Sub Sub Category
+                    </Label>
+                    <Controller
+                      control={control}
+                      name="subSubCategory"
+                      render={({ field }) => (
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={
+                            !selectedSubCategoryId || isSubSubcategoriesLoading
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={
+                                !selectedSubCategoryId
+                                  ? "Select a sub category first"
+                                  : isSubSubcategoriesLoading
+                                  ? "Loading sub sub categories..."
+                                  : filteredSubSubcategories.length
+                                  ? "Select a sub sub category"
+                                  : "No sub sub categories"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredSubSubcategories.map((ssc: any) => {
+                              const id = (ssc.id ?? ssc._id) as string;
+                              const name = (ssc.name ??
+                                ssc.subSubCategoryName ??
+                                "Unnamed") as string;
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  {name}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.subSubCategory && (
+                      <p className="text-sm text-red-600">
+                        {errors.subSubCategory.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Row 2: Search Tags */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
                       Search Tags
                     </Label>
                     <Input
@@ -597,7 +658,6 @@ export default function AddProductPage() {
             {/* Manual Variant Creation */}
             <VariantCreator
               attributes={watch("attributes")}
-              basePrice={watch("basePrice")}
               onAddVariant={(variant) => appendManualVariant(variant)}
             />
 
@@ -805,7 +865,6 @@ function AttributeManager({
                   value: "",
                   colorCode: "",
                   images: [],
-                  priceModifier: "0",
                   isDefault: false,
                 })
               }
@@ -823,6 +882,7 @@ function AttributeManager({
               attrIndex={attrIndex}
               valueIndex={valueIndex}
               attributeType={attributeType}
+              control={control}
               register={register}
               watch={watch}
               setValue={setValue}
@@ -837,11 +897,23 @@ function AttributeManager({
   );
 }
 
+// Utility function to convert label to backend-friendly value
+const convertLabelToValue = (label: string): string => {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+};
+
 // Attribute Value Manager Component
 function AttributeValueManager({ 
   attrIndex, 
   valueIndex, 
   attributeType, 
+  control,
   register, 
   watch, 
   setValue, 
@@ -866,12 +938,24 @@ function AttributeValueManager({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Label *</Label>
-          <Input
-            {...register(`attributes.${attrIndex}.values.${valueIndex}.label`)}
-            placeholder="e.g., Space Black, 256GB"
+          <Controller
+            control={control}
+            name={`attributes.${attrIndex}.values.${valueIndex}.label`}
+            render={({ field }) => (
+              <Input
+                {...field}
+                placeholder="e.g., Space Black, 256GB"
+                onChange={(e) => {
+                  const labelValue = e.target.value;
+                  field.onChange(e);
+                  const convertedValue = convertLabelToValue(labelValue);
+                  setValue(`attributes.${attrIndex}.values.${valueIndex}.value`, convertedValue);
+                }}
+              />
+            )}
           />
           {errors.attributes?.[attrIndex]?.values?.[valueIndex]?.label && (
             <p className="text-sm text-red-600">
@@ -886,23 +970,12 @@ function AttributeValueManager({
             {...register(`attributes.${attrIndex}.values.${valueIndex}.value`)}
             placeholder="e.g., space-black, 256gb"
           />
+          <p className="text-xs text-gray-500">
+            Auto-generated from label (backend-friendly format)
+          </p>
           {errors.attributes?.[attrIndex]?.values?.[valueIndex]?.value && (
             <p className="text-sm text-red-600">
               {errors.attributes[attrIndex]?.values[valueIndex]?.value?.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Price Modifier *</Label>
-          <Input
-            {...register(`attributes.${attrIndex}.values.${valueIndex}.priceModifier`)}
-            placeholder="0"
-            type="number"
-          />
-          {errors.attributes?.[attrIndex]?.values?.[valueIndex]?.priceModifier && (
-            <p className="text-sm text-red-600">
-              {errors.attributes[attrIndex]?.values[valueIndex]?.priceModifier?.message}
             </p>
           )}
         </div>
@@ -998,44 +1071,27 @@ function AttributeValueManager({
 }
 
 // Variant Creator Component
-function VariantCreator({ attributes, basePrice, onAddVariant }: VariantCreatorProps) {
+function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const [selections, setSelections] = React.useState<{[key: string]: string}>({});
-  const [customPrice, setCustomPrice] = React.useState("");
+  const [price, setPrice] = React.useState("");
   const [stock, setStock] = React.useState("");
 
-  const calculatePrice = () => {
-    const basePriceNum = parseFloat(basePrice || "0");
-    let totalModifier = 0;
-
-    Object.entries(selections).forEach(([attrType, selectedValue]) => {
-      const attribute = attributes.find((attr: any) => attr.type === attrType);
-      if (attribute) {
-        const value = attribute.values.find((val: any) => val.value === selectedValue);
-        if (value) {
-          totalModifier += parseFloat(value.priceModifier || "0");
-        }
-      }
-    });
-
-    return customPrice ? parseFloat(customPrice) : basePriceNum + totalModifier;
-  };
-
   const handleAddVariant = () => {
-    if (Object.keys(selections).length === 0 || !stock) {
-      toast.error("Please select attributes and set stock");
+    if (Object.keys(selections).length === 0 || !price || !stock) {
+      toast.error("Please select attributes, set price and stock");
       return;
     }
 
     const variant = {
       ...selections,
-      customPrice: customPrice || "",
+      price: price,
       stock: stock
     };
 
     onAddVariant(variant);
     toast.success("Variant added successfully");
     setSelections({});
-    setCustomPrice("");
+    setPrice("");
     setStock("");
   };
 
@@ -1091,7 +1147,7 @@ function VariantCreator({ attributes, basePrice, onAddVariant }: VariantCreatorP
                       {validValues.length > 0 ? (
                         validValues.map((value: any, valueIndex: number) => (
                           <SelectItem key={valueIndex} value={value.value}>
-                            {value.label} (+৳{value.priceModifier})
+                            {value.label}
                           </SelectItem>
                         ))
                       ) : (
@@ -1106,14 +1162,15 @@ function VariantCreator({ attributes, basePrice, onAddVariant }: VariantCreatorP
             })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Custom Price (Optional)</Label>
+            <Label>Price *</Label>
             <Input
               type="number"
-              value={customPrice}
-              onChange={(e) => setCustomPrice(e.target.value)}
-              placeholder="Override calculated price"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Enter variant price"
+              min="0"
             />
           </div>
           <div className="space-y-2">
@@ -1125,12 +1182,6 @@ function VariantCreator({ attributes, basePrice, onAddVariant }: VariantCreatorP
               placeholder="Enter stock quantity"
               min="0"
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Calculated Price</Label>
-            <div className="p-2 bg-gray-100 rounded border">
-              ৳{calculatePrice().toLocaleString()}
-            </div>
           </div>
         </div>
 
@@ -1147,7 +1198,7 @@ function VariantCreator({ attributes, basePrice, onAddVariant }: VariantCreatorP
                 Stock: {stock || "0"}
               </Badge>
               <Badge variant="outline">
-                Price: ৳{calculatePrice().toLocaleString()}
+                Price: ৳{price ? parseInt(price).toLocaleString() : "0"}
               </Badge>
             </div>
           </div>
@@ -1173,27 +1224,8 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
     return value;
   };
 
-  const calculateVariantPrice = (variant: any, basePrice: string) => {
-    const basePriceNum = parseFloat(basePrice || "0");
-    
-    if (variant.customPrice) {
-      return parseFloat(variant.customPrice);
-    }
-
-    let totalModifier = 0;
-    Object.entries(variant).forEach(([key, value]) => {
-      if (key !== 'customPrice' && key !== 'stock' && value) {
-        const attribute = attributes.find((attr: any) => attr.type === key);
-        if (attribute) {
-          const attrValue = attribute.values.find((val: any) => val.value === value);
-          if (attrValue) {
-            totalModifier += parseFloat(attrValue.priceModifier || "0");
-          }
-        }
-      }
-    });
-
-    return basePriceNum + totalModifier;
+  const calculateVariantPrice = (variant: any) => {
+    return parseFloat(variant.price || "0");
   };
 
   if (variants.length === 0) {
@@ -1246,8 +1278,7 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
                 </div>
                 <div className="flex gap-4 text-sm text-gray-600">
                   <span>Stock: {variant.stock}</span>
-                  <span>Price: ৳{calculateVariantPrice(variant, "0").toLocaleString()}</span>
-                  {variant.customPrice && <span className="text-blue-600">(Custom Price)</span>}
+                  <span>Price: ৳{calculateVariantPrice(variant).toLocaleString()}</span>
                 </div>
               </div>
               <div className="flex gap-2">

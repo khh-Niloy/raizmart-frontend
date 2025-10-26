@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Edit } from "lucide-react";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 
 export default function AllBrandPage() {
@@ -28,7 +30,12 @@ export default function AllBrandPage() {
                   <li key={brand.id ?? brand._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-gray-900 font-medium">{brand.brandName ?? brand.name ?? "Unnamed"}</span>
-                      <Button type="button" variant="outline" className="px-4 py-1 h-9">Update</Button>
+                      <Link href={`/admin/dashboard/edit-brand/${brand.id ?? brand._id}`}>
+                        <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </Link>
                     </div>
                   </li>
                 ))}

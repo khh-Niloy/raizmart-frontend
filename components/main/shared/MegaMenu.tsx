@@ -38,6 +38,7 @@ export default function MegaMenu() {
     null
   );
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isHoveringSubSubcategory, setIsHoveringSubSubcategory] = useState(false);
 
   const { data: categories, isLoading: categoriesLoading } =
     useGetCategoriesQuery(undefined);
@@ -57,14 +58,33 @@ export default function MegaMenu() {
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
+    setIsHoveringSubSubcategory(false);
     setActiveSubcategory(subcategoryId);
   };
 
   const handleSubcategoryMouseLeave = () => {
-    // Add a small delay before hiding to allow moving to sub-sub-categories
+    // Only hide if not hovering over sub-subcategory
+    if (!isHoveringSubSubcategory) {
+      const timeout = setTimeout(() => {
+        setActiveSubcategory(null);
+      }, 100);
+      setHoverTimeout(timeout);
+    }
+  };
+
+  const handleSubSubcategoryMouseEnter = () => {
+    setIsHoveringSubSubcategory(true);
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+  };
+
+  const handleSubSubcategoryMouseLeave = () => {
+    setIsHoveringSubSubcategory(false);
     const timeout = setTimeout(() => {
       setActiveSubcategory(null);
-    }, 150);
+    }, 100);
     setHoverTimeout(timeout);
   };
 
@@ -171,66 +191,63 @@ export default function MegaMenu() {
                         }
                         onMouseLeave={handleSubcategoryMouseLeave}
                       >
-                        <Link
-                          href={`/category/${category.slug}/${subcategory.slug}`}
-                          className="flex items-center justify-between px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
-                          style={{
-                            animationDelay: `${index * 50}ms`,
-                            animation: "slideInFromLeft 0.3s ease-out forwards",
-                          }}
-                        >
-                          <span>{subcategory.name}</span>
-                          {hasSubSubcategories && (
-                            <ChevronDown className="h-3 w-3 ml-2" />
-                          )}
-                        </Link>
-
-                        {/* Sub-Subcategories Dropdown */}
-                        {(() => {
-                          const shouldShow =
-                            activeSubcategory === subcategory._id &&
-                            hasSubSubcategories;
-
-                          return shouldShow;
-                        })() && (
-                          <div
-                            className="absolute left-full top-0 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50"
-                            onMouseEnter={() => {
-                              // Clear timeout when hovering over sub-sub-categories
-                              if (hoverTimeout) {
-                                clearTimeout(hoverTimeout);
-                                setHoverTimeout(null);
-                              }
+                        {/* Single hover area that includes both subcategory and sub-subcategory */}
+                        <div className="flex">
+                          {/* Subcategory Link */}
+                          <Link
+                            href={`/category/${category.slug}/${subcategory.slug}`}
+                            className="flex items-center justify-between px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out w-[200px]"
+                            style={{
+                              animationDelay: `${index * 50}ms`,
+                              animation: "slideInFromLeft 0.3s ease-out forwards",
                             }}
-                            onMouseLeave={handleSubcategoryMouseLeave}
                           >
-                            {subSubcategoriesForThisSub.map(
-                              (subSubcategory, subIndex) => {
-                                // Generate slug if it doesn't exist
-                                const subSubcategorySlug =
-                                  subSubcategory.slug ||
-                                  subSubcategory.name
-                                    ?.toLowerCase()
-                                    .replace(/\s+/g, "-") ||
-                                  "sub-sub-category";
-                                return (
-                                  <Link
-                                    key={subSubcategory._id}
-                                    href={`/category/${category.slug}/${subcategory.slug}/${subSubcategorySlug}`}
-                                    className="block px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
-                                    style={{
-                                      animationDelay: `${subIndex * 30}ms`,
-                                      animation:
-                                        "slideInFromLeft 0.2s ease-out forwards",
-                                    }}
-                                  >
-                                    {subSubcategory.name}
-                                  </Link>
-                                );
-                              }
+                            <span>{subcategory.name}</span>
+                            {hasSubSubcategories && (
+                              <ChevronDown className="h-3 w-3 ml-2" />
                             )}
-                          </div>
-                        )}
+                          </Link>
+
+                          {/* Sub-Subcategories Dropdown - Always rendered but conditionally visible */}
+                          {hasSubSubcategories && (
+                            <div
+                              className={`absolute left-[200px] top-0 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 transition-all duration-200 ${
+                                activeSubcategory === subcategory._id 
+                                  ? 'opacity-100 visible' 
+                                  : 'opacity-0 invisible'
+                              }`}
+                              style={{ marginLeft: '-1px' }}
+                              onMouseEnter={handleSubSubcategoryMouseEnter}
+                              onMouseLeave={handleSubSubcategoryMouseLeave}
+                            >
+                              {subSubcategoriesForThisSub.map(
+                                (subSubcategory, subIndex) => {
+                                  // Generate slug if it doesn't exist
+                                  const subSubcategorySlug =
+                                    subSubcategory.slug ||
+                                    subSubcategory.name
+                                      ?.toLowerCase()
+                                      .replace(/\s+/g, "-") ||
+                                    "sub-sub-category";
+                                  return (
+                                    <Link
+                                      key={subSubcategory._id}
+                                      href={`/category/${category.slug}/${subcategory.slug}/${subSubcategorySlug}`}
+                                      className="block px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
+                                      style={{
+                                        animationDelay: `${subIndex * 30}ms`,
+                                        animation:
+                                          "slideInFromLeft 0.2s ease-out forwards",
+                                      }}
+                                    >
+                                      {subSubcategory.name}
+                                    </Link>
+                                  );
+                                }
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

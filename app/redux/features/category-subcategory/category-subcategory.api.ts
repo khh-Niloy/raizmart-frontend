@@ -12,6 +12,15 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
       invalidatesTags: ["CATEGORIES"],
     }),
 
+    updateCategory: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/categories/${id}`,
+        method: "PATCH",
+        data: payload,
+      }),
+      invalidatesTags: ["CATEGORIES"],
+    }),
+
     getCategories: builder.query({
       query: () => ({
         url: "/categories?populate=subcategories.subSubcategories",
@@ -26,6 +35,15 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
       query: (payload) => ({
         url: "/subcategories",
         method: "POST",
+        data: payload,
+      }),
+      invalidatesTags: ["SUBCATEGORIES"],
+    }),
+
+    updateSubcategory: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/subcategories/${id}`,
+        method: "PATCH",
         data: payload,
       }),
       invalidatesTags: ["SUBCATEGORIES"],
@@ -50,6 +68,15 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
       invalidatesTags: ["SUB_SUBCATEGORIES"],
     }),
 
+    updateSubSubcategory: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/sub-subcategories/${id}`,
+        method: "PATCH",
+        data: payload,
+      }),
+      invalidatesTags: ["SUB_SUBCATEGORIES"],
+    }),
+
     getSubSubcategories: builder.query({
       query: () => ({
         url: "/sub-subcategories",
@@ -57,15 +84,6 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: any) => response?.data ?? response,
       providesTags: ["SUB_SUBCATEGORIES"],
-    }),
-
-    updateSubSubcategory: builder.mutation({
-      query: ({ id, ...payload }) => ({
-        url: `/sub-subcategories/${id}`,
-        method: "PUT",
-        data: payload,
-      }),
-      invalidatesTags: ["SUB_SUBCATEGORIES"],
     }),
 
     deleteSubSubcategory: builder.mutation({
@@ -80,11 +98,13 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
 
 export const {
   useCreateCategoryMutation,
+  useUpdateCategoryMutation,
   useGetCategoriesQuery,
   useCreateSubcategoryMutation,
+  useUpdateSubcategoryMutation,
   useGetSubcategoriesQuery,
   useCreateSubSubcategoryMutation,
-  useGetSubSubcategoriesQuery,
   useUpdateSubSubcategoryMutation,
+  useGetSubSubcategoriesQuery,
   useDeleteSubSubcategoryMutation,
 } = categorySubcategoryApi
