@@ -7,7 +7,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Main Content Container */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-[95%] mx-auto px-4 py-8">
         {/* Desktop Layout - Large screens and up */}
         <div className="hidden lg:block">
           <div className="grid grid-cols-3 gap-6">

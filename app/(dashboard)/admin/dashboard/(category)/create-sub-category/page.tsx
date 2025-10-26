@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGetCategoriesQuery, useCreateSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { toast } from "sonner";
 
 // Parent categories will be fetched from API
 
@@ -53,9 +54,11 @@ export default function CreateSubCategoryPage() {
       console.log(payload)
       const res = await createSubcategory(payload).unwrap();
       console.log("Sub-category created:", res);
+      toast.success("Sub-category created successfully!");
       reset();
     } catch (error) {
       console.error("Create sub-category failed:", error);
+      toast.error("Failed to create sub-category. Please try again.");
     }
   };
 

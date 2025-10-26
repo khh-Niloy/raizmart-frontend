@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateBlogCategoryMutation } from "@/app/redux/features/blog-category/blog-category.api";
+import { toast } from "sonner";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,10 +33,11 @@ export default function AddBlogCategoryPage() {
     try {
       const res = await createBlogCategory(data).unwrap();
       console.log(res);
-
+      toast.success("Blog category created successfully!");
       reset();
     } catch (e) {
       console.error(e);
+      toast.error("Failed to create blog category. Please try again.");
     }
   };
 

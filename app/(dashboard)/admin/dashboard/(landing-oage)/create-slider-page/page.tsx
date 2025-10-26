@@ -114,13 +114,13 @@ export default function CreateSliderPagePage() {
 
       const count = typeof numberOfSliders === "number" ? numberOfSliders : parseInt(numberOfSliders as string) || 0;
       
-      console.log("Slider page data being submitted:", {
-        numberOfSliders: count,
-        sliderImages: data.sliderImages.map(slider => ({
-          link: slider.link,
-          hasImage: !!slider.image
-        }))
-      });
+      // console.log("Slider page data being submitted:", {
+      //   numberOfSliders: count,
+      //   sliderImages: data.sliderImages.map(slider => ({
+      //     link: slider.link,
+      //     hasImage: !!slider.image
+      //   }))
+      // });
 
       // Prepare data for RTK Query
       const images = data.sliderImages.map(slider => slider.image!);
@@ -132,7 +132,7 @@ export default function CreateSliderPagePage() {
         redirectUrls
       }).unwrap();
 
-      console.log("All sliders uploaded successfully:", result);
+      // console.log("All sliders uploaded successfully:", result);
 
       toast.success(`Successfully created ${count} slider images!`);
       

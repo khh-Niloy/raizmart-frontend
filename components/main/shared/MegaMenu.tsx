@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import {
   useGetCategoriesQuery,
-  useGetSubcategoriesQuery,
+  useGetSubSubcategoriesQuery,
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 
 interface Category {
@@ -22,28 +22,67 @@ interface Subcategory {
   name: string;
   category: string;
   slug: string;
+  subSubcategories?: SubSubcategory[];
+}
+
+interface SubSubcategory {
+  _id: string;
+  name: string;
+  subcategory: string;
+  slug: string;
 }
 
 export default function MegaMenu() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(
+    null
+  );
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } =
     useGetCategoriesQuery(undefined);
-  const { data: subcategories, isLoading: subcategoriesLoading } =
-    useGetSubcategoriesQuery(undefined);
+  const { data: subSubcategories, isLoading: subSubcategoriesLoading } =
+    useGetSubSubcategoriesQuery(undefined);
 
   const categoriesList: Category[] = categories || [];
-  const subcategoriesList: Subcategory[] = subcategories || [];
+  const subSubcategoriesList: SubSubcategory[] = subSubcategories || [];
 
   const handleCategoryHover = (categoryId: string) => {
     setActiveCategory(categoryId);
+    setActiveSubcategory(null);
+  };
+
+  const handleSubcategoryHover = (subcategoryId: string) => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    setActiveSubcategory(subcategoryId);
+  };
+
+  const handleSubcategoryMouseLeave = () => {
+    // Add a small delay before hiding to allow moving to sub-sub-categories
+    const timeout = setTimeout(() => {
+      setActiveSubcategory(null);
+    }, 150);
+    setHoverTimeout(timeout);
   };
 
   const handleMouseLeave = () => {
     setActiveCategory(null);
+    setActiveSubcategory(null);
   };
 
-  if (categoriesLoading || subcategoriesLoading) {
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
+
+  if (categoriesLoading || subSubcategoriesLoading) {
     return (
       <div className="flex items-center space-x-8">
         <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
@@ -91,25 +130,110 @@ export default function MegaMenu() {
                 )}
               </Link>
 
-              {/* Simple Dropdown */}
+              {/* 3-Level Dropdown */}
               {activeCategory === category._id && hasSubcategories && (
-                <div className="absolute top-full left-0 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 ">
-                  {/* Parent category link - commented out as requested */}
-
+                <div className="absolute top-full left-0 w-64 bg-white rounded-lg shadow-lg border border-gray-100 z-50">
                   {/* Subcategories */}
-                  {categorySubcategories.map((subcategory, index) => (
-                    <Link
-                      key={subcategory._id}
-                      href={`/category/${category.slug}/${subcategory.slug}`}
-                      className="block px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
-                      style={{
-                        animationDelay: `${index * 50}ms`,
-                        animation: "slideInFromLeft 0.3s ease-out forwards",
-                      }}
-                    >
-                      {subcategory.name}
-                    </Link>
-                  ))}
+                  {categorySubcategories.map((subcategory, index) => {
+                    // Try to get sub-sub-categories from populated data first
+                    let subSubcategoriesForThisSub =
+                      subcategory.subSubcategories || [];
+
+                    // Fallback: If no populated data, filter from separate API call
+                    if (
+                      subSubcategoriesForThisSub.length === 0 &&
+                      subSubcategoriesList.length > 0
+                    ) {
+                      subSubcategoriesForThisSub = subSubcategoriesList.filter(
+                        (subSub: any) => {
+                          if (typeof subSub.subcategory === "string") {
+                            return subSub.subcategory === subcategory._id;
+                          } else if (
+                            subSub.subcategory &&
+                            typeof subSub.subcategory === "object"
+                          ) {
+                            return subSub.subcategory._id === subcategory._id;
+                          }
+                          return false;
+                        }
+                      );
+                    }
+
+                    const hasSubSubcategories =
+                      subSubcategoriesForThisSub.length > 0;
+
+                    return (
+                      <div
+                        key={subcategory._id}
+                        className="relative group"
+                        onMouseEnter={() =>
+                          handleSubcategoryHover(subcategory._id)
+                        }
+                        onMouseLeave={handleSubcategoryMouseLeave}
+                      >
+                        <Link
+                          href={`/category/${category.slug}/${subcategory.slug}`}
+                          className="flex items-center justify-between px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
+                          style={{
+                            animationDelay: `${index * 50}ms`,
+                            animation: "slideInFromLeft 0.3s ease-out forwards",
+                          }}
+                        >
+                          <span>{subcategory.name}</span>
+                          {hasSubSubcategories && (
+                            <ChevronDown className="h-3 w-3 ml-2" />
+                          )}
+                        </Link>
+
+                        {/* Sub-Subcategories Dropdown */}
+                        {(() => {
+                          const shouldShow =
+                            activeSubcategory === subcategory._id &&
+                            hasSubSubcategories;
+
+                          return shouldShow;
+                        })() && (
+                          <div
+                            className="absolute left-full top-0 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50"
+                            onMouseEnter={() => {
+                              // Clear timeout when hovering over sub-sub-categories
+                              if (hoverTimeout) {
+                                clearTimeout(hoverTimeout);
+                                setHoverTimeout(null);
+                              }
+                            }}
+                            onMouseLeave={handleSubcategoryMouseLeave}
+                          >
+                            {subSubcategoriesForThisSub.map(
+                              (subSubcategory, subIndex) => {
+                                // Generate slug if it doesn't exist
+                                const subSubcategorySlug =
+                                  subSubcategory.slug ||
+                                  subSubcategory.name
+                                    ?.toLowerCase()
+                                    .replace(/\s+/g, "-") ||
+                                  "sub-sub-category";
+                                return (
+                                  <Link
+                                    key={subSubcategory._id}
+                                    href={`/category/${category.slug}/${subcategory.slug}/${subSubcategorySlug}`}
+                                    className="block px-4 py-2 text-gray-700 rounded-lg hover:font-bold hover:text-[#02C1BE] transition-all duration-200 ease-in-out"
+                                    style={{
+                                      animationDelay: `${subIndex * 30}ms`,
+                                      animation:
+                                        "slideInFromLeft 0.2s ease-out forwards",
+                                    }}
+                                  >
+                                    {subSubcategory.name}
+                                  </Link>
+                                );
+                              }
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

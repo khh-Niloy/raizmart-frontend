@@ -6,7 +6,7 @@ import AuthModal from "./AuthModal";
 
 export default function NavbarPofile() {
   const { data: userInfo } = useUserInfoQuery(undefined);
-  console.log(userInfo);
+  // console.log(userInfo);
 
   if (!userInfo) {
     return (

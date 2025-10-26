@@ -10,17 +10,17 @@ export default function Slider() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Debug logging
-  console.log('Slider data:', data);
-  console.log('Slider loading:', isLoading);
-  console.log('Slider error:', error);
+  // console.log('Slider data:', data);
+  // console.log('Slider loading:', isLoading);
+  // console.log('Slider error:', error);
 
   const sliders = data?.data || [];
   
   // Filter only active sliders
   const activeSliders = sliders.filter((slider: any) => slider.status === 'active');
   
-  console.log('All sliders:', sliders);
-  console.log('Active sliders:', activeSliders);
+  // console.log('All sliders:', sliders);
+  // console.log('Active sliders:', activeSliders);
 
   // Auto-slide functionality
   useEffect(() => {
@@ -68,22 +68,22 @@ export default function Slider() {
   const currentSlider = activeSliders[currentSlide];
   
   // Debug: Show image URL for testing
-  console.log('🔗 Test this image URL in browser:', currentSlider.imageUrl);
+  // console.log('🔗 Test this image URL in browser:', currentSlider.imageUrl);
   
-  console.log('Current slider:', currentSlider);
-  console.log('Current slider imageUrl:', currentSlider?.imageUrl);
+  // console.log('Current slider:', currentSlider);
+  // console.log('Current slider imageUrl:', currentSlider?.imageUrl);
   
   // Test if image URL is accessible
   if (currentSlider?.imageUrl) {
     fetch(currentSlider.imageUrl, { method: 'HEAD' })
       .then(response => {
-        console.log('🔍 Image URL accessibility test:', response.status, response.ok);
+        // console.log('🔍 Image URL accessibility test:', response.status, response.ok);
         if (!response.ok) {
-          console.error('❌ Image URL not accessible:', currentSlider.imageUrl);
+          // console.error('❌ Image URL not accessible:', currentSlider.imageUrl);
         }
       })
       .catch(error => {
-        console.error('❌ Image URL fetch error:', error);
+        // console.error('❌ Image URL fetch error:', error);
       });
   }
 
@@ -96,14 +96,14 @@ export default function Slider() {
           alt={`Slider ${currentSlide + 1}`}
           className="w-full h-full object-cover"
           onError={(e) => {
-            console.error('❌ Image failed to load:', currentSlider.imageUrl);
-            console.error('❌ Error details:', e);
+            // console.error('❌ Image failed to load:', currentSlider.imageUrl);
+            // console.error('❌ Error details:', e);
           }}
           onLoad={() => {
-            console.log('✅ Image loaded successfully:', currentSlider.imageUrl);
+            // console.log('✅ Image loaded successfully:', currentSlider.imageUrl);
           }}
           onLoadStart={() => {
-            console.log('🔄 Starting to load image:', currentSlider.imageUrl);
+            // console.log('🔄 Starting to load image:', currentSlider.imageUrl);
           }}
         />
         

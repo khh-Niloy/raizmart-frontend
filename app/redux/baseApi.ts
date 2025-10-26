@@ -9,11 +9,13 @@ export const baseApi = createApi({
     "USER",
     "CATEGORIES",
     "SUBCATEGORIES",
+    "SUB_SUBCATEGORIES",
     "BRANDS",
     "BLOG_CATEGORIES",
     "BLOGS",
     "PRODUCTS",
     "SLIDERS",
     "OTHERS_IMAGES",
+    "FEATURED_ITEMS",
   ],
 });

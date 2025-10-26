@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateBrandMutation } from "@/app/redux/features/brand/brand.api";
+import { toast } from "sonner";
 
 // Validation schema
 const brandSchema = z.object({
@@ -35,9 +36,11 @@ export default function CreateBrandPage() {
     try {
       const res = await createBrand(data).unwrap();
       console.log("Brand created:", res);
+      toast.success("Brand created successfully!");
       reset();
     } catch (error) {
       console.error("Create brand failed:", error);
+      toast.error("Failed to create brand. Please try again.");
     }
   };
 

@@ -30,7 +30,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home, LayoutDashboard, Tag } from "lucide-react";
+import { Home, LayoutDashboard, Tag, Star } from "lucide-react";
 
 // This is sample data.
 const data = {
@@ -115,6 +115,22 @@ const data = {
     },
 
     {
+      title: "Sub-Sub Categories",
+      // url: "#",
+      icon: List,
+      items: [
+        {
+          title: "All Sub-Sub Category",
+          url: "/admin/dashboard/all-sub-sub-category",
+        },
+        {
+          title: "Create Sub-Sub Category",
+          url: "/admin/dashboard/create-sub-sub-category",
+        },
+      ],
+    },
+
+    {
       title: "Offers and Free delivery",
       // url: "#",
       icon: ShoppingCart,
@@ -141,6 +157,21 @@ const data = {
         {
           title: "Create Brand",
           url: "/admin/dashboard/create-brand",
+        },
+      ],
+    },
+
+    {
+      title: "Featured Management",
+      icon: Star,
+      items: [
+        {
+          title: "Featured Category",
+          url: "/admin/dashboard/featured-category",
+        },
+        {
+          title: "Featured Product",
+          url: "/admin/dashboard/featured-product",
         },
       ],
     },

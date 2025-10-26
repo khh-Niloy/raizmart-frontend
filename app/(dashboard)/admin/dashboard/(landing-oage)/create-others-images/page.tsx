@@ -79,11 +79,11 @@ export default function CreateOthersImagesPage() {
         return;
       }
 
-      console.log("Others images data being submitted:", {
-        othersImages: data.othersImages.map(others => ({
-          hasImage: !!others.image
-        }))
-      });
+      // console.log("Others images data being submitted:", {
+      //   othersImages: data.othersImages.map(others => ({
+      //     hasImage: !!others.image
+      //   }))
+      // });
 
       // Prepare data for RTK Query
       const images = data.othersImages.map(others => others.image!);
@@ -95,7 +95,7 @@ export default function CreateOthersImagesPage() {
         redirectUrls
       }).unwrap();
 
-      console.log("Others images uploaded successfully:", result);
+      // console.log("Others images uploaded successfully:", result);
 
       toast.success("Others images uploaded successfully!");
       

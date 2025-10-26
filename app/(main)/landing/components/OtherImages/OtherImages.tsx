@@ -8,17 +8,17 @@ export default function OtherImages() {
   const { data, isLoading, error } = useGetOthersImagesQuery(undefined);
 
   // Debug logging
-  console.log('Other Images data:', data);
-  console.log('Other Images loading:', isLoading);
-  console.log('Other Images error:', error);
+  // console.log('Other Images data:', data);
+  // console.log('Other Images loading:', isLoading);
+  // console.log('Other Images error:', error);
 
   const othersImages = data?.data || [];
   
   // Filter only active other images
   const activeOthersImages = othersImages.filter((image: any) => image.status === 'active');
   
-  console.log('All other images:', othersImages);
-  console.log('Active other images:', activeOthersImages);
+  // console.log('All other images:', othersImages);
+  // console.log('Active other images:', activeOthersImages);
 
   if (isLoading) {
     return (
@@ -50,11 +50,11 @@ export default function OtherImages() {
   // Take only the first 2 images
   const displayImages = activeOthersImages.slice(0, 2);
   
-  console.log('Display images:', displayImages);
-  displayImages.forEach((image: { imageUrl: string; redirectUrl: string; _id: string; }, index: number) => {
-    console.log(`Other Image ${index + 1}:`, image);
-    console.log(`Other Image ${index + 1} URL:`, image.imageUrl);
-  });
+  // console.log('Display images:', displayImages);
+  // displayImages.forEach((image: { imageUrl: string; redirectUrl: string; _id: string; }, index: number) => {
+  //   console.log(`Other Image ${index + 1}:`, image);
+  //   console.log(`Other Image ${index + 1} URL:`, image.imageUrl);
+  // });
 
   return (
     <div className="space-y-4">
@@ -65,13 +65,13 @@ export default function OtherImages() {
             alt={`Other image ${index + 1}`}
             className="w-full h-full object-cover"
             onError={(e) => {
-              console.error('❌ Other image failed to load:', image.imageUrl);
+              // console.error('❌ Other image failed to load:', image.imageUrl);
             }}
             onLoad={() => {
-              console.log('✅ Other image loaded successfully:', image.imageUrl);
+              // console.log('✅ Other image loaded successfully:', image.imageUrl);
             }}
             onLoadStart={() => {
-              console.log('🔄 Starting to load other image:', image.imageUrl);
+              // console.log('🔄 Starting to load other image:', image.imageUrl);
             }}
           />
           

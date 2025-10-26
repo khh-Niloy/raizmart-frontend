@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateCategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { toast } from "sonner";
 
 // Validation schema
 const categorySchema = z.object({
@@ -34,9 +35,11 @@ export default function CreateCategoryPage() {
     try {
       const res = await createCategory(data).unwrap();
       console.log("Category created:", res);
+      toast.success("Category created successfully!");
       reset();
     } catch (error) {
       console.error("Create category failed:", error);
+      toast.error("Failed to create category. Please try again.");
     }
   };
 

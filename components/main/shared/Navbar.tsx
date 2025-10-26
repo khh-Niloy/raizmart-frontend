@@ -37,8 +37,8 @@ export default function Navbar() {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-22">
+      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-15">
           <div className="flex items-center h-16">
             {/* Logo Section - Left */}
             <div className="flex-shrink-0">
@@ -118,7 +118,7 @@ export default function Navbar() {
 
       {/* Fixed Category Navigation Bar */}
       <div className="hidden lg:block fixed top-16 left-0 right-0 z-40 bg-[#02c1be]">
-        <div className="max-w-full mx-auto px-4 py-1 sm:px-6 lg:px-22">
+        <div className="max-w-full mx-auto px-4 py-1 sm:px-6 lg:px-15">
           <MegaMenu />
         </div>
       </div>
