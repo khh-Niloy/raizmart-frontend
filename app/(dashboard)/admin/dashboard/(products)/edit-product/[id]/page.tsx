@@ -25,11 +25,17 @@ import {
   useGetSubSubcategoriesQuery,
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
-import { 
+import {
   useGetProductByIdQuery,
-  useUpdateProductMutation 
+  useUpdateProductMutation,
 } from "@/app/redux/features/product/product.api";
-import { Control, FieldErrors, UseFormRegister, UseFormWatch, UseFormSetValue } from "react-hook-form";
+import {
+  Control,
+  FieldErrors,
+  UseFormRegister,
+  UseFormWatch,
+  UseFormSetValue,
+} from "react-hook-form";
 import { toast } from "sonner";
 
 // Dynamically import Tiptap to avoid SSR issues
@@ -64,7 +70,9 @@ const attributeValueSchema = z.object({
 const attributeSchema = z.object({
   name: z.string().min(1, "Attribute name is required"),
   type: z.string().min(1, "Attribute type is required"),
-  values: z.array(attributeValueSchema).min(1, "At least one value is required"),
+  values: z
+    .array(attributeValueSchema)
+    .min(1, "At least one value is required"),
   isRequired: z.boolean().optional(),
   displayOrder: z.number().optional(),
 });
@@ -91,9 +99,15 @@ const productSchema = z.object({
   subCategory: z.string().min(1, "Sub Category is required"),
   subSubCategory: z.string().optional(),
   searchTags: z.string().optional(),
-  attributes: z.array(attributeSchema).min(1, "At least one attribute is required"),
-  manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
-  specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
+  attributes: z
+    .array(attributeSchema)
+    .min(1, "At least one attribute is required"),
+  manualVariants: z
+    .array(manualVariantSchema)
+    .min(1, "At least one variant is required"),
+  specifications: z
+    .array(specificationSchema)
+    .min(1, "At least one specification is required"),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -143,10 +157,9 @@ interface VariantListProps {
 export default function EditProductPage() {
   const params = useParams();
   const productId = params.id as string;
-  console.log("productId", productId);
 
-  const { data: product, isLoading: isProductLoading } = useGetProductByIdQuery(productId);
-  console.log("product", product);
+  const { data: product, isLoading: isProductLoading } =
+    useGetProductByIdQuery(productId);
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   const {
@@ -163,7 +176,7 @@ export default function EditProductPage() {
       name: "",
       description: JSON.stringify({
         type: "doc",
-        content: []
+        content: [],
       }),
       brand: "",
       category: "",
@@ -257,77 +270,134 @@ export default function EditProductPage() {
     });
   }, [allSubSubcategories, selectedSubCategoryId]);
 
-  // Clear subCategory when category changes
+  // Clear dependent selects only when user changes values (avoid nuking prefilled)
+  const prevCategoryRef = React.useRef<string | undefined>(undefined);
+  const prevSubCategoryRef = React.useRef<string | undefined>(undefined);
+
   React.useEffect(() => {
-    setValue("subCategory", "");
-    setValue("subSubCategory", "");
+    const prev = prevCategoryRef.current;
+    if (
+      prev !== undefined &&
+      selectedCategoryId &&
+      selectedCategoryId !== prev
+    ) {
+      setValue("subCategory", "");
+      setValue("subSubCategory", "");
+    }
+    prevCategoryRef.current = selectedCategoryId;
   }, [selectedCategoryId, setValue]);
 
-  // Clear subSubCategory when subCategory changes
   React.useEffect(() => {
-    setValue("subSubCategory", "");
+    const prev = prevSubCategoryRef.current;
+    if (
+      prev !== undefined &&
+      selectedSubCategoryId &&
+      selectedSubCategoryId !== prev
+    ) {
+      setValue("subSubCategory", "");
+    }
+    prevSubCategoryRef.current = selectedSubCategoryId;
   }, [selectedSubCategoryId, setValue]);
 
   // Load product data when component mounts
   useEffect(() => {
     if (product) {
       console.log("Loading product data:", product);
-      
+
       // Convert backend data to form format
       const formData: ProductFormData = {
         name: product.name || "",
-        description: product.description || JSON.stringify({ type: "doc", content: [] }),
-        brand: product.brand?._id || product.brand || "",
-        category: product.category?._id || product.category || "",
-        subCategory: product.subCategory?._id || product.subCategory || "",
-        subSubCategory: product.subSubCategory?._id || product.subSubCategory || "",
+        description:
+          product.description || JSON.stringify({ type: "doc", content: [] }),
+        brand: String(product.brand?._id || product.brand || ""),
+        category: String(product.category?._id || product.category || ""),
+        subCategory: product.subCategory
+          ? String(product.subCategory._id || product.subCategory)
+          : "",
+        subSubCategory: product.subSubCategory
+          ? String(product.subSubCategory._id || product.subSubCategory)
+          : "",
         searchTags: product.searchTags?.join(", ") || "",
-        attributes: product.attributes?.map((attr: any) => ({
-          name: attr.name || "",
-          type: attr.type || "",
-          values: attr.values?.map((val: any) => ({
-            label: val.label || "",
-            value: val.value || "",
-            colorCode: val.colorCode || "",
-            images: [], // We'll handle existing images separately
-            isDefault: val.isDefault || false,
+        attributes:
+          product.attributes?.map((attr: any) => ({
+            name: attr.name || "",
+            type: attr.type || "",
+            values:
+              attr.values?.map((val: any) => ({
+                label: val.label || "",
+                value: val.value || "",
+                colorCode: val.colorCode || "",
+                images: [], // We'll handle existing images separately
+                isDefault: val.isDefault || false,
+              })) || [],
+            isRequired: attr.isRequired || true,
+            displayOrder: attr.displayOrder || 0,
           })) || [],
-          isRequired: attr.isRequired || true,
-          displayOrder: attr.displayOrder || 0,
-        })) || [],
-        manualVariants: product.variants?.map((variant: any) => {
-          const variantData: any = {
-            price: variant.finalPrice?.toString() || "",
-            stock: variant.stock?.toString() || "",
-          };
-          
-          // Map attribute combinations to variant fields
-          variant.attributeCombination?.forEach((combo: any) => {
-            variantData[combo.attributeType] = combo.attributeValue;
-          });
-          
-          return variantData;
-        }) || [],
-        specifications: product.specifications?.map((spec: any) => ({
-          key: spec.key || "",
-          value: spec.value || "",
-        })) || [],
+        manualVariants:
+          product.variants?.map((variant: any) => {
+            const variantData: any = {
+              price: variant.finalPrice?.toString() || "",
+              stock: variant.stock?.toString() || "",
+            };
+
+            // Map attribute combinations to variant fields
+            variant.attributeCombination?.forEach((combo: any) => {
+              variantData[combo.attributeType] = combo.attributeValue;
+            });
+
+            return variantData;
+          }) || [],
+        specifications:
+          product.specifications?.map((spec: any) => ({
+            key: spec.key || "",
+            value: spec.value || "",
+          })) || [],
       };
 
       reset(formData);
     }
   }, [product, reset]);
 
+  // Re-assert prefilled selects after options load to ensure label displays
+  useEffect(() => {
+    if (!product) return;
+    const prodCategory = String(
+      product.category?._id || product.category || ""
+    );
+    const prodSubCategory = product.subCategory
+      ? String(product.subCategory._id || product.subCategory)
+      : "";
+    const prodSubSubCategory = product.subSubCategory
+      ? String(product.subSubCategory._id || product.subSubCategory)
+      : "";
+
+    if (!isCategoriesLoading && prodCategory) {
+      setValue("category", prodCategory);
+    }
+    if (!isSubcategoriesLoading && prodSubCategory) {
+      setValue("subCategory", prodSubCategory);
+    }
+    if (!isSubSubcategoriesLoading && prodSubSubCategory) {
+      setValue("subSubCategory", prodSubSubCategory);
+    }
+  }, [
+    product,
+    isCategoriesLoading,
+    isSubcategoriesLoading,
+    isSubSubcategoriesLoading,
+    setValue,
+  ]);
+
   const onSubmit = async (data: ProductFormData) => {
     try {
       console.log("Updating product with data:", data);
-      
+
       // Validate that at least one variant is created
       if (!data.manualVariants || data.manualVariants.length === 0) {
         toast.error("Please create at least one variant before submitting");
         return;
       }
-      
+
       // Create FormData for multer backend
       const formData = new FormData();
 
@@ -351,16 +421,34 @@ export default function EditProductPage() {
       data.attributes.forEach((attribute, attrIndex) => {
         formData.append(`attributes[${attrIndex}][name]`, attribute.name);
         formData.append(`attributes[${attrIndex}][type]`, attribute.type);
-        formData.append(`attributes[${attrIndex}][isRequired]`, String(attribute.isRequired || true));
-        formData.append(`attributes[${attrIndex}][displayOrder]`, String(attribute.displayOrder || 0));
+        formData.append(
+          `attributes[${attrIndex}][isRequired]`,
+          String(attribute.isRequired || true)
+        );
+        formData.append(
+          `attributes[${attrIndex}][displayOrder]`,
+          String(attribute.displayOrder || 0)
+        );
 
         attribute.values.forEach((value, valueIndex) => {
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
-          
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][label]`,
+            value.label
+          );
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][value]`,
+            value.value
+          );
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][isDefault]`,
+            String(value.isDefault || false)
+          );
+
           if (value.colorCode) {
-            formData.append(`attributes[${attrIndex}][values][${valueIndex}][colorCode]`, value.colorCode);
+            formData.append(
+              `attributes[${attrIndex}][values][${valueIndex}][colorCode]`,
+              value.colorCode
+            );
           }
 
           // Add images for color attributes
@@ -376,17 +464,17 @@ export default function EditProductPage() {
       });
 
       // Handle manual variants
-      const manualVariants = data.manualVariants.map(variant => ({
+      const manualVariants = data.manualVariants.map((variant) => ({
         attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
+          .filter(([key, value]) => key !== "price" && key !== "stock" && value)
           .map(([key, value]) => ({
             attributeType: key,
-            selectedValue: value
+            selectedValue: value,
           })),
         price: parseInt(variant.price),
-        stock: parseInt(variant.stock)
+        stock: parseInt(variant.stock),
       }));
-      
+
       formData.append("manualVariants", JSON.stringify(manualVariants));
 
       console.log("FormData prepared for backend:", formData);
@@ -394,7 +482,7 @@ export default function EditProductPage() {
       // Send to API
       const result = await updateProduct({ id: productId, formData }).unwrap();
       console.log("Product updated successfully:", result);
-      
+
       toast.success("Product updated successfully!");
     } catch (error) {
       console.error("Error updating product:", error);
@@ -451,7 +539,9 @@ export default function EditProductPage() {
                     className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.name && (
-                    <p className="text-sm text-red-600">{errors.name.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
 
@@ -465,8 +555,18 @@ export default function EditProductPage() {
                     name="brand"
                     render={({ field }) => (
                       <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
+                        key={
+                          isBrandsLoading
+                            ? "brand-loading"
+                            : field.value
+                            ? String(field.value)
+                            : ""
+                        }
+                        onValueChange={(val) => {
+                          field.onChange(String(val));
+                          setValue("brand", String(val));
+                        }}
+                        value={field.value ? String(field.value) : ""}
                         disabled={isBrandsLoading}
                       >
                         <SelectTrigger className="w-full">
@@ -481,11 +581,12 @@ export default function EditProductPage() {
                         <SelectContent>
                           {brands.map((brand: any) => {
                             const id = (brand.id ?? brand._id) as string;
+                            const idStr = String(id);
                             const name = (brand.brandName ??
                               brand.name ??
                               "Unnamed") as string;
                             return (
-                              <SelectItem key={id} value={id}>
+                              <SelectItem key={idStr} value={idStr}>
                                 {name}
                               </SelectItem>
                             );
@@ -514,7 +615,10 @@ export default function EditProductPage() {
                     name="description"
                     render={({ field }) => (
                       <TiptapEditor
-                        value={field.value || JSON.stringify({ type: "doc", content: [] })}
+                        value={
+                          field.value ||
+                          JSON.stringify({ type: "doc", content: [] })
+                        }
                         onChange={field.onChange}
                         placeholder="Enter product description"
                       />
@@ -542,8 +646,18 @@ export default function EditProductPage() {
                       name="category"
                       render={({ field }) => (
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          key={
+                            isCategoriesLoading
+                              ? "category-loading"
+                              : field.value
+                              ? String(field.value)
+                              : ""
+                          }
+                          onValueChange={(val) => {
+                            field.onChange(String(val));
+                            setValue("category", String(val));
+                          }}
+                          value={field.value ? String(field.value) : ""}
                           disabled={isCategoriesLoading}
                         >
                           <SelectTrigger className="w-full">
@@ -558,11 +672,12 @@ export default function EditProductPage() {
                           <SelectContent>
                             {categories.map((c: any) => {
                               const id = (c.id ?? c._id) as string;
+                              const idStr = String(id);
                               const name = (c.name ??
                                 c.categoryName ??
                                 "Unnamed") as string;
                               return (
-                                <SelectItem key={id} value={id}>
+                                <SelectItem key={idStr} value={idStr}>
                                   {name}
                                 </SelectItem>
                               );
@@ -587,8 +702,15 @@ export default function EditProductPage() {
                       name="subCategory"
                       render={({ field }) => (
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          key={
+                            isSubcategoriesLoading
+                              ? "subcategory-loading"
+                              : field.value
+                              ? String(field.value)
+                              : ""
+                          }
+                          onValueChange={(val) => field.onChange(String(val))}
+                          value={field.value ? String(field.value) : ""}
                           disabled={
                             !selectedCategoryId || isSubcategoriesLoading
                           }
@@ -609,11 +731,12 @@ export default function EditProductPage() {
                           <SelectContent>
                             {filteredSubcategories.map((sc: any) => {
                               const id = (sc.id ?? sc._id) as string;
+                              const idStr = String(id);
                               const name = (sc.name ??
                                 sc.subCategoryName ??
                                 "Unnamed") as string;
                               return (
-                                <SelectItem key={id} value={id}>
+                                <SelectItem key={idStr} value={idStr}>
                                   {name}
                                 </SelectItem>
                               );
@@ -638,8 +761,15 @@ export default function EditProductPage() {
                       name="subSubCategory"
                       render={({ field }) => (
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          key={
+                            isSubSubcategoriesLoading
+                              ? "subsubcategory-loading"
+                              : field.value
+                              ? String(field.value)
+                              : ""
+                          }
+                          onValueChange={(val) => field.onChange(String(val))}
+                          value={field.value ? String(field.value) : ""}
                           disabled={
                             !selectedSubCategoryId || isSubSubcategoriesLoading
                           }
@@ -660,11 +790,12 @@ export default function EditProductPage() {
                           <SelectContent>
                             {filteredSubSubcategories.map((ssc: any) => {
                               const id = (ssc.id ?? ssc._id) as string;
+                              const idStr = String(id);
                               const name = (ssc.name ??
                                 ssc.subSubCategoryName ??
                                 "Unnamed") as string;
                               return (
-                                <SelectItem key={id} value={id}>
+                                <SelectItem key={idStr} value={idStr}>
                                   {name}
                                 </SelectItem>
                               );
@@ -844,17 +975,21 @@ export default function EditProductPage() {
 }
 
 // Attribute Manager Component
-function AttributeManager({ 
-  attrIndex, 
-  control, 
-  register, 
-  watch, 
-  setValue, 
-  errors, 
-  onRemove, 
-  canRemove 
+function AttributeManager({
+  attrIndex,
+  control,
+  register,
+  watch,
+  setValue,
+  errors,
+  onRemove,
+  canRemove,
 }: AttributeManagerProps) {
-  const { fields: valueFields, append: appendValue, remove: removeValue } = useFieldArray({
+  const {
+    fields: valueFields,
+    append: appendValue,
+    remove: removeValue,
+  } = useFieldArray({
     control,
     name: `attributes.${attrIndex}.values`,
   });
@@ -865,9 +1000,7 @@ function AttributeManager({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">
-            Attribute {attrIndex + 1}
-          </CardTitle>
+          <CardTitle className="text-lg">Attribute {attrIndex + 1}</CardTitle>
           {canRemove && (
             <Button
               type="button"
@@ -895,31 +1028,36 @@ function AttributeManager({
               </p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Label>Attribute Type *</Label>
             <Controller
               control={control}
               name={`attributes.${attrIndex}.type`}
               render={({ field }) => (
-                <Select 
+                <Select
                   onValueChange={(value) => {
                     field.onChange(value);
                     // Auto-update attribute name when type changes
-                    const selectedType = TECH_ATTRIBUTE_TYPES.find(type => type.value === value);
+                    const selectedType = TECH_ATTRIBUTE_TYPES.find(
+                      (type) => type.value === value
+                    );
                     if (selectedType) {
-                      setValue(`attributes.${attrIndex}.name`, selectedType.label);
+                      setValue(
+                        `attributes.${attrIndex}.name`,
+                        selectedType.label
+                      );
                     }
-                  }} 
+                  }}
                   value={field.value}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select attribute type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TECH_ATTRIBUTE_TYPES
-                      .filter((type) => type.value && type.value.trim() !== "")
-                      .map((type) => (
+                    {TECH_ATTRIBUTE_TYPES.filter(
+                      (type) => type.value && type.value.trim() !== ""
+                    ).map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -985,24 +1123,24 @@ const convertLabelToValue = (label: string): string => {
   return label
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s-]/g, "") // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
 };
 
 // Attribute Value Manager Component
-function AttributeValueManager({ 
-  attrIndex, 
-  valueIndex, 
-  attributeType, 
+function AttributeValueManager({
+  attrIndex,
+  valueIndex,
+  attributeType,
   control,
-  register, 
-  watch, 
-  setValue, 
-  errors, 
-  onRemove, 
-  canRemove 
+  register,
+  watch,
+  setValue,
+  errors,
+  onRemove,
+  canRemove,
 }: AttributeValueManagerProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-4">
@@ -1035,7 +1173,10 @@ function AttributeValueManager({
                   const labelValue = e.target.value;
                   field.onChange(e);
                   const convertedValue = convertLabelToValue(labelValue);
-                  setValue(`attributes.${attrIndex}.values.${valueIndex}.value`, convertedValue);
+                  setValue(
+                    `attributes.${attrIndex}.values.${valueIndex}.value`,
+                    convertedValue
+                  );
                 }}
               />
             )}
@@ -1071,13 +1212,18 @@ function AttributeValueManager({
             <Label>Color Code</Label>
             <div className="flex gap-2">
               <Input
-                {...register(`attributes.${attrIndex}.values.${valueIndex}.colorCode`)}
+                {...register(
+                  `attributes.${attrIndex}.values.${valueIndex}.colorCode`
+                )}
                 placeholder="#000000"
               />
               <div
                 className="w-10 h-10 border border-gray-300 rounded"
                 style={{
-                  backgroundColor: watch(`attributes.${attrIndex}.values.${valueIndex}.colorCode`) || "#ffffff",
+                  backgroundColor:
+                    watch(
+                      `attributes.${attrIndex}.values.${valueIndex}.colorCode`
+                    ) || "#ffffff",
                 }}
               />
             </div>
@@ -1110,41 +1256,50 @@ function AttributeValueManager({
               className="hidden"
               onChange={(e) => {
                 const files = Array.from(e.target.files || []);
-                const currentImages = watch(`attributes.${attrIndex}.values.${valueIndex}.images`) || [];
-                setValue(`attributes.${attrIndex}.values.${valueIndex}.images`, [
-                  ...currentImages,
-                  ...files,
-                ]);
+                const currentImages =
+                  watch(
+                    `attributes.${attrIndex}.values.${valueIndex}.images`
+                  ) || [];
+                setValue(
+                  `attributes.${attrIndex}.values.${valueIndex}.images`,
+                  [...currentImages, ...files]
+                );
               }}
             />
 
             <div className="grid grid-cols-4 gap-2">
-              {watch(`attributes.${attrIndex}.values.${valueIndex}.images`)?.map(
-                (file: File, imageIndex: number) => (
-                  <div key={imageIndex} className="relative group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}
-                      className="w-full h-16 object-cover rounded border"
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const currentImages = watch(`attributes.${attrIndex}.values.${valueIndex}.images`) || [];
-                        const updatedImages = currentImages.filter(
-                          (_: File, i: number) => i !== imageIndex
-                        );
-                        setValue(`attributes.${attrIndex}.values.${valueIndex}.images`, updatedImages);
-                      }}
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )
-              )}
+              {watch(
+                `attributes.${attrIndex}.values.${valueIndex}.images`
+              )?.map((file: File, imageIndex: number) => (
+                <div key={imageIndex} className="relative group">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}
+                    className="w-full h-16 object-cover rounded border"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const currentImages =
+                        watch(
+                          `attributes.${attrIndex}.values.${valueIndex}.images`
+                        ) || [];
+                      const updatedImages = currentImages.filter(
+                        (_: File, i: number) => i !== imageIndex
+                      );
+                      setValue(
+                        `attributes.${attrIndex}.values.${valueIndex}.images`,
+                        updatedImages
+                      );
+                    }}
+                    variant="destructive"
+                    size="sm"
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         </>
@@ -1155,7 +1310,9 @@ function AttributeValueManager({
 
 // Variant Creator Component
 function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
-  const [selections, setSelections] = React.useState<{[key: string]: string}>({});
+  const [selections, setSelections] = React.useState<{ [key: string]: string }>(
+    {}
+  );
   const [price, setPrice] = React.useState("");
   const [stock, setStock] = React.useState("");
 
@@ -1168,7 +1325,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
     const variant = {
       ...selections,
       price: price,
-      stock: stock
+      stock: stock,
     };
 
     onAddVariant(variant);
@@ -1181,7 +1338,9 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
     const attribute = attributes.find((attr: any) => attr.type === attrType);
     if (attribute) {
-      const attrValue = attribute.values.find((val: any) => val.value === value);
+      const attrValue = attribute.values.find(
+        (val: any) => val.value === value
+      );
       return attrValue ? attrValue.label : value;
     }
     return value;
@@ -1192,7 +1351,8 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       <CardHeader>
         <CardTitle>Create New Variant</CardTitle>
         <p className="text-sm text-gray-600">
-          Select attributes from your attribute pool to create a specific variant
+          Select attributes from your attribute pool to create a specific
+          variant
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1200,9 +1360,10 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           {attributes
             .filter((attribute: any) => attribute.name && attribute.type)
             .map((attribute: any, index: number) => {
-              const validValues = attribute.values?.filter((value: any) => 
-                value.value && value.value.trim() !== ""
-              ) || [];
+              const validValues =
+                attribute.values?.filter(
+                  (value: any) => value.value && value.value.trim() !== ""
+                ) || [];
 
               return (
                 <div key={index} className="space-y-2">
@@ -1210,20 +1371,20 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                   <Select
                     value={selections[attribute.type] || ""}
                     onValueChange={(value) => {
-                      setSelections(prev => ({
+                      setSelections((prev) => ({
                         ...prev,
-                        [attribute.type]: value
+                        [attribute.type]: value,
                       }));
                     }}
                     disabled={validValues.length === 0}
                   >
                     <SelectTrigger>
-                      <SelectValue 
+                      <SelectValue
                         placeholder={
-                          validValues.length === 0 
-                            ? `No ${attribute.name} values added` 
+                          validValues.length === 0
+                            ? `No ${attribute.name} values added`
                             : `Select ${attribute.name}`
-                        } 
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
@@ -1277,9 +1438,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                   {attrType}: {getAttributeLabel(attrType, value)}
                 </Badge>
               ))}
-              <Badge variant="outline">
-                Stock: {stock || "0"}
-              </Badge>
+              <Badge variant="outline">Stock: {stock || "0"}</Badge>
               <Badge variant="outline">
                 Price: ৳{price ? parseInt(price).toLocaleString() : "0"}
               </Badge>
@@ -1297,11 +1456,18 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
 }
 
 // Variant List Component
-function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: VariantListProps) {
+function VariantList({
+  variants,
+  onEditVariant,
+  onDeleteVariant,
+  attributes,
+}: VariantListProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
     const attribute = attributes.find((attr: any) => attr.type === attrType);
     if (attribute) {
-      const attrValue = attribute.values.find((val: any) => val.value === value);
+      const attrValue = attribute.values.find(
+        (val: any) => val.value === value
+      );
       return attrValue ? attrValue.label : value;
     }
     return value;
@@ -1345,11 +1511,19 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
       <CardContent>
         <div className="space-y-3">
           {variants.map((variant: any, index: number) => (
-            <div key={variant.id} className="flex items-center justify-between p-4 border rounded-lg">
+            <div
+              key={variant.id}
+              className="flex items-center justify-between p-4 border rounded-lg"
+            >
               <div className="flex-1">
                 <div className="flex flex-wrap gap-1 mb-2">
                   {Object.entries(variant).map(([key, value]) => {
-                    if (key !== 'customPrice' && key !== 'stock' && key !== 'id' && value) {
+                    if (
+                      key !== "customPrice" &&
+                      key !== "stock" &&
+                      key !== "id" &&
+                      value
+                    ) {
                       return (
                         <Badge key={key} variant="secondary">
                           {key}: {getAttributeLabel(key, value as string)}
@@ -1361,7 +1535,9 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
                 </div>
                 <div className="flex gap-4 text-sm text-gray-600">
                   <span>Stock: {variant.stock}</span>
-                  <span>Price: ৳{calculateVariantPrice(variant).toLocaleString()}</span>
+                  <span>
+                    Price: ৳{calculateVariantPrice(variant).toLocaleString()}
+                  </span>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -1393,4 +1569,3 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
     </Card>
   );
 }
-
