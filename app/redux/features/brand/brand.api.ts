@@ -31,6 +31,16 @@ export const brandApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["BRANDS"],
     }),
+
+    // Get products by brand name
+    getBrandProducts: builder.query({
+      query: ({ brand, page = 1, limit = 12, sort = "newest" }: { brand: string; page?: number; limit?: number; sort?: string }) => ({
+        url: `/brands/${encodeURIComponent(brand)}?page=${page}&limit=${limit}&sort=${sort}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => response,
+      providesTags: ["PRODUCTS", "BRANDS"],
+    }),
   }),
 })
 
@@ -38,4 +48,5 @@ export const {
   useCreateBrandMutation,
   useUpdateBrandMutation,
   useGetBrandsQuery,
+  useGetBrandProductsQuery,
 } = brandApi

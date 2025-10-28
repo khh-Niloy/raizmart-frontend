@@ -43,7 +43,9 @@ export default function Navbar() {
             {/* Logo Section - Left */}
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center group">
-                <Image src="/logo.png" alt="RaizMart" width={90} height={90} />
+                <span suppressHydrationWarning>
+                  <Image src="/logo.png" alt="RaizMart" width={90} height={90} />
+                </span>
               </Link>
             </div>
 

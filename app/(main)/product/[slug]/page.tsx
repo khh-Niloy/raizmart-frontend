@@ -11,10 +11,7 @@ export default function ProductDetailBySlug({
   const { data, isLoading, isError } = useGetProductBySlugQuery(
     resolvedParams.slug
   );
-  console.log("product detail response", data);
-
-  const product = React.useMemo(() => (data as any)?.data ?? null, [data]);
-  console.log("product", product);
+  const product = (data as any)?.data ?? null;
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -54,10 +51,29 @@ export default function ProductDetailBySlug({
 
   const [selectedByName, setSelectedByName] = React.useState<
     Record<string, string>
-  >({});
+  >(() => {
+    // Initialize state with initial selections directly
+    const acc: Record<string, string> = {};
+    attributes.forEach((attr) => {
+      const def = attr.values.find((v) => v.isDefault) || attr.values[0];
+      if (def)
+        acc[attr.name] = (def as any).attributeValue || def.value || def.label;
+    });
+    return acc;
+  });
+
+  // Update selections when product changes (only when product ID changes)
   React.useEffect(() => {
-    setSelectedByName(initialSelections);
-  }, [initialSelections]);
+    if (product?._id) {
+      const newSelections: Record<string, string> = {};
+      attributes.forEach((attr) => {
+        const def = attr.values.find((v) => v.isDefault) || attr.values[0];
+        if (def)
+          newSelections[attr.name] = (def as any).attributeValue || def.value || def.label;
+      });
+      setSelectedByName(newSelections);
+    }
+  }, [product?._id]);
   const [activeImage, setActiveImage] = React.useState<string | undefined>(
     undefined
   );
@@ -173,9 +189,7 @@ export default function ProductDetailBySlug({
     }
   };
 
-  if (isLoading) return <div className="py-10">Loading...</div>;
-  if (isError || !data?.success || !product)
-    return <div className="py-10">Product not found</div>;
+  
 
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
   const renderTiptapToHTML = (node: any): string => {
@@ -307,14 +321,14 @@ export default function ProductDetailBySlug({
         {/* Right: Info & selectors */}
         <div>
           <div className="flex items-center gap-3 mb-2">
-            {product.brand?.name && (
+            {product?.brand?.name && (
               <span className="py-1 rounded-full text-sm bg-white text-gray-700">
                 Brand: {product.brand.name}
               </span>
             )}
           </div>
           <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight">
-            {product.name}
+            {product?.name}
           </h1>
 
           {selectedVariant && (
@@ -464,7 +478,7 @@ export default function ProductDetailBySlug({
           <div className="border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <tbody>
-                {(product.specifications || []).map((row: any, idx: number) => (
+                {(product?.specifications || []).map((row: any, idx: number) => (
                   <tr key={idx} className="odd:bg-white even:bg-gray-50">
                     <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
                       {row.key}
