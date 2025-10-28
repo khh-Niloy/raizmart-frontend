@@ -132,7 +132,7 @@ export default function MegaMenu() {
 
               {/* 3-Level Dropdown */}
               {activeCategory === category._id && hasSubcategories && (
-                <div className="absolute top-full left-0 w-64 bg-white rounded-lg shadow-lg border border-gray-100 z-50">
+                <div className="absolute top-full left-0 pr-10 bg-white rounded-lg shadow-lg border border-gray-100 z-50">
                   {/* Subcategories */}
                   {categorySubcategories.map((subcategory, index) => {
                     // Try to get sub-sub-categories from populated data first
@@ -169,7 +169,6 @@ export default function MegaMenu() {
                         onMouseEnter={() =>
                           handleSubcategoryHover(subcategory._id)
                         }
-                        onMouseLeave={handleSubcategoryMouseLeave}
                       >
                         <Link
                           href={`/category/${category.slug}/${subcategory.slug}`}
@@ -202,7 +201,6 @@ export default function MegaMenu() {
                                 setHoverTimeout(null);
                               }
                             }}
-                            onMouseLeave={handleSubcategoryMouseLeave}
                           >
                             {subSubcategoriesForThisSub.map(
                               (subSubcategory, subIndex) => {

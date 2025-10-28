@@ -1286,17 +1286,6 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    // For now, just show an edit dialog would go here
-                    console.log("Edit variant", variant);
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
                   className="text-red-600 hover:text-red-700"
                   onClick={() => onDeleteVariant(index)}
                 >
