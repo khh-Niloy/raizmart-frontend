@@ -66,6 +66,14 @@ export default function ProductDetailBySlug({
     x: "50%",
     y: "50%",
   });
+  const specRef = React.useRef<HTMLDivElement | null>(null);
+  const descRef = React.useRef<HTMLDivElement | null>(null);
+  const warrantyRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollToWithOffset = (el: HTMLElement | null, offset = 100) => {
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  };
 
   // Determine selected variant by matching attributeCombination
   const selectedVariant = React.useMemo(() => {
@@ -169,8 +177,75 @@ export default function ProductDetailBySlug({
   if (isError || !data?.success || !product)
     return <div className="py-10">Product not found</div>;
 
+  // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
+  const renderTiptapToHTML = (node: any): string => {
+    if (!node) return "";
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const renderMarks = (text: string, marks?: any[]) => {
+      if (!marks || !marks.length) return text;
+      return marks.reduce((acc, m) => {
+        if (m.type === "bold") return `<strong>${acc}</strong>`;
+        if (m.type === "italic") return `<em>${acc}</em>`;
+        if (m.type === "strike") return `<s>${acc}</s>`;
+        if (m.type === "underline") return `<u>${acc}</u>`;
+        if (m.type === "code") return `<code>${acc}</code>`;
+        if (m.type === "link") {
+          const href = esc(m.attrs?.href || "#");
+          const rel = esc(m.attrs?.rel || "noopener noreferrer nofollow");
+          const target = esc(m.attrs?.target || "_blank");
+          return `<a href="${href}" target="${target}" rel="${rel}">${acc}</a>`;
+        }
+        return acc;
+      }, text);
+    };
+
+    const renderChildren = (children: any[]) => (children || []).map(renderTiptapToHTML).join("");
+
+    switch (node.type) {
+      case "doc":
+        return renderChildren(node.content);
+      case "paragraph":
+        return `<p>${renderChildren(node.content)}</p>`;
+      case "text":
+        return renderMarks(esc(node.text || ""), node.marks);
+      case "heading": {
+        const lvl = Math.min(6, Math.max(1, node.attrs?.level || 2));
+        return `<h${lvl}>${renderChildren(node.content)}</h${lvl}>`;
+      }
+      case "bulletList":
+        return `<ul>${renderChildren(node.content)}</ul>`;
+      case "orderedList":
+        return `<ol>${renderChildren(node.content)}</ol>`;
+      case "listItem":
+        return `<li>${renderChildren(node.content)}</li>`;
+      case "blockquote":
+        return `<blockquote>${renderChildren(node.content)}</blockquote>`;
+      case "codeBlock":
+        return `<pre><code>${esc(node.content?.[0]?.text || "")}</code></pre>`;
+      case "hardBreak":
+        return "<br/>";
+      default:
+        return renderChildren(node.content);
+    }
+  };
+
+  // Render TipTap JSON description to HTML
+  const descriptionHtml = React.useMemo(() => {
+    const desc = product?.description;
+    try {
+      const json = typeof desc === "string" ? JSON.parse(desc) : desc;
+      if (json && typeof json === "object" && json.type) {
+        return renderTiptapToHTML(json);
+      }
+    } catch {
+      /* fall through to raw string */
+    }
+    if (typeof desc === "string") return desc; // assume already HTML
+    return "";
+  }, [product?.description]);
+
   return (
-    <div className="container mx-auto py-20 bg-white">
+    <div className="w-full px-16 mx-auto py-20 bg-white">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left: Gallery with vertical thumbnails on desktop */}
         <div className="grid grid-cols-1 gap-4">
@@ -355,6 +430,81 @@ export default function ProductDetailBySlug({
           {/* Small details */}
           <div className="mt-6 text-sm text-gray-600">
             <div>1 Year Official Warranty Support</div>
+          </div>
+        </div>
+      </div>
+      {/* Product details sections */}
+      <div className="mt-20 space-y-10">
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+            onClick={() => scrollToWithOffset(specRef.current)}
+          >
+            Specification
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+            onClick={() => scrollToWithOffset(descRef.current)}
+          >
+            Description
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+            onClick={() => scrollToWithOffset(warrantyRef.current)}
+          >
+            Warranty
+          </button>
+        </div>
+        {/* Specification */}
+        <div className="w-[50%]" ref={specRef} id="specification">
+          <h2 className="text-2xl font-semibold mb-4">Specification</h2>
+          <div className="border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody>
+                {(product.specifications || []).map((row: any, idx: number) => (
+                  <tr key={idx} className="odd:bg-white even:bg-gray-50">
+                    <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                      {row.key}
+                    </td>
+                    <td className="p-4 text-gray-800 border-b border-gray-100">
+                      {row.value}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div ref={descRef} id="description">
+          <h2 className="text-2xl font-semibold mb-4">Description</h2>
+          <div className="prose max-w-none">
+            <style dangerouslySetInnerHTML={{
+              __html: `
+                .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
+                .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
+                .desc-content li { margin: .25rem 0; }
+                .desc-content h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 .5rem; }
+                .desc-content h2 { font-size: 1.5rem; font-weight: 600; margin: .875rem 0 .5rem; }
+                .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
+                .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
+                .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
+              `
+            }} />
+            <div className="desc-content" dangerouslySetInnerHTML={{ __html: descriptionHtml || "<p class=\"text-gray-500\">No description available.</p>" }} />
+          </div>
+        </div>
+
+        {/* Warranty */}
+        <div ref={warrantyRef} id="warranty">
+          <h2 className="text-2xl font-semibold mb-4">Warranty</h2>
+          <div className="text-gray-700 bg-white border rounded-xl p-4">
+            1 Year Official Warranty Support. Terms may vary by brand and
+            region.
           </div>
         </div>
       </div>
