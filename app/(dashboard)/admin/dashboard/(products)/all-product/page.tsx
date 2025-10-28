@@ -311,9 +311,11 @@ export default function AllProductPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Product
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/dashboard/edit-product/${product._id}`}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Product
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleToggleFeatured(product._id, product.isFeatured)}

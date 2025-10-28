@@ -35,6 +35,16 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["PRODUCTS"],
     }),
 
+    // Get Single Product by ID
+    getProductById: builder.query({
+      query: (id: string) => ({
+        url: `/products/${id}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => response?.data ?? response,
+      providesTags: ["PRODUCTS"],
+    }),
+
     // Update Product
     updateProduct: builder.mutation({
       query: ({ id, formData }) => ({
@@ -64,6 +74,7 @@ export const {
   useCreateProductMutation,
   useGetProductsQuery,
   useGetFeaturedProductsQuery,
+  useGetProductByIdQuery,
   useUpdateProductMutation,
   useToggleFeaturedMutation,
 } = productApi
