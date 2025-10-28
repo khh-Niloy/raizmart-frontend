@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
+import Link from "next/link";
 
 export default function ProductDetailBySlug({
   params,
@@ -69,7 +70,8 @@ export default function ProductDetailBySlug({
       attributes.forEach((attr) => {
         const def = attr.values.find((v) => v.isDefault) || attr.values[0];
         if (def)
-          newSelections[attr.name] = (def as any).attributeValue || def.value || def.label;
+          newSelections[attr.name] =
+            (def as any).attributeValue || def.value || def.label;
       });
       setSelectedByName(newSelections);
     }
@@ -189,12 +191,11 @@ export default function ProductDetailBySlug({
     }
   };
 
-  
-
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
   const renderTiptapToHTML = (node: any): string => {
     if (!node) return "";
-    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const renderMarks = (text: string, marks?: any[]) => {
       if (!marks || !marks.length) return text;
       return marks.reduce((acc, m) => {
@@ -213,7 +214,8 @@ export default function ProductDetailBySlug({
       }, text);
     };
 
-    const renderChildren = (children: any[]) => (children || []).map(renderTiptapToHTML).join("");
+    const renderChildren = (children: any[]) =>
+      (children || []).map(renderTiptapToHTML).join("");
 
     switch (node.type) {
       case "doc":
@@ -322,9 +324,12 @@ export default function ProductDetailBySlug({
         <div>
           <div className="flex items-center gap-3 mb-2">
             {product?.brand?.name && (
-              <span className="py-1 rounded-full text-sm bg-white text-gray-700">
+              <Link
+                href={`/brands/${product?.brand?.name}`}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
                 Brand: {product.brand.name}
-              </span>
+              </Link>
             )}
           </div>
           <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight">
@@ -478,16 +483,18 @@ export default function ProductDetailBySlug({
           <div className="border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <tbody>
-                {(product?.specifications || []).map((row: any, idx: number) => (
-                  <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                    <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
-                      {row.key}
-                    </td>
-                    <td className="p-4 text-gray-800 border-b border-gray-100">
-                      {row.value}
-                    </td>
-                  </tr>
-                ))}
+                {(product?.specifications || []).map(
+                  (row: any, idx: number) => (
+                    <tr key={idx} className="odd:bg-white even:bg-gray-50">
+                      <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                        {row.key}
+                      </td>
+                      <td className="p-4 text-gray-800 border-b border-gray-100">
+                        {row.value}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
@@ -497,8 +504,9 @@ export default function ProductDetailBySlug({
         <div ref={descRef} id="description">
           <h2 className="text-2xl font-semibold mb-4">Description</h2>
           <div className="prose max-w-none">
-            <style dangerouslySetInnerHTML={{
-              __html: `
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
                 .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
                 .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
                 .desc-content li { margin: .25rem 0; }
@@ -507,9 +515,17 @@ export default function ProductDetailBySlug({
                 .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
                 .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
                 .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
-              `
-            }} />
-            <div className="desc-content" dangerouslySetInnerHTML={{ __html: descriptionHtml || "<p class=\"text-gray-500\">No description available.</p>" }} />
+              `,
+              }}
+            />
+            <div
+              className="desc-content"
+              dangerouslySetInnerHTML={{
+                __html:
+                  descriptionHtml ||
+                  '<p class="text-gray-500">No description available.</p>',
+              }}
+            />
           </div>
         </div>
 

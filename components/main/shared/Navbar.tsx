@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Search, ShoppingCart, Menu, X, User, Heart, Bell } from "lucide-react";
@@ -10,6 +10,58 @@ import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 
 export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchItems, setSearchItems] = useState<any[]>([]);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchMeta, setSearchMeta] = useState<{ total: number; page: number; limit: number; pages: number }>({ total: 0, page: 1, limit: 12, pages: 1 });
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchTimerRef = useRef<any>(null);
+
+  // Debounced search effect
+  useEffect(() => {
+    if (!isSearchOpen || !searchQuery.trim()) {
+      setSearchItems([]);
+      setSearchMeta({ total: 0, page: 1, limit: 12, pages: 1 });
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      return;
+    }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        if (searchAbortRef.current) searchAbortRef.current.abort();
+        const ctrl = new AbortController();
+        searchAbortRef.current = ctrl;
+        const qs = new URLSearchParams({
+          q: searchQuery.trim(),
+          page: String(searchPage),
+          limit: "12",
+          sort: "newest",
+        }).toString();
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}products/search?${qs}`,
+          { signal: ctrl.signal, cache: "no-store" }
+        );
+        const json = await res.json();
+        setSearchItems(json?.items || []);
+        setSearchMeta(json?.meta || { total: 0, page: 1, limit: 12, pages: 1 });
+      } catch (e: any) {
+        if (e?.name !== "AbortError") {
+          // ignore network errors for UX; keep prior results
+        }
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [isSearchOpen, searchQuery, searchPage]);
   const [cartItems, setCartItems] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -65,9 +117,78 @@ export default function Navbar() {
                         ? "bg-white shadow-lg shadow-[#02C1BE]/10 border-[#02C1BE]"
                         : "hover:bg-gray-100"
                     }`}
-                    onFocus={() => setIsSearchFocused(true)}
-                    onBlur={() => setIsSearchFocused(false)}
+                    value={searchQuery}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSearchQuery(v);
+                      setSearchPage(1);
+                      setIsSearchOpen(!!v.trim());
+                    }}
+                    onFocus={() => {
+                      setIsSearchFocused(true);
+                      if (searchQuery.trim()) setIsSearchOpen(true);
+                    }}
+                    onBlur={() => {
+                      // small delay to allow click in dropdown
+                      setTimeout(() => setIsSearchOpen(false), 150);
+                      setIsSearchFocused(false);
+                    }}
                   />
+                  {/* Results dropdown */}
+                  {isSearchOpen && (
+                    <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50">
+                      <div className="p-3">
+                        {isSearching && (
+                          <div className="py-6 text-center text-gray-500 text-sm">Searching...</div>
+                        )}
+                        {!isSearching && searchItems.length === 0 && (
+                          <div className="py-6 text-center text-gray-500 text-sm">No products found</div>
+                        )}
+                        {!isSearching && searchItems.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {searchItems.map((p) => (
+                              <Link
+                                key={p._id}
+                                href={`/product/${p.slug}`}
+                                className="border rounded-lg p-3 bg-white hover:shadow transition-shadow"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={(p?.attributes?.find?.((a: any) => a.name?.toLowerCase?.() === "color")?.values?.[0]?.images?.[0]) || p?.images?.[0] || "/next.svg"}
+                                  alt={p.name}
+                                  className="w-full h-28 object-contain mb-2"
+                                />
+                                <div className="text-sm text-gray-800 line-clamp-2 min-h-[2.5rem]">{p.name}</div>
+                                <div className="mt-1 text-[#111827] font-semibold">
+                                  {p?.variants?.[0]?.finalPrice ? `৳${p.variants[0].finalPrice}` : ""}
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                        {/* Pagination controls */}
+                        {!isSearching && searchMeta.pages > 1 && (
+                          <div className="flex items-center justify-between mt-3">
+                            <button
+                              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                              disabled={searchPage <= 1}
+                              onClick={() => setSearchPage((p) => Math.max(1, p - 1))}
+                            >
+                              Prev
+                            </button>
+                            <div className="text-xs text-gray-500">Page {searchMeta.page} of {searchMeta.pages}</div>
+                            <button
+                              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                              disabled={searchPage >= searchMeta.pages}
+                              onClick={() => setSearchPage((p) => Math.min(searchMeta.pages, p + 1))}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
