@@ -19,11 +19,15 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
     limit,
     sort,
   });
+  console.log(data);
 
   if (isLoading) return <div className="py-10">Loading...</div>;
   if (isError || !data?.success) return <div className="py-10">Failed to load products</div>;
 
   const { items, meta, context } = data as any;
+  console.log("context",context);
+  console.log("items",items);
+  console.log("meta",meta);
 
   return (
     <div className="container mx-auto py-6">
