@@ -5,18 +5,7 @@ import { User, Package, MapPin, LogOut, Home } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/ui/sidebar";
 import {
   authApi,
   useUseLogoutMutation,

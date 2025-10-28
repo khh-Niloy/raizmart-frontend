@@ -42,22 +42,29 @@ export default function AuthModal({ children }: AuthModalProps) {
     console.log(data);
 
     if (isSignUp) {
-      //   const {data: registerData} = useRegisterMutation(data);
-      //   if (register.isSuccess) {
-      //     toast.success("Account created successfully");
-      //     setIsOpen(false);
-      //   }
+      try {
+        const res = await userRegister(data).unwrap();
+        if (res.success === true) {
+          toast.success("Account created successfully!");
+          setIsOpen(false);
+          setIsSignUp(false); // Reset to login mode
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error((error as any).data?.message || "Failed to create account. Please try again.");
+      }
     } else {
       try {
         const res = await login(data).unwrap();
         if (res.success === true) {
-          toast.success("login successfull");
+          toast.success("Login successful!");
+          setIsOpen(false);
+          router.push("/");
         }
-        router.push("/");
         console.log(res);
       } catch (error) {
         console.log(error);
-        toast.error((error as any).data.message);
+        toast.error((error as any).data?.message || "Login failed. Please check your credentials.");
       }
     }
   };

@@ -6,12 +6,14 @@ import AuthModal from "./AuthModal";
 
 export default function NavbarPofile() {
   const { data: userInfo } = useUserInfoQuery(undefined);
+  // console.log(userInfo);
 
   if (!userInfo) {
     return (
       <AuthModal>
-        <button className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center border border-slate-500/50 hover:border-custom/50 hover:bg-white/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group smooth-hover">
-          <User className="w-4 h-4 text-white group-hover:text-custom transition-all duration-200 group-hover:scale-110" />
+        <button className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 rounded-xl transition-all duration-200 font-medium">
+          <User className="h-4 w-4" />
+          <span className="text-sm">Sign In</span>
         </button>
       </AuthModal>
     );
@@ -19,8 +21,9 @@ export default function NavbarPofile() {
 
   return (
     <Link href="/profile">
-      <button className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center border border-slate-500/50 hover:border-custom/50 hover:bg-white/40 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group smooth-hover">
-        <User className="w-4 h-4 text-white group-hover:text-custom transition-all duration-200 group-hover:scale-110" />
+      <button className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 rounded-xl transition-all duration-200 font-medium">
+        <User className="h-4 w-4" />
+        <span className="text-sm">Profile</span>
       </button>
     </Link>
   );
