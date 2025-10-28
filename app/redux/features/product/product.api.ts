@@ -67,6 +67,42 @@ export const productApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["PRODUCTS"],
     }),
+
+    // Get Products by hierarchical slugs (category/subcategory/subsubcategory)
+    getProductsBySlugs: builder.query({
+      query: (params: {
+        category?: string;
+        subcategory?: string;
+        subsubcategory?: string;
+        page?: number;
+        limit?: number;
+        sort?: string;
+      }) => {
+        const qs = new URLSearchParams(
+          Object.entries(params || {}).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString();
+        return {
+          url: `/products/by-slugs?${qs}`,
+          method: "GET",
+        };
+      },
+      // backend already returns the full envelope we need
+      transformResponse: (response: any) => response,
+      providesTags: ["PRODUCTS"],
+    }),
+
+    // Get single product by slug (for PDP)
+    getProductBySlug: builder.query({
+      query: (slug: string) => ({
+        url: `/products/by-slug?slug=${encodeURIComponent(slug)}`,
+        method: "GET",
+      }),
+      transformResponse: (response: any) => response,
+      providesTags: ["PRODUCTS"],
+    }),
   }),
 })
 
@@ -77,4 +113,6 @@ export const {
   useGetProductByIdQuery,
   useUpdateProductMutation,
   useToggleFeaturedMutation,
+  useGetProductsBySlugsQuery,
+  useGetProductBySlugQuery,
 } = productApi
