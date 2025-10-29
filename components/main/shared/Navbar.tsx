@@ -7,6 +7,8 @@ import { Search, ShoppingCart, Menu, X, User, Heart, Bell } from "lucide-react";
 import NavbarPofile from "./NavbarCompo/NavbarPofile";
 import MegaMenu from "./MegaMenu";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
+import WishList from "./NavbarCompo/WishList";
+import Cart from "./NavbarCompo/Cart";
 
 export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -210,27 +212,10 @@ export default function Navbar() {
             {/* User Actions - Right */}
             <div className="flex items-center space-x-4 flex-shrink-0">
               {/* Wishlist */}
-              <Link
-                href="/wishlist"
-                className="flex items-center space-x-2 p-2.5 text-gray-600 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 rounded-xl transition-all duration-200"
-              >
-                <Heart className="h-5 w-5" />
-                <span className="hidden lg:block text-sm font-medium">Wishlist</span>
-              </Link>
+              <WishList />
 
               {/* Cart */}
-              <Link
-                href="/cart"
-                className="flex items-center space-x-2 p-2.5 text-gray-600 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 rounded-xl transition-all duration-200 relative"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span className="hidden lg:block text-sm font-medium">Cart</span>
-                {cartItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#02C1BE] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg">
-                    {cartItems}
-                  </span>
-                )}
-              </Link>
+              <Cart />
 
               {/* Profile */}
               <NavbarPofile />
