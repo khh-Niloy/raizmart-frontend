@@ -1,5 +1,7 @@
 "use client";
 import React from "react";
+import { useLocalCart } from "@/hooks/useLocalCart";
+import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
 import Link from "next/link";
 
@@ -432,19 +434,92 @@ export default function ProductDetailBySlug({
           </div>
 
           {/* Quantity + actions */}
-          <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="inline-flex items-center border rounded-md overflow-hidden">
-              <button className="px-3 py-2 hover:bg-gray-50">-</button>
-              <div className="px-4">1</div>
-              <button className="px-3 py-2 hover:bg-gray-50">+</button>
-            </div>
-            <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors">
-              Shop Now
-            </button>
-            <button className="flex-1 sm:flex-none px-5 py-3 border rounded-md hover:bg-gray-50 transition-colors">
-              Add To Cart
-            </button>
-          </div>
+          {/** Cart state for this page */}
+          {(() => {
+            // Inline IIFE to keep local state near the buttons
+            const QuantityControls: React.FC = () => {
+              const [qty, setQty] = React.useState<number>(1);
+              const { addItem, has } = useLocalCart();
+              const { toggle, has: hasWish } = useLocalWishlist();
+
+              const primaryImage =
+                (selectedColor?.images && selectedColor.images[0]) ||
+                (product?.images?.[0] as string | undefined);
+
+              const matcher = {
+                productId: product?._id as string,
+                slug: product?.slug as string,
+                name: product?.name as string,
+                image: primaryImage,
+                price: selectedVariant?.finalPrice as number,
+                sku: selectedVariant?.sku as string | undefined,
+                selectedOptions: selectedByName,
+              };
+
+              const inCart = product && selectedVariant ? has(matcher as any) : false;
+              const inWishlist = product ? hasWish(matcher) : false;
+
+              const onAddToCart = () => {
+                if (!product || !selectedVariant) return;
+                addItem({
+                  ...matcher,
+                  quantity: qty,
+                });
+              };
+
+              const onToggleWishlist = () => {
+                if (!product) return;
+                toggle({
+                  productId: product._id,
+                  slug: product.slug,
+                  name: product.name,
+                  image: primaryImage,
+                  price: selectedVariant?.finalPrice,
+                  sku: selectedVariant?.sku,
+                  selectedOptions: selectedByName,
+                });
+              };
+
+              return (
+                <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="inline-flex items-center border rounded-md overflow-hidden">
+                    <button
+                      className="px-3 py-2 hover:bg-gray-50"
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    >
+                      -
+                    </button>
+                    <div className="px-4" aria-live="polite">{qty}</div>
+                    <button
+                      className="px-3 py-2 hover:bg-gray-50"
+                      onClick={() => setQty((q) => q + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors">
+                    Shop Now
+                  </button>
+                  <button
+                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inCart ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    onClick={!inCart ? onAddToCart : undefined}
+                    disabled={inCart}
+                  >
+                    {inCart ? "Added" : "Add To Cart"}
+                  </button>
+                  <button
+                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inWishlist ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    onClick={!inWishlist ? onToggleWishlist : undefined}
+                    disabled={inWishlist}
+                  >
+                    {inWishlist ? "In Wishlist" : "Add To Wishlist"}
+                  </button>
+                </div>
+              );
+            };
+
+            return <QuantityControls />;
+          })()}
 
           {/* Small details */}
           <div className="mt-6 text-sm text-gray-600">
