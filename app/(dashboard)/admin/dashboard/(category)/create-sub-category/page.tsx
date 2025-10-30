@@ -23,6 +23,7 @@ import { toast } from "sonner";
 const subCategorySchema = z.object({
   name: z.string().min(1, "Sub-category name is required"),
   category: z.string().min(1, "Please select a parent category"),
+  image: z.any().optional(), // image is optional
 });
 
 type SubCategoryFormData = z.infer<typeof subCategorySchema>;
@@ -47,12 +48,14 @@ export default function CreateSubCategoryPage() {
 
   const onSubmit = async (data: SubCategoryFormData) => {
     try {
-      const payload = {
-        name: data.name,
-        category: data.category,
-      };
-      console.log(payload)
-      const res = await createSubcategory(payload).unwrap();
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('category', data.category);
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append('image', data.image[0]);
+      }
+      console.log('Subcategory FormData', Array.from(formData.entries()));
+      const res = await createSubcategory(formData).unwrap();
       console.log("Sub-category created:", res);
       toast.success("Sub-category created successfully!");
       reset();
@@ -79,12 +82,28 @@ export default function CreateSubCategoryPage() {
               </Label>
               <Input
                 id="name"
-                {...register("name")}
+                {...register('name')}
                 placeholder="Enter sub-category name"
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.name && (
                 <p className="text-sm text-red-600">{errors.name.message}</p>
+              )}
+            </div>
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="image" className="text-sm font-medium text-gray-700">
+                Image
+              </Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register('image')}
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.image && (
+                <p className="text-sm text-red-600">{errors.image.message as string}</p>
               )}
             </div>
 

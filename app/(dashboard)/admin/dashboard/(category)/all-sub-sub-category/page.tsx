@@ -60,11 +60,14 @@ export default function AllSubSubCategoryPage() {
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <CardTitle className="text-lg">{subSubCategory.name}</CardTitle>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {subSubCategory.name}
+                          </CardTitle>
                           <Badge variant={subSubCategory.isActive ? "default" : "secondary"}>
                             {subSubCategory.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </div>
+                        
                         <div className="flex items-center space-x-2">
                           <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`} className="cursor-pointer">
                             <Button variant="outline" size="sm">
@@ -85,6 +88,13 @@ export default function AllSubSubCategoryPage() {
                         </div>
                       </div>
                     </CardHeader>
+                    {!!subSubCategory?.image && (
+                              <img
+                                src={subSubCategory.image}
+                                alt="Image"
+                                className="h-14 w-14 object-contain rounded border border-gray-200 bg-white ml-10"
+                              />
+                            )}
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         <div>

@@ -8,6 +8,7 @@ import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 
 export default function AllBrandPage() {
   const { data, isFetching } = useGetBrandsQuery(undefined);
+  console.log("Brands data:", data);
   const brands: any[] = (data?.data ?? data ?? []) as any[];
 
   return (
@@ -29,7 +30,16 @@ export default function AllBrandPage() {
                 {brands.map((brand: any) => (
                   <li key={brand.id ?? brand._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-gray-900 font-medium">{brand.brandName ?? brand.name ?? "Unnamed"}</span>
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-gray-900 font-medium">{brand.brandName ?? brand.name ?? "Unnamed"}</span>
+                        {!!brand?.image && (
+                          <img
+                            src={brand.image?.startsWith?.('http') ? brand.image : '/' + brand.image?.replace?.(/^\/*/, '')}
+                            alt="Brand"
+                            className="h-8 w-8 object-contain rounded border border-gray-200 bg-white"
+                          />
+                        )}
+                      </div>
                       <Link href={`/admin/dashboard/edit-brand/${brand.id ?? brand._id}`} className="cursor-pointer">
                         <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
                           <Edit className="h-4 w-4 mr-1" />
