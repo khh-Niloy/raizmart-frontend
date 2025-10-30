@@ -90,6 +90,13 @@ const productSchema = z.object({
   attributes: z.array(attributeSchema).min(1, "At least one attribute is required"),
   manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
   specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
+  categoryAssignments: z.array(
+    z.object({
+      category: z.string().min(1, "Category is required"),
+      subCategory: z.string().min(1, "Sub Category is required"),
+      subSubCategory: z.string().optional(),
+    })
+  ).default([]),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -147,7 +154,7 @@ export default function AddProductPage() {
     watch,
     setValue,
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
       description: JSON.stringify({
@@ -162,6 +169,7 @@ export default function AddProductPage() {
       attributes: [],
       manualVariants: [],
       specifications: [],
+      categoryAssignments: [],
     },
   });
 
@@ -191,6 +199,15 @@ export default function AddProductPage() {
   } = useFieldArray({
     control,
     name: "specifications",
+  });
+
+  const {
+    fields: assignmentFields,
+    append: appendAssignment,
+    remove: removeAssignment,
+  } = useFieldArray({
+    control,
+    name: "categoryAssignments",
   });
 
   const onSubmit = async (data: ProductFormData) => {
@@ -263,6 +280,14 @@ export default function AddProductPage() {
       }));
       
       formData.append("manualVariants", JSON.stringify(manualVariants));
+
+      // Add extra category routes
+      const validAssignments = (data.categoryAssignments || [])
+        .filter((r: any) => r?.category && r?.subCategory)
+        .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+      if (validAssignments.length > 0) {
+        formData.append("categoryAssignments", JSON.stringify(validAssignments));
+      }
 
       console.log("FormData prepared for backend:", formData);
 
@@ -612,6 +637,178 @@ export default function AddProductPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Extra Category Routes */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Extra Category Routes
+                </h2>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    appendAssignment({ category: "", subCategory: "", subSubCategory: "" })
+                  }
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Route
+                </Button>
+              </div>
+
+              {assignmentFields.length === 0 ? (
+                <p className="text-sm text-gray-500">Add additional category paths as needed.</p>
+              ) : (
+                <div className="space-y-6">
+                  {assignmentFields.map((field, index) => {
+                    const selectedAssignCategoryId = watch(`categoryAssignments.${index}.category`);
+                    const selectedAssignSubCategoryId = watch(`categoryAssignments.${index}.subCategory`);
+
+                    const filteredAssignSubcategories = !selectedAssignCategoryId
+                      ? ([] as any[])
+                      : allSubcategories.filter((sc: any) => {
+                          if (typeof sc.category === "string") return sc.category === selectedAssignCategoryId;
+                          if (sc.category && typeof sc.category === "object") {
+                            const id = (sc.category.id ?? sc.category._id) as string;
+                            return id === selectedAssignCategoryId;
+                          }
+                          return sc.parentCategoryId === selectedAssignCategoryId;
+                        });
+
+                    const filteredAssignSubSubcategories = !selectedAssignSubCategoryId
+                      ? ([] as any[])
+                      : allSubSubcategories.filter((ssc: any) => {
+                          if (typeof ssc.subcategory === "string") return ssc.subcategory === selectedAssignSubCategoryId;
+                          if (ssc.subcategory && typeof ssc.subcategory === "object") {
+                            const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
+                            return id === selectedAssignSubCategoryId;
+                          }
+                          return ssc.parentSubcategoryId === selectedAssignSubCategoryId;
+                        });
+
+                    return (
+                      <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-gray-900">Route {index + 1}</h3>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removeAssignment(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.category` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue(`categoryAssignments.${index}.subCategory`, "");
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  defaultValue={field.value}
+                                  disabled={isCategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {categories.map((c: any) => {
+                                      const id = (c.id ?? c._id) as string;
+                                      const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  defaultValue={field.value}
+                                  disabled={!selectedAssignCategoryId || isSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredAssignSubcategories.length ? "Select a sub category" : "No sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubcategories.map((sc: any) => {
+                                      const id = (sc.id ?? sc._id) as string;
+                                      const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Sub Category (optional)</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subSubCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                  disabled={!selectedAssignSubCategoryId || isSubSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignSubCategoryId ? "Select a sub category first" : isSubSubcategoriesLoading ? "Loading sub sub categories..." : filteredAssignSubSubcategories.length ? "Select a sub sub category" : "No sub sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubSubcategories.map((ssc: any) => {
+                                      const id = (ssc.id ?? ssc._id) as string;
+                                      const name = (ssc.name ?? ssc.subSubCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Product Attributes Section */}
