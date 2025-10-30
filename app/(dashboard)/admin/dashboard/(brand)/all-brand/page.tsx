@@ -30,7 +30,7 @@ export default function AllBrandPage() {
                   <li key={brand.id ?? brand._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-gray-900 font-medium">{brand.brandName ?? brand.name ?? "Unnamed"}</span>
-                      <Link href={`/admin/dashboard/edit-brand/${brand.id ?? brand._id}`}>
+                      <Link href={`/admin/dashboard/edit-brand/${brand.id ?? brand._id}`} className="cursor-pointer">
                         <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
                           <Edit className="h-4 w-4 mr-1" />
                           Edit

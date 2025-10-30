@@ -67,7 +67,7 @@ export function NavMain({
                         asChild 
                         className={isActive ? "font-semibold bg-[#02C1BE]/7 text-[#02C1BE]" : undefined}
                       >
-                        <Link href={subItem.url || ""}>
+                        <Link href={subItem.url || ""} className="cursor-pointer">
                           <span>{subItem.title || ""}</span>
                         </Link>
                       </SidebarMenuSubButton>

@@ -497,7 +497,7 @@ export default function ProductDetailBySlug({
                       +
                     </button>
                   </div>
-                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors">
+                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors cursor-pointer">
                     Shop Now
                   </button>
                   <button

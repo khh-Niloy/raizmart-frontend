@@ -13,7 +13,7 @@ export default function Footer() {
           {/* Left: Logo + Contact + Socials */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <Link href="/" className="flex items-center group">
+              <Link href="/" className="flex items-center group cursor-pointer">
                 <span suppressHydrationWarning>
                   <Image src="/logo.png" alt="RaizMart" width={110} height={110} />
                 </span>
@@ -28,25 +28,25 @@ export default function Footer() {
                 <Phone className="w-5 h-5 text-[#02C1BE] mt-0.5" />
                 <div>
                   <p className="text-sm text-gray-500">Phone Number</p>
-                  <Link href="tel:09678148148" className="text-gray-800 font-medium hover:text-[#02C1BE]">09678148148</Link>
+                  <Link href="tel:09678148148" className="text-gray-800 font-medium hover:text-[#02C1BE] cursor-pointer">09678148148</Link>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Mail className="w-5 h-5 text-[#02C1BE] mt-0.5" />
                 <div>
                   <p className="text-sm text-gray-500">Email Address</p>
-                  <Link href="mailto:support@raizmart.com" className="text-gray-800 font-medium hover:text-[#02C1BE]">support@raizmart.com</Link>
+                  <Link href="mailto:support@raizmart.com" className="text-gray-800 font-medium hover:text-[#02C1BE] cursor-pointer">support@raizmart.com</Link>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3 mt-5">
-              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors">
+              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer">
                 <Facebook className="w-5 h-5" />
               </Link>
-              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors">
+              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer">
                 <Instagram className="w-5 h-5" />
               </Link>
-              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors">
+              <Link href="#" className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer">
                 <Linkedin className="w-5 h-5" />
               </Link>
             </div>
@@ -91,10 +91,10 @@ export default function Footer() {
           <div>
             <h3 className="text-gray-900 font-semibold mb-3">Navigation</h3>
             <nav className="grid grid-cols-1 gap-3 text-sm">
-              <Link href="/about" className="text-gray-600 hover:text-[#02C1BE] transition-colors">About</Link>
-              <Link href="/contact" className="text-gray-600 hover:text-[#02C1BE] transition-colors">Contact</Link>
-              <Link href="/privacy-policy" className="text-gray-600 hover:text-[#02C1BE] transition-colors">Privacy</Link>
-              <Link href="/terms" className="text-gray-600 hover:text-[#02C1BE] transition-colors">Terms</Link>
+              <Link href="/about" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">About</Link>
+              <Link href="/contact" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">Contact</Link>
+              <Link href="/privacy-policy" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">Privacy</Link>
+              <Link href="/terms" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">Terms</Link>
             </nav>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function Footer() {
           <p className="text-xs text-gray-500">© {new Date().getFullYear()} RaizMart. All rights reserved.</p>
           <div className="text-xs text-gray-500">
             <span className="mr-2">Support:</span>
-            <Link href="mailto:support@raizmart.com" className="text-gray-600 hover:text-[#02C1BE]">support@raizmart.com</Link>
+            <Link href="mailto:support@raizmart.com" className="text-gray-600 hover:text-[#02C1BE] cursor-pointer">support@raizmart.com</Link>
           </div>
         </div>
       </div>

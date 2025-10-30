@@ -145,7 +145,7 @@ export default function Cart() {
                     placeholder="Apply Coupon"
                     disabled
                   />
-                  <button className="px-4 py-3 rounded-full bg-black/90 text-white text-sm" disabled>
+                  <button className="px-4 py-3 rounded-full bg-black/90 text-white text-sm cursor-pointer" disabled>
                     Apply Coupon
                   </button>
                 </div>

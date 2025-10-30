@@ -96,7 +96,7 @@ export default function Navbar() {
           <div className="flex items-center h-16">
             {/* Logo Section - Left */}
             <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center group">
+              <Link href="/" className="flex items-center group cursor-pointer">
                 <span suppressHydrationWarning>
                   <Image src="/logo.png" alt="RaizMart" width={90} height={90} />
                 </span>
@@ -248,7 +248,7 @@ export default function Navbar() {
               )}
             </button>
 
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 cursor-pointer">
               <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-sm">R</span>
               </div>

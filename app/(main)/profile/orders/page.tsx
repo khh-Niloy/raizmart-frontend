@@ -55,7 +55,7 @@ export default function OrdersPage() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-custom focus:border-custom"
             />
           </div>
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
             <Filter className="w-4 h-4" />
             <span>Filter</span>
           </button>
@@ -86,11 +86,11 @@ export default function OrdersPage() {
                 {order.status}
               </span>
               <div className="flex items-center space-x-3">
-                <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
                   View Details
                 </button>
                 {order.status === "Delivered" && (
-                  <button className="px-4 py-2 bg-custom text-white rounded-lg hover:bg-custom/90 transition-colors duration-200">
+                  <button className="px-4 py-2 bg-custom text-white rounded-lg hover:bg-custom/90 transition-colors duration-200 cursor-pointer">
                     Reorder
                   </button>
                 )}
@@ -105,7 +105,7 @@ export default function OrdersPage() {
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
           <p className="text-gray-500 mb-6">Start shopping to see your orders here</p>
-          <button className="px-6 py-3 bg-custom text-white rounded-lg hover:bg-custom/90 transition-colors duration-200">
+          <button className="px-6 py-3 bg-custom text-white rounded-lg hover:bg-custom/90 transition-colors duration-200 cursor-pointer">
             Start Shopping
           </button>
         </div>

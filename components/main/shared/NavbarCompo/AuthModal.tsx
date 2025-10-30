@@ -17,7 +17,7 @@ import {
   useRegisterMutation,
 } from "@/app/redux/features/auth/auth.api";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface AuthModalProps {
   children: React.ReactNode;
@@ -27,6 +27,7 @@ export default function AuthModal({ children }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const pathname = usePathname();
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
@@ -51,7 +52,10 @@ export default function AuthModal({ children }: AuthModalProps) {
         }
       } catch (error) {
         console.log(error);
-        toast.error((error as any).data?.message || "Failed to create account. Please try again.");
+        toast.error(
+          (error as any).data?.message ||
+            "Failed to create account. Please try again."
+        );
       }
     } else {
       try {
@@ -64,7 +68,10 @@ export default function AuthModal({ children }: AuthModalProps) {
         console.log(res);
       } catch (error) {
         console.log(error);
-        toast.error((error as any).data?.message || "Login failed. Please check your credentials.");
+        toast.error(
+          (error as any).data?.message ||
+            "Login failed. Please check your credentials."
+        );
       }
     }
   };
@@ -129,7 +136,7 @@ export default function AuthModal({ children }: AuthModalProps) {
               <div className="flex justify-end mt-2">
                 <Link
                   href="/forgot-password"
-                  className="text-sm underline font-bold hover:text-custom/80 transition-colors duration-200"
+                  className="text-sm underline font-bold hover:text-custom/80 transition-colors duration-200 cursor-pointer"
                 >
                   Forget Password?
                 </Link>
@@ -139,7 +146,7 @@ export default function AuthModal({ children }: AuthModalProps) {
             {/* Action Button */}
             <button
               type="submit"
-              className={`mt-4 py-3 w-full bg-custom text-white rounded-lg font-semibold hover:bg-custom/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]`}
+              className={`mt-4 py-3 w-full bg-custom text-white rounded-lg font-semibold hover:bg-custom/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
             >
               {isSignUp ? "Get Started" : "Sign In"}
             </button>
@@ -152,14 +159,14 @@ export default function AuthModal({ children }: AuthModalProps) {
                 By creating an account, you agree to the RaizMart{" "}
                 <Link
                   href="/privacy-policy"
-                  className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200"
+                  className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200 cursor-pointer"
                 >
                   Privacy Policy
                 </Link>{" "}
                 and{" "}
                 <Link
                   href="/terms"
-                  className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200"
+                  className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200 cursor-pointer"
                 >
                   Delivery Terms & Conditions
                 </Link>
@@ -177,11 +184,65 @@ export default function AuthModal({ children }: AuthModalProps) {
             </span>
             <button
               onClick={toggleMode}
-              className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200"
+              className="text-custom hover:text-custom/80 font-semibold transition-colors duration-200 cursor-pointer"
             >
               {isSignUp ? "Sign in" : "Create Account"}
             </button>
           </div>
+
+          {/* Divider and Google Sign-In at bottom for Sign In only */}
+          {!isSignUp && (
+            <div className="mt-7">
+              <div className="flex items-center">
+                <div className="flex-grow h-px bg-gray-400 opacity-40" />
+                <span className="mx-3 text-gray-400">Or continue with</span>
+                <div className="flex-grow h-px bg-gray-400 opacity-40" />
+              </div>
+              <Link href={`http://localhost:5000/api/v1/auth/google?redirect=${pathname}`}>
+                <button
+                  type="button"
+                  className="mt-5 w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-2 bg-white hover:bg-gray-100 transition-all duration-200 cursor-pointer"
+                >
+                  <span className="inline-block align-middle">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g clipPath="url(#clip0_1311_1322)">
+                        <path
+                          d="M19.8052 10.2309C19.8052 9.55052 19.7475 8.8677 19.6243 8.19824H10.2002V12.0491H15.6508C15.4108 13.2852 14.6813 14.3635 13.6371 15.0613V17.3197H16.7652C18.5752 15.6463 19.8052 13.221 19.8052 10.2309Z"
+                          fill="#4285F4"
+                        />
+                        <path
+                          d="M10.2 20C12.6999 20 14.7872 19.1702 16.3763 17.7291L13.6371 15.0613C12.7896 15.6492 11.6652 16.0042 10.2 16.0042C7.78983 16.0042 5.75239 14.3092 5.01939 12.1294H1.16675V14.457C2.76846 17.7621 6.25317 20 10.2 20Z"
+                          fill="#34A853"
+                        />
+                        <path
+                          d="M5.01933 12.1294C4.69167 11.1932 4.69167 10.2102 5.01933 9.27404V6.94641H1.16672C0.377723 8.41074 0.377723 10.9928 1.16672 12.4571L5.01933 12.1294Z"
+                          fill="#FBBC05"
+                        />
+                        <path
+                          d="M10.2 3.99588C11.7597 3.9714 13.2629 4.56326 14.3786 5.62977L16.4471 3.61779C14.7339 2.01788 12.5064 1.10486 10.2 1.12934C6.25317 1.12934 2.76846 3.36723 1.16675 6.94642L5.01936 9.27406C5.75239 7.09421 7.78983 5.39918 10.2 3.99588Z"
+                          fill="#EA4335"
+                        />
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_1311_1322">
+                          <rect width="20" height="20" fill="white" />
+                        </clipPath>
+                      </defs>
+                    </svg>
+                  </span>
+                  <span className="font-semibold text-gray-700 cursor-pointer">
+                    Sign in with Google
+                  </span>
+                </button>
+              </Link>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

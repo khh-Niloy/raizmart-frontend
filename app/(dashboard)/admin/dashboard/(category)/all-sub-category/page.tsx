@@ -57,7 +57,7 @@ export default function AllSubCategoryPage() {
                           <span className="text-xs text-gray-500">Parent: {parentLabel}</span>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/admin/dashboard/edit-sub-category/${sc.id ?? sc._id}`}>
+                          <Link href={`/admin/dashboard/edit-sub-category/${sc.id ?? sc._id}`} className="cursor-pointer">
                             <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
                               <Edit className="h-4 w-4 mr-1" />
                               Edit

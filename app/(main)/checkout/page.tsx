@@ -12,7 +12,7 @@ export default function CheckoutPage() {
   return (
     <div className="container mx-auto px-4 lg:px-8 py-10 lg:py-14">
       <div className="mb-6">
-        <Link href="/" className="text-sm text-gray-600 hover:text-gray-800">&lt; Back</Link>
+        <Link href="/" className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer">&lt; Back</Link>
         <h1 className="text-3xl font-semibold mt-2">Checkout &amp; Confirm Order</h1>
         <div className="mt-3 bg-orange-100 text-orange-700 text-sm rounded-xl px-4 py-3 inline-block">
           অর্ডার সংক্রান্ত যেকোনো প্রয়োজনে কথা বলুন আমাদের কাস্টমার সার্ভিস প্রতিনিধি সাথে - 09678148148
@@ -128,7 +128,7 @@ export default function CheckoutPage() {
             <div className="text-sm font-medium mb-2">Apply Coupon</div>
             <div className="flex items-center gap-2">
               <input className="flex-1 border rounded-full px-4 py-2 text-sm" placeholder="Apply Coupon" />
-              <button className="px-4 py-2 rounded-full bg-[#111] text-white text-sm" disabled>Apply Coupon</button>
+              <button className="px-4 py-2 rounded-full bg-[#111] text-white text-sm cursor-pointer" disabled>Apply Coupon</button>
             </div>
           </div>
 
@@ -155,7 +155,7 @@ export default function CheckoutPage() {
             <label className="inline-flex items-start gap-2">
               <input type="checkbox" className="mt-0.5" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span>
-                I have read &amp; agree to the website <Link href="#" className="underline">Terms and Conditions</Link>
+                I have read &amp; agree to the website <Link href="#" className="underline cursor-pointer">Terms and Conditions</Link>
               </span>
             </label>
           </div>

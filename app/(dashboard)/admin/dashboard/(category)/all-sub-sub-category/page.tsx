@@ -36,7 +36,7 @@ export default function AllSubSubCategoryPage() {
                 <h1 className="text-2xl font-semibold text-gray-900">All Sub-Sub-Categories</h1>
                 <p className="text-gray-600 mt-1">Manage your sub-sub-categories</p>
               </div>
-              <Link href="/admin/dashboard/create-sub-sub-category">
+              <Link href="/admin/dashboard/create-sub-sub-category" className="cursor-pointer">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sub-Sub-Category
@@ -66,7 +66,7 @@ export default function AllSubSubCategoryPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`}>
+                          <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`} className="cursor-pointer">
                             <Button variant="outline" size="sm">
                               <Edit className="w-4 h-4 mr-1" />
                               Edit

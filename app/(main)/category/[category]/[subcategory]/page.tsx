@@ -45,7 +45,7 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
     const inCart = has(matcher as any);
     return (
       <div className="border rounded-2xl p-3 bg-white hover:shadow transition">
-        <Link href={`/product/${product.slug}`}>
+        <Link href={`/product/${product.slug}`} className="cursor-pointer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={primaryImage} alt={product.name} className="w-full h-48 object-contain" />
           <div className="mt-3 font-medium text-gray-900 line-clamp-2 min-h-[44px]">{product.name}</div>

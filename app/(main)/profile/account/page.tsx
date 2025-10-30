@@ -24,7 +24,7 @@ export default function AccountPage() {
               {userInfo?.name || "Hasib Hossain Niloy"}
             </p>
           </div>
-          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center space-x-2">
+          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center space-x-2 cursor-pointer">
             <Edit className="w-4 h-4" />
             <span className="text-sm font-medium">Change</span>
           </button>
@@ -62,7 +62,7 @@ export default function AccountPage() {
             </label>
             <p className="text-gray-900 font-medium">••••••••</p>
           </div>
-          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center space-x-2">
+          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center space-x-2 cursor-pointer">
             <Edit className="w-4 h-4" />
             <span className="text-sm font-medium">Change</span>
           </button>

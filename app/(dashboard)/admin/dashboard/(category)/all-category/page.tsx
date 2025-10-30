@@ -31,7 +31,7 @@ export default function AllCategoryPage() {
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-gray-900 font-medium">{cat.name ?? cat.categoryName ?? "Unnamed"}</span>
                       <div className="flex gap-2">
-                        <Link href={`/admin/dashboard/edit-category/${cat.id ?? cat._id}`}>
+                        <Link href={`/admin/dashboard/edit-category/${cat.id ?? cat._id}`} className="cursor-pointer">
                           <Button type="button" variant="outline" size="sm" className="px-4 py-1 h-9">
                             <Edit className="h-4 w-4 mr-1" />
                             Edit
