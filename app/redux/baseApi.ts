@@ -18,5 +18,6 @@ export const baseApi = createApi({
     "OTHERS_IMAGES",
     "FEATURED_ITEMS",
     "COUPONS",
+    "OFFERS",
   ],
 });

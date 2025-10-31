@@ -4,11 +4,22 @@ export const couponApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create coupon
     createCoupon: builder.mutation({
-      query: (payload) => ({
+      query: (payload) => {
+        // Adapt frontend payload to backend schema
+        const adapted = {
+          ...payload,
+          discountType: (payload?.discountType ?? '').toString().toLowerCase(), // PERCENT|FIXED -> percentage|fixed
+          status: typeof payload?.isActive === 'boolean'
+            ? (payload.isActive ? 'active' : 'inactive')
+            : payload?.status,
+        };
+        delete (adapted as any).isActive;
+        return ({
         url: "/coupons",
         method: "POST",
-        data: payload,
-      }),
+        data: adapted,
+      });
+      },
       invalidatesTags: ["COUPONS"],
     }),
 
@@ -18,7 +29,16 @@ export const couponApi = baseApi.injectEndpoints({
         url: "/coupons",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: (response: any) => {
+        const items = (response?.data ?? response) as any[];
+        if (!Array.isArray(items)) return items;
+        return items.map((c: any) => ({
+          ...c,
+          // Backend uses percentage|fixed and status active|inactive
+          discountType: (c?.discountType ?? c?.type ?? '').toString().toUpperCase(), // -> PERCENT|FIXED
+          isActive: typeof c?.isActive === 'boolean' ? c.isActive : (c?.status === 'active'),
+        }));
+      },
       providesTags: ["COUPONS"],
     }),
 
@@ -28,7 +48,15 @@ export const couponApi = baseApi.injectEndpoints({
         url: `/coupons/${id}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: (response: any) => {
+        const c = (response?.data ?? response) as any;
+        if (!c) return c;
+        return {
+          ...c,
+          discountType: (c?.discountType ?? c?.type ?? '').toString().toUpperCase(),
+          isActive: typeof c?.isActive === 'boolean' ? c.isActive : (c?.status === 'active'),
+        };
+      },
       providesTags: ["COUPONS"],
     }),
 

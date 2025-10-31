@@ -12,19 +12,50 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useGetCouponByIdQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
+ 
+ 
 
-const couponSchema = z.object({
-  code: z.string().min(3, "Code is required"),
-  discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
-  discountValue: z.coerce.number().positive("Must be greater than 0"),
-  minOrderAmount: z.coerce.number().nonnegative().default(0),
-  usageLimit: z.coerce.number().int().nonnegative().default(0),
-  usageLimitPerUser: z.coerce.number().int().nonnegative().default(0),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  isActive: z.boolean().default(true),
-  description: z.string().optional(),
-});
+const couponSchema = z
+  .object({
+    code: z
+      .string()
+      .min(1, "Code is required")
+      .transform((v) => v.toUpperCase()),
+    discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
+    discountValue: z
+      .union([z.string(), z.number()])
+      .transform((val) => (typeof val === "string" ? Number(val) : val))
+      .refine((v) => !Number.isNaN(v) && v >= 0, {
+        message: "Discount value must be a non-negative number",
+      }),
+    minOrderAmount: z.coerce.number().nonnegative().default(0),
+    usageLimit: z.coerce.number().int().nonnegative().default(0),
+    usageLimitPerUser: z.coerce.number().int().nonnegative().default(0),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().min(1, "End date is required"),
+    isActive: z.boolean().default(true),
+    description: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const starts = new Date(data.startDate).getTime();
+      const ends = new Date(data.endDate).getTime();
+      if (Number.isFinite(starts) && Number.isFinite(ends)) {
+        return ends >= starts;
+      }
+      return true;
+    },
+    { message: "End date must be after start date", path: ["endDate"] }
+  )
+  .refine(
+    (data) => {
+      if (data.discountType === "PERCENT") {
+        return Number(data.discountValue) <= 100;
+      }
+      return true;
+    },
+    { message: "Percentage discount cannot exceed 100%", path: ["discountValue"] }
+  );
 
 type CouponFormData = z.infer<typeof couponSchema>;
 
@@ -76,6 +107,11 @@ export default function EditCouponPage() {
 
   const onSubmit = async (data: CouponFormData) => {
     try {
+      if (!id) {
+        toast.error("Missing coupon id");
+        router.push("/admin/dashboard/all-coupons");
+        return;
+      }
       const starts = new Date(data.startDate).getTime();
       const ends = new Date(data.endDate).getTime();
       if (Number.isFinite(starts) && Number.isFinite(ends) && ends < starts) {
@@ -128,7 +164,7 @@ export default function EditCouponPage() {
                   control={control}
                   name="discountType"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isFetching}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isFetching}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -187,7 +223,7 @@ export default function EditCouponPage() {
                     control={control}
                     name="isActive"
                     render={({ field }) => (
-                      <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isFetching} />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isFetching} />
                     )}
                   />
                   <span className="text-sm text-gray-700">Active</span>

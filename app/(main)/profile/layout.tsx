@@ -10,7 +10,7 @@ export default function ProfileLayout({
     <div className="min-h-screen bg-white py-8 px-16">
       <div className="mx-auto">
         <div className="">
-          <div className="flex gap-8">
+          <div className="flex gap-8 pt-10">
             {/* Left Sidebar */}
             <div className="">
               <ProfileSidebar />

@@ -11,19 +11,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useCreateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
+ 
+ 
 
-const couponSchema = z.object({
-  code: z.string().min(3, "Code is required"),
-  discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
-  discountValue: z.coerce.number().positive("Must be greater than 0"),
-  minOrderAmount: z.coerce.number().nonnegative().default(0),
-  usageLimit: z.coerce.number().int().nonnegative().default(0),
-  usageLimitPerUser: z.coerce.number().int().nonnegative().default(0),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  isActive: z.boolean().default(true),
-  description: z.string().optional(),
-});
+const couponSchema = z
+  .object({
+    code: z
+      .string()
+      .min(1, "Code is required")
+      .transform((v) => v.toUpperCase()),
+    discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
+    discountValue: z
+      .union([z.string(), z.number()])
+      .transform((val) => (typeof val === "string" ? Number(val) : val))
+      .refine((v) => !Number.isNaN(v) && v >= 0, {
+        message: "Discount value must be a non-negative number",
+      }),
+    startDate: z.string().min(1, "Start date is required"),
+    endDate: z.string().min(1, "End date is required"),
+    isActive: z.boolean().default(true),
+    description: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const starts = new Date(data.startDate).getTime();
+      const ends = new Date(data.endDate).getTime();
+      if (Number.isFinite(starts) && Number.isFinite(ends)) {
+        return ends >= starts;
+      }
+      return true;
+    },
+    { message: "End date must be after start date", path: ["endDate"] }
+  )
+  .refine(
+    (data) => {
+      if (data.discountType === "PERCENT") {
+        return Number(data.discountValue) <= 100;
+      }
+      return true;
+    },
+    { message: "Percentage discount cannot exceed 100%", path: ["discountValue"] }
+  );
 
 type CouponFormData = z.infer<typeof couponSchema>;
 
@@ -36,9 +64,6 @@ export default function CreateCouponsPage() {
       code: "",
       discountType: "PERCENT",
       discountValue: 10,
-      minOrderAmount: 0,
-      usageLimit: 0,
-      usageLimitPerUser: 0,
       startDate: "",
       endDate: "",
       isActive: true,
@@ -60,9 +85,6 @@ export default function CreateCouponsPage() {
         code: data.code.trim(),
         discountType: data.discountType,
         discountValue: data.discountValue,
-        minOrderAmount: data.minOrderAmount,
-        usageLimit: data.usageLimit,
-        usageLimitPerUser: data.usageLimitPerUser,
         startDate: data.startDate,
         endDate: data.endDate,
         isActive: data.isActive,
@@ -88,6 +110,7 @@ export default function CreateCouponsPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
+            {/* Primary fields in a balanced two-column grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Code *</Label>
@@ -122,24 +145,6 @@ export default function CreateCouponsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Minimum Order Amount</Label>
-                <Input type="number" step="0.01" min="0" {...register("minOrderAmount")} />
-                {errors.minOrderAmount && <p className="text-sm text-red-600">{errors.minOrderAmount.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Usage Limit (0 = unlimited)</Label>
-                <Input type="number" min="0" {...register("usageLimit")} />
-                {errors.usageLimit && <p className="text-sm text-red-600">{errors.usageLimit.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Usage Limit Per User (0 = unlimited)</Label>
-                <Input type="number" min="0" {...register("usageLimitPerUser")} />
-                {errors.usageLimitPerUser && <p className="text-sm text-red-600">{errors.usageLimitPerUser.message}</p>}
-              </div>
-
-              <div className="space-y-2">
                 <Label>Start Date *</Label>
                 <Input type="datetime-local" {...register("startDate")} />
                 {errors.startDate && <p className="text-sm text-red-600">{errors.startDate.message}</p>}
@@ -150,9 +155,15 @@ export default function CreateCouponsPage() {
                 <Input type="datetime-local" {...register("endDate")} />
                 {errors.endDate && <p className="text-sm text-red-600">{errors.endDate.message}</p>}
               </div>
+
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Input placeholder="Optional short description" {...register("description")} />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Status + submit in a single row */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
               <div className="space-y-2">
                 <Label>Status</Label>
                 <div className="flex items-center gap-3">
@@ -167,16 +178,11 @@ export default function CreateCouponsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input placeholder="Optional short description" {...register("description")} />
+              <div className="flex justify-end md:justify-start">
+                <Button type="submit" disabled={isLoading} className="px-8">
+                  {isLoading ? "Creating..." : "Create Coupon"}
+                </Button>
               </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={isLoading} className="px-8">
-                {isLoading ? "Creating..." : "Create Coupon"}
-              </Button>
             </div>
           </form>
         </div>
