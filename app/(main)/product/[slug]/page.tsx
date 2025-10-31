@@ -15,6 +15,7 @@ export default function ProductDetailBySlug({
     resolvedParams.slug
   );
   const product = (data as any)?.data ?? null;
+  console.log(product);
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -136,11 +137,17 @@ export default function ProductDetailBySlug({
     return map;
   }, [colorAttr]);
 
-  // Always show all images across variants
-  const galleryImages: string[] = React.useMemo(
-    () => allColorImages,
-    [allColorImages]
+  // Product-level images fallback when variant/color images are missing
+  const productLevelImages: string[] = React.useMemo(
+    () => (Array.isArray((product as any)?.images) ? ((product as any)?.images as string[]) : []),
+    [product?.images]
   );
+
+  // Prefer variant/color images; if none, fall back to product.images
+  const galleryImages: string[] = React.useMemo(() => {
+    if (allColorImages.length > 0) return allColorImages;
+    return productLevelImages;
+  }, [allColorImages, productLevelImages]);
 
   React.useEffect(() => {
     if (galleryImages.length > 0) {
@@ -261,6 +268,17 @@ export default function ProductDetailBySlug({
     if (typeof desc === "string") return desc; // assume already HTML
     return "";
   }, [product?.description]);
+
+  // Presence flags
+  const hasSpecs = React.useMemo(
+    () => Array.isArray((product as any)?.specifications) && ((product as any)?.specifications?.length || 0) > 0,
+    [product?.specifications]
+  );
+  const hasDescription = React.useMemo(() => {
+    if (!descriptionHtml) return false;
+    const textOnly = descriptionHtml.replace(/<[^>]*>/g, "").trim();
+    return textOnly.length > 0;
+  }, [descriptionHtml]);
 
   return (
     <div className="w-full px-16 mx-auto py-20 bg-white">
@@ -530,20 +548,24 @@ export default function ProductDetailBySlug({
       {/* Product details sections */}
       <div className="mt-20 space-y-10">
         <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
-            onClick={() => scrollToWithOffset(specRef.current)}
-          >
-            Specification
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
-            onClick={() => scrollToWithOffset(descRef.current)}
-          >
-            Description
-          </button>
+          {hasSpecs && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(specRef.current)}
+            >
+              Specification
+            </button>
+          )}
+          {hasDescription && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(descRef.current)}
+            >
+              Description
+            </button>
+          )}
           <button
             type="button"
             className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
@@ -553,35 +575,38 @@ export default function ProductDetailBySlug({
           </button>
         </div>
         {/* Specification */}
-        <div className="w-[50%]" ref={specRef} id="specification">
-          <h2 className="text-2xl font-semibold mb-4">Specification</h2>
-          <div className="border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody>
-                {(product?.specifications || []).map(
-                  (row: any, idx: number) => (
-                    <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                      <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
-                        {row.key}
-                      </td>
-                      <td className="p-4 text-gray-800 border-b border-gray-100">
-                        {row.value}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
+        {hasSpecs && (
+          <div className="w-[50%]" ref={specRef} id="specification">
+            <h2 className="text-2xl font-semibold mb-4">Specification</h2>
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  {(product?.specifications || []).map(
+                    (row: any, idx: number) => (
+                      <tr key={idx} className="odd:bg-white even:bg-gray-50">
+                        <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                          {row.key}
+                        </td>
+                        <td className="p-4 text-gray-800 border-b border-gray-100">
+                          {row.value}
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Description */}
-        <div ref={descRef} id="description">
-          <h2 className="text-2xl font-semibold mb-4">Description</h2>
-          <div className="prose max-w-none">
-            <style
-              dangerouslySetInnerHTML={{
-                __html: `
+        {hasDescription && (
+          <div ref={descRef} id="description">
+            <h2 className="text-2xl font-semibold mb-4">Description</h2>
+            <div className="prose max-w-none">
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
                 .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
                 .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
                 .desc-content li { margin: .25rem 0; }
@@ -591,18 +616,19 @@ export default function ProductDetailBySlug({
                 .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
                 .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
               `,
-              }}
-            />
-            <div
-              className="desc-content"
-              dangerouslySetInnerHTML={{
-                __html:
-                  descriptionHtml ||
-                  '<p class="text-gray-500">No description available.</p>',
-              }}
-            />
+                }}
+              />
+              <div
+                className="desc-content"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    descriptionHtml ||
+                    '<p class="text-gray-500">No description available.</p>',
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Warranty */}
         <div ref={warrantyRef} id="warranty">

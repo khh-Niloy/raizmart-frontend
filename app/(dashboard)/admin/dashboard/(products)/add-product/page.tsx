@@ -89,9 +89,15 @@ const productSchema = z.object({
   searchTags: z.string().optional(),
   // Allow products without attributes; variants can still be created with price and stock only
   attributes: z.array(attributeSchema).default([]),
-  manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
+  // Variants are optional if simple price/stock provided
+  manualVariants: z.array(manualVariantSchema).default([]),
   // Allow products without specifications
   specifications: z.array(specificationSchema).default([]),
+  // Optional gallery images to upload with the product
+  galleryImages: z.array(z.instanceof(File)).optional().default([]),
+  // Optional simple pricing (no attributes/variants)
+  simplePrice: z.string().optional(),
+  simpleStock: z.string().optional(),
   categoryAssignments: z.array(
     z.object({
       category: z.string().min(1, "Category is required"),
@@ -171,6 +177,9 @@ export default function AddProductPage() {
       attributes: [],
       manualVariants: [],
       specifications: [],
+      galleryImages: [],
+      simplePrice: "",
+      simpleStock: "",
       categoryAssignments: [],
     },
   });
@@ -215,12 +224,6 @@ export default function AddProductPage() {
   const onSubmit = async (data: ProductFormData) => {
     try {
       console.log(data);
-      
-      // Validate that at least one variant is created
-      if (!data.manualVariants || data.manualVariants.length === 0) {
-        toast.error("Please create at least one variant before submitting");
-        return;
-      }
       
       // Create FormData for multer backend
       const formData = new FormData();
@@ -269,8 +272,8 @@ export default function AddProductPage() {
         });
       });
 
-      // Handle manual variants
-      const manualVariants = data.manualVariants.map(variant => ({
+      // Handle manual variants (optional)
+      const manualVariants = (data.manualVariants || []).map(variant => ({
         attributeSelections: Object.entries(variant)
           .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
           .map(([key, value]) => ({
@@ -280,8 +283,22 @@ export default function AddProductPage() {
         price: parseInt(variant.price),
         stock: parseInt(variant.stock)
       }));
-      
-      formData.append("manualVariants", JSON.stringify(manualVariants));
+
+      if (manualVariants.length > 0) {
+        formData.append("manualVariants", JSON.stringify(manualVariants));
+      }
+
+      // Add simple price/stock if provided (no variants use-case)
+      if (data.simplePrice) formData.append("price", data.simplePrice);
+      if (data.simpleStock) formData.append("stock", data.simpleStock);
+
+      // Append gallery images (if any)
+      const galleryImages = (data.galleryImages as unknown as File[]) || [];
+      if (Array.isArray(galleryImages) && galleryImages.length > 0) {
+        galleryImages.forEach((file) => {
+          formData.append("galleryImages", file);
+        });
+      }
 
       // Add extra category routes
       const validAssignments = (data.categoryAssignments || [])
@@ -867,6 +884,93 @@ export default function AddProductPage() {
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
             />
+
+            {/* Gallery Images */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
+              <Button
+                type="button"
+                className="flex items-center gap-2"
+                onClick={() => {
+                  const input = document.getElementById("gallery-images-input") as HTMLInputElement;
+                  input?.click();
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Images
+              </Button>
+            </div>
+
+            <input
+              id="gallery-images-input"
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                const current = (watch("galleryImages") as unknown as File[]) || [];
+                setValue("galleryImages", [...current, ...files] as any);
+              }}
+            />
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {(watch("galleryImages") as unknown as File[] | undefined)?.map((file, idx) => (
+                <div key={idx} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Gallery image ${idx + 1}`}
+                    className="w-full h-28 object-cover rounded border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => {
+                      const current = (watch("galleryImages") as unknown as File[]) || [];
+                      const updated = current.filter((_, i) => i !== idx);
+                      setValue("galleryImages", updated as any);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Simple Pricing (no attributes/variants) */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Price</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  {...register("simplePrice")}
+                  placeholder="Enter price"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Stock</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  {...register("simpleStock")}
+                  placeholder="Enter stock"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
+          </div>
 
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
