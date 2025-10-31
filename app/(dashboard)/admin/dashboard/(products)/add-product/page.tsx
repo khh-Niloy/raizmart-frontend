@@ -87,9 +87,11 @@ const productSchema = z.object({
   subCategory: z.string().min(1, "Sub Category is required"),
   subSubCategory: z.string().optional(),
   searchTags: z.string().optional(),
-  attributes: z.array(attributeSchema).min(1, "At least one attribute is required"),
+  // Allow products without attributes; variants can still be created with price and stock only
+  attributes: z.array(attributeSchema).default([]),
   manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
-  specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
+  // Allow products without specifications
+  specifications: z.array(specificationSchema).default([]),
   categoryAssignments: z.array(
     z.object({
       category: z.string().min(1, "Category is required"),
@@ -1274,8 +1276,8 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const [stock, setStock] = React.useState("");
 
   const handleAddVariant = () => {
-    if (Object.keys(selections).length === 0 || !price || !stock) {
-      toast.error("Please select attributes, set price and stock");
+    if (!price || !stock) {
+      toast.error("Please set price and stock");
       return;
     }
 
