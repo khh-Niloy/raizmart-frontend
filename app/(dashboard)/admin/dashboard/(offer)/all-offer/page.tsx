@@ -1,18 +1,42 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Image as ImageIcon, Trash2 } from "lucide-react";
-import { useGetAllOffersQuery } from "@/app/redux/features/offer/offer.api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ExternalLink, Image as ImageIcon, Trash2, Edit } from "lucide-react";
+import {
+  useGetAllOffersQuery,
+  useDeleteOfferMutation,
+} from "@/app/redux/features/offer/offer.api";
+import { toast } from "sonner";
 
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
   const offers = (data?.data as any[]) || [];
+  const [deleteOffer, { isLoading: isDeleting }] = useDeleteOfferMutation();
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    // Wire up with offers API when available
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteOffer(deleteId).unwrap();
+      toast.success("Offer deleted successfully");
+      setDeleteId(null);
+    } catch (e: any) {
+      const errorMessage =
+        e?.data?.message || e?.message || "Failed to delete offer";
+      toast.error(errorMessage);
+    }
   };
 
   if (isLoading) {
@@ -108,8 +132,20 @@ export default function AllOfferPage() {
                   </div>
                 )}
 
-                <div className="flex justify-end">
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(offer._id)} className="flex items-center gap-2">
+                <div className="flex justify-end gap-2">
+                  <Link href={`/admin/dashboard/edit-offer/${offer._id}`}>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteId(offer._id)}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2"
+                  >
                     <Trash2 className="h-4 w-4" />
                     Delete
                   </Button>
@@ -119,6 +155,34 @@ export default function AllOfferPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Offer</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this offer? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteId(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
