@@ -3,10 +3,16 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useGetBlogCategoriesQuery } from "@/app/redux/features/blog-category/blog-category.api";
+import { useRouter } from "next/navigation";
 
 export default function AllBlogCategoryPage() {
+  const router = useRouter();
   const { data, isFetching } = useGetBlogCategoriesQuery(undefined);
   const categories: any[] = (data?.data ?? data ?? []) as any[];
+
+  const handleEdit = (id: string | number) => {
+    router.push(`/admin/dashboard/edit-blog-category/${id}`);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -28,7 +34,14 @@ export default function AllBlogCategoryPage() {
                   <li key={cat.id ?? cat._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-gray-900 font-medium">{cat.name ?? cat.categoryName ?? "Unnamed"}</span>
-                      <Button type="button" variant="outline" className="px-4 py-1 h-9">Update</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="px-4 py-1 h-9"
+                        onClick={() => handleEdit(cat.id ?? cat._id)}
+                      >
+                        Update
+                      </Button>
                     </div>
                   </li>
                 ))}

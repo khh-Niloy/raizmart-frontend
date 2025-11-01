@@ -12,36 +12,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useGetCouponByIdQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
- 
- 
 
+// Schema with all fields optional for easy partial updates
 const couponSchema = z
   .object({
     code: z
       .string()
-      .min(1, "Code is required")
-      .transform((v) => v.toUpperCase()),
-    discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
+      .optional()
+      .transform((v) => v ? v.trim().toUpperCase() : v),
+    discountType: z.enum(["PERCENT", "FIXED"]).optional(),
     discountValue: z
       .union([z.string(), z.number()])
-      .transform((val) => (typeof val === "string" ? Number(val) : val))
-      .refine((v) => !Number.isNaN(v) && v >= 0, {
+      .optional()
+      .transform((val) => {
+        if (val === undefined || val === "") return undefined;
+        return typeof val === "string" ? Number(val) : val;
+      })
+      .refine((v) => v === undefined || (!Number.isNaN(v) && v >= 0), {
         message: "Discount value must be a non-negative number",
       }),
-    minOrderAmount: z.coerce.number().nonnegative().default(0),
-    usageLimit: z.coerce.number().int().nonnegative().default(0),
-    usageLimitPerUser: z.coerce.number().int().nonnegative().default(0),
-    startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().min(1, "End date is required"),
-    isActive: z.boolean().default(true),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    isActive: z.boolean().optional(),
     description: z.string().optional(),
   })
   .refine(
     (data) => {
-      const starts = new Date(data.startDate).getTime();
-      const ends = new Date(data.endDate).getTime();
-      if (Number.isFinite(starts) && Number.isFinite(ends)) {
-        return ends >= starts;
+      // Only validate dates if both are provided
+      if (data.startDate && data.endDate) {
+        const starts = new Date(data.startDate).getTime();
+        const ends = new Date(data.endDate).getTime();
+        if (Number.isFinite(starts) && Number.isFinite(ends)) {
+          return ends >= starts;
+        }
       }
       return true;
     },
@@ -49,7 +52,8 @@ const couponSchema = z
   )
   .refine(
     (data) => {
-      if (data.discountType === "PERCENT") {
+      // Only validate percentage if discountType is PERCENT and value is provided
+      if (data.discountType === "PERCENT" && data.discountValue !== undefined) {
         return Number(data.discountValue) <= 100;
       }
       return true;
@@ -67,41 +71,47 @@ export default function EditCouponPage() {
   const coupon: any = (data?.data ?? data) as any;
   const [updateCoupon, { isLoading }] = useUpdateCouponMutation();
 
-  const { register, handleSubmit, control, formState: { errors }, reset, setValue } = useForm<CouponFormData>({
+  const { register, handleSubmit, control, formState: { errors }, setValue } = useForm<CouponFormData>({
     resolver: zodResolver(couponSchema) as any,
     defaultValues: {
-      code: "",
-      discountType: "PERCENT",
-      discountValue: 10,
-      minOrderAmount: 0,
-      usageLimit: 0,
-      usageLimitPerUser: 0,
-      startDate: "",
-      endDate: "",
-      isActive: true,
-      description: "",
+      code: undefined,
+      discountType: undefined,
+      discountValue: undefined,
+      startDate: undefined,
+      endDate: undefined,
+      isActive: undefined,
+      description: undefined,
     }
   });
 
   useEffect(() => {
     if (coupon) {
-      setValue("code", coupon.code || "");
-      setValue("discountType", (coupon.discountType ?? coupon.type ?? "PERCENT").toString().toUpperCase() as any);
-      setValue("discountValue", Number(coupon.discountValue ?? 0));
-      setValue("minOrderAmount", Number(coupon.minOrderAmount ?? 0));
-      setValue("usageLimit", Number(coupon.usageLimit ?? 0));
-      setValue("usageLimitPerUser", Number(coupon.usageLimitPerUser ?? 0));
       // Normalize to datetime-local value (YYYY-MM-DDTHH:mm)
       const toLocalInput = (d?: string) => {
         if (!d) return "";
-        const dt = new Date(d);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+        try {
+          const dt = new Date(d);
+          if (isNaN(dt.getTime())) return "";
+          const pad = (n: number) => String(n).padStart(2, "0");
+          return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+        } catch {
+          return "";
+        }
       };
-      setValue("startDate", toLocalInput(coupon.startDate));
-      setValue("endDate", toLocalInput(coupon.endDate));
-      setValue("isActive", Boolean(coupon.isActive));
-      setValue("description", coupon.description || "");
+
+      if (coupon.code) setValue("code", coupon.code);
+      if (coupon.discountType || coupon.type) {
+        setValue("discountType", (coupon.discountType ?? coupon.type ?? "PERCENT").toString().toUpperCase() as any);
+      }
+      if (coupon.discountValue !== undefined) {
+        setValue("discountValue", Number(coupon.discountValue));
+      }
+      if (coupon.startDate) setValue("startDate", toLocalInput(coupon.startDate));
+      if (coupon.endDate) setValue("endDate", toLocalInput(coupon.endDate));
+      if (coupon.isActive !== undefined) {
+        setValue("isActive", Boolean(coupon.isActive));
+      }
+      if (coupon.description) setValue("description", coupon.description);
     }
   }, [coupon, setValue]);
 
@@ -112,31 +122,54 @@ export default function EditCouponPage() {
         router.push("/admin/dashboard/all-coupons");
         return;
       }
-      const starts = new Date(data.startDate).getTime();
-      const ends = new Date(data.endDate).getTime();
-      if (Number.isFinite(starts) && Number.isFinite(ends) && ends < starts) {
-        toast.error("End date must be after start date");
+
+      // Build payload with only provided fields
+      const payload: any = {};
+
+      if (data.code !== undefined && data.code !== "") {
+        payload.code = data.code.trim();
+      }
+      if (data.discountType !== undefined) {
+        payload.discountType = data.discountType;
+      }
+      if (data.discountValue !== undefined && data.discountValue !== "") {
+        payload.discountValue = Number(data.discountValue);
+      }
+      if (data.startDate !== undefined && data.startDate !== "") {
+        payload.startDate = data.startDate;
+      }
+      if (data.endDate !== undefined && data.endDate !== "") {
+        payload.endDate = data.endDate;
+      }
+      if (data.isActive !== undefined) {
+        payload.isActive = data.isActive;
+      }
+      if (data.description !== undefined) {
+        payload.description = data.description;
+      }
+
+      // Validate date range if both dates are provided
+      if (payload.startDate && payload.endDate) {
+        const starts = new Date(payload.startDate).getTime();
+        const ends = new Date(payload.endDate).getTime();
+        if (Number.isFinite(starts) && Number.isFinite(ends) && ends < starts) {
+          toast.error("End date must be after start date");
+          return;
+        }
+      }
+
+      // Only submit if at least one field is provided
+      if (Object.keys(payload).length === 0) {
+        toast.error("Please update at least one field");
         return;
       }
 
-      const payload = {
-        code: data.code.trim(),
-        discountType: data.discountType,
-        discountValue: data.discountValue,
-        minOrderAmount: data.minOrderAmount,
-        usageLimit: data.usageLimit,
-        usageLimitPerUser: data.usageLimitPerUser,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        isActive: data.isActive,
-        description: data.description || "",
-      };
-
       await updateCoupon({ id, data: payload }).unwrap();
-      toast.success("Coupon updated");
+      toast.success("Coupon updated successfully");
       router.push("/admin/dashboard/all-coupons");
-    } catch (e) {
-      toast.error("Failed to update coupon");
+    } catch (e: any) {
+      const errorMessage = e?.data?.message || e?.message || "Failed to update coupon";
+      toast.error(errorMessage);
       console.error(e);
     }
   };
@@ -147,26 +180,37 @@ export default function EditCouponPage() {
         <div className="bg-white">
           <div className="px-6 py-4">
             <h1 className="text-2xl font-semibold text-gray-900">Edit Coupon</h1>
-            <p className="text-gray-600 mt-1">Update promotion code details</p>
+            <p className="text-gray-600 mt-1">Update promotion code. All fields are optional - only update what you need to change.</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
+            {/* Primary fields in a balanced two-column grid - matching create page */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Code *</Label>
-                <Input placeholder="e.g., SAVE10" {...register("code")} disabled={isFetching} />
+                <Label>Code</Label>
+                <Input 
+                  placeholder="e.g., SAVE10" 
+                  {...register("code")} 
+                  disabled={isFetching}
+                  defaultValue={coupon?.code || ""}
+                />
                 {errors.code && <p className="text-sm text-red-600">{errors.code.message}</p>}
+                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
 
               <div className="space-y-2">
-                <Label>Discount Type *</Label>
+                <Label>Discount Type</Label>
                 <Controller
                   control={control}
                   name="discountType"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isFetching}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || coupon?.discountType || ""}
+                      disabled={isFetching}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder="Select type (optional)" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="PERCENT">Percentage (%)</SelectItem>
@@ -176,46 +220,59 @@ export default function EditCouponPage() {
                   )}
                 />
                 {errors.discountType && <p className="text-sm text-red-600">{errors.discountType.message as string}</p>}
+                <p className="text-xs text-gray-500">Leave unchanged to keep current value</p>
               </div>
 
               <div className="space-y-2">
-                <Label>Discount Value *</Label>
-                <Input type="number" step="0.01" min="0" {...register("discountValue")} disabled={isFetching} />
+                <Label>Discount Value</Label>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  {...register("discountValue")} 
+                  disabled={isFetching}
+                  defaultValue={coupon?.discountValue || ""}
+                />
                 {errors.discountValue && <p className="text-sm text-red-600">{errors.discountValue.message}</p>}
+                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
 
               <div className="space-y-2">
-                <Label>Minimum Order Amount</Label>
-                <Input type="number" step="0.01" min="0" {...register("minOrderAmount")} disabled={isFetching} />
-                {errors.minOrderAmount && <p className="text-sm text-red-600">{errors.minOrderAmount.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Usage Limit (0 = unlimited)</Label>
-                <Input type="number" min="0" {...register("usageLimit")} disabled={isFetching} />
-                {errors.usageLimit && <p className="text-sm text-red-600">{errors.usageLimit.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Usage Limit Per User (0 = unlimited)</Label>
-                <Input type="number" min="0" {...register("usageLimitPerUser")} disabled={isFetching} />
-                {errors.usageLimitPerUser && <p className="text-sm text-red-600">{errors.usageLimitPerUser.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Start Date *</Label>
-                <Input type="datetime-local" {...register("startDate")} disabled={isFetching} />
+                <Label>Start Date</Label>
+                <Input 
+                  type="datetime-local" 
+                  {...register("startDate")} 
+                  disabled={isFetching}
+                />
                 {errors.startDate && <p className="text-sm text-red-600">{errors.startDate.message}</p>}
+                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
 
               <div className="space-y-2">
-                <Label>End Date *</Label>
-                <Input type="datetime-local" {...register("endDate")} disabled={isFetching} />
+                <Label>End Date</Label>
+                <Input 
+                  type="datetime-local" 
+                  {...register("endDate")} 
+                  disabled={isFetching}
+                />
                 {errors.endDate && <p className="text-sm text-red-600">{errors.endDate.message}</p>}
+                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Input 
+                  placeholder="Optional short description" 
+                  {...register("description")} 
+                  disabled={isFetching}
+                  defaultValue={coupon?.description || ""}
+                />
+                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Status + submit in a single row - matching create page */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
               <div className="space-y-2">
                 <Label>Status</Label>
                 <div className="flex items-center gap-3">
@@ -223,23 +280,23 @@ export default function EditCouponPage() {
                     control={control}
                     name="isActive"
                     render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isFetching} />
+                      <Switch 
+                        checked={field.value !== undefined ? field.value : (coupon?.isActive ?? true)} 
+                        onCheckedChange={field.onChange} 
+                        disabled={isFetching}
+                      />
                     )}
                   />
                   <span className="text-sm text-gray-700">Active</span>
                 </div>
+                <p className="text-xs text-gray-500">Toggle to change status</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input placeholder="Optional short description" {...register("description")} disabled={isFetching} />
+              <div className="flex justify-end md:justify-start">
+                <Button type="submit" disabled={isLoading || isFetching} className="px-8">
+                  {isLoading ? "Updating..." : "Update Coupon"}
+                </Button>
               </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={isLoading} className="px-8">
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
             </div>
           </form>
         </div>
@@ -247,5 +304,3 @@ export default function EditCouponPage() {
     </div>
   );
 }
-
-

@@ -62,11 +62,36 @@ export const couponApi = baseApi.injectEndpoints({
 
     // Update coupon
     updateCoupon: builder.mutation({
-      query: ({ id, data }: { id: string; data: any }) => ({
-        url: `/coupons/${id}`,
-        method: "PATCH",
-        data,
-      }),
+      query: ({ id, data }: { id: string; data: any }) => {
+        // Adapt frontend payload to backend schema (all fields optional)
+        const adapted: any = { ...data };
+        
+        // Transform discountType if provided (PERCENT|FIXED -> percentage|fixed)
+        if (adapted.discountType !== undefined) {
+          adapted.discountType = adapted.discountType.toString().toLowerCase();
+        }
+        
+        // Transform isActive to status if provided
+        if (typeof adapted.isActive === 'boolean') {
+          adapted.status = adapted.isActive ? 'active' : 'inactive';
+          delete adapted.isActive;
+        } else if (adapted.isActive === undefined && adapted.status === undefined) {
+          // If neither isActive nor status is provided, don't include status
+        }
+        
+        // Remove undefined values to send only provided fields
+        Object.keys(adapted).forEach(key => {
+          if (adapted[key] === undefined) {
+            delete adapted[key];
+          }
+        });
+        
+        return {
+          url: `/coupons/${id}`,
+          method: "PATCH",
+          data: adapted,
+        };
+      },
       invalidatesTags: ["COUPONS"],
     }),
 
