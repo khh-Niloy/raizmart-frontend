@@ -33,6 +33,15 @@ const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
   ssr: false,
 });
 
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp =
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
 // Tech attribute types for dropdown
 const TECH_ATTRIBUTE_TYPES = [
   { value: "color", label: "Color" },
@@ -81,6 +90,8 @@ const specificationSchema = z.object({
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
+  descriptionImage: z.instanceof(File).optional(),
+  video: z.string().optional(),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
@@ -165,6 +176,8 @@ export default function AddProductPage() {
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
+      descriptionImage: undefined,
+      video: "",
       description: JSON.stringify({
         type: "doc",
         content: []
@@ -235,6 +248,14 @@ export default function AddProductPage() {
       formData.append("subCategory", data.subCategory);
       formData.append("subSubCategory", data.subSubCategory || "");
       formData.append("searchTags", data.searchTags || "");
+
+      // Add description image if provided
+      if (data.descriptionImage) {
+        formData.append("descriptionImage", data.descriptionImage);
+      }
+
+      // Add video URL
+      formData.append("video", data.video || "");
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
       if (data.description) {
@@ -460,6 +481,85 @@ export default function AddProductPage() {
                       {errors.brand.message}
                     </p>
                   )}
+                </div>
+
+                {/* Description Image */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Description Image
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="descriptionImage"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <div className="space-y-2">
+                        <Input
+                          {...field}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            onChange(file);
+                          }}
+                          className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                        {value && (
+                          <div className="relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={URL.createObjectURL(value)}
+                              alt="Description preview"
+                              className="w-full h-48 object-cover rounded border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                              onClick={() => onChange(undefined)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Video URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Video URL
+                  </Label>
+                  <Input
+                    {...register("video")}
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter a valid video URL (e.g., YouTube link) or leave empty to clear
+                  </p>
+                  {(() => {
+                    const videoUrl = watch("video");
+                    const videoId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                    return videoId ? (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
+                        <div className="relative w-full pt-[56.25%] bg-gray-200 rounded-lg overflow-hidden">
+                          <iframe
+                            className="absolute top-0 left-0 w-full h-full"
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            title="Video preview"
+                          />
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Product Description */}

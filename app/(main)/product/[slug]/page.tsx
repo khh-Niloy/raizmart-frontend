@@ -5,6 +5,15 @@ import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
 import Link from "next/link";
 
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp =
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
 export default function ProductDetailBySlug({
   params,
 }: {
@@ -89,6 +98,7 @@ export default function ProductDetailBySlug({
   });
   const specRef = React.useRef<HTMLDivElement | null>(null);
   const descRef = React.useRef<HTMLDivElement | null>(null);
+  const videoRef = React.useRef<HTMLDivElement | null>(null);
   const warrantyRef = React.useRef<HTMLDivElement | null>(null);
   const scrollToWithOffset = (el: HTMLElement | null, offset = 100) => {
     if (!el) return;
@@ -269,6 +279,19 @@ export default function ProductDetailBySlug({
     return "";
   }, [product?.description]);
 
+  // Extract video and descriptionImage from product
+  const videoUrl = React.useMemo(() => {
+    return (product as any)?.video || (product as any)?.video_url || "";
+  }, [product]);
+
+  const descriptionImageUrl = React.useMemo(() => {
+    return (product as any)?.descriptionImage || (product as any)?.description_image || "";
+  }, [product]);
+
+  const videoId = React.useMemo(() => {
+    return videoUrl ? getYouTubeVideoId(videoUrl) : null;
+  }, [videoUrl]);
+
   // Presence flags
   const hasSpecs = React.useMemo(
     () => Array.isArray((product as any)?.specifications) && ((product as any)?.specifications?.length || 0) > 0,
@@ -279,6 +302,8 @@ export default function ProductDetailBySlug({
     const textOnly = descriptionHtml.replace(/<[^>]*>/g, "").trim();
     return textOnly.length > 0;
   }, [descriptionHtml]);
+  const hasVideo = React.useMemo(() => !!videoId, [videoId]);
+  const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
 
   return (
     <div className="w-full px-16 mx-auto py-20 bg-white">
@@ -557,13 +582,22 @@ export default function ProductDetailBySlug({
               Specification
             </button>
           )}
-          {hasDescription && (
+          {(hasDescription || hasDescriptionImage || hasVideo) && (
             <button
               type="button"
               className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
               onClick={() => scrollToWithOffset(descRef.current)}
             >
               Description
+            </button>
+          )}
+          {hasVideo && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(videoRef.current)}
+            >
+              Video
             </button>
           )}
           <button
@@ -600,32 +634,65 @@ export default function ProductDetailBySlug({
         )}
 
         {/* Description */}
-        {hasDescription && (
+        {(hasDescription || hasDescriptionImage || hasVideo) && (
           <div ref={descRef} id="description">
             <h2 className="text-2xl font-semibold mb-4">Description</h2>
-            <div className="prose max-w-none">
-              <style
-                dangerouslySetInnerHTML={{
-                  __html: `
-                .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
-                .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
-                .desc-content li { margin: .25rem 0; }
-                .desc-content h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 .5rem; }
-                .desc-content h2 { font-size: 1.5rem; font-weight: 600; margin: .875rem 0 .5rem; }
-                .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
-                .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
-                .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
-              `,
-                }}
-              />
-              <div
-                className="desc-content"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    descriptionHtml ||
-                    '<p class="text-gray-500">No description available.</p>',
-                }}
-              />
+            <div className="space-y-6">
+              {/* Description Image */}
+              {hasDescriptionImage && (
+                <div className="w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={descriptionImageUrl}
+                    alt="Product description"
+                    className="w-full h-auto rounded-lg object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Video */}
+              {hasVideo && (
+                <div className="w-full" ref={videoRef} id="video">
+                  <div className="relative w-[50%] h-[400px] bg-gray-200 rounded-lg overflow-hidden">
+                    <iframe
+                      className="absolute top-0 left-0 w-full h-full"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      title="Product video"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Description Text */}
+              {hasDescription && (
+                <div className="prose max-w-none">
+                  <style
+                    dangerouslySetInnerHTML={{
+                      __html: `
+                    .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
+                    .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
+                    .desc-content li { margin: .25rem 0; }
+                    .desc-content h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 .5rem; }
+                    .desc-content h2 { font-size: 1.5rem; font-weight: 600; margin: .875rem 0 .5rem; }
+                    .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
+                    .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
+                    .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
+                  `,
+                    }}
+                  />
+                  <div
+                    className="desc-content"
+                    dangerouslySetInnerHTML={{
+                      __html:
+                        descriptionHtml ||
+                        '<p class="text-gray-500">No description available.</p>',
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
