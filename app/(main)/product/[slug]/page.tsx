@@ -377,8 +377,15 @@ export default function ProductDetailBySlug({
               </Link>
             )}
           </div>
-          <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight">
+          <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight flex items-center gap-3">
             {product?.name}
+            {product?.isFreeDelivery && (
+              <span className="inline-flex">
+                <span className="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-medium px-2 py-0.5">
+                  Free Delivery
+                </span>
+              </span>
+            )}
           </h1>
 
           {selectedVariant && (
