@@ -140,8 +140,8 @@ const data = {
       icon: TruckIcon,
       items: [
         {
-          title: "All Offers",
-          url: "/admin/dashboard/all-offer",
+          title: "Manage Delivery",
+          url: "/admin/dashboard/manage-free-delivery",
         },
       ],
     },

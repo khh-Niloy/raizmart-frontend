@@ -58,6 +58,16 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ["PRODUCTS"],
     }),
 
+    // Toggle Free Delivery Status
+    toggleFreeDelivery: builder.mutation({
+      query: ({ id, isFreeDelivery }) => ({
+        url: `/products/${id}/free-delivery`,
+        method: "PATCH",
+        data: { isFreeDelivery },
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
     // Toggle Featured Status
     toggleFeatured: builder.mutation({
       query: ({ id, isFeatured }) => ({
@@ -123,6 +133,7 @@ export const {
   useGetProductByIdQuery,
   useUpdateProductMutation,
   useToggleFeaturedMutation,
+  useToggleFreeDeliveryMutation,
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,
   useGetAllProductsStockQuery,

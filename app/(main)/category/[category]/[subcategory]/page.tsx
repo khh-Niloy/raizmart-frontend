@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "next/navigation";
 import { useGetProductsBySlugsQuery } from "@/app/redux/features/product/product.api";
 import { useLocalCart } from "@/hooks/useLocalCart";
@@ -48,6 +49,11 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
         <Link href={`/product/${product.slug}`} className="cursor-pointer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={primaryImage} alt={product.name} className="w-full h-48 object-contain" />
+          {product?.isFreeDelivery && (
+            <div className="mt-2">
+              <Badge className="bg-emerald-600 text-white border-transparent">Free Delivery</Badge>
+            </div>
+          )}
           <div className="mt-3 font-medium text-gray-900 line-clamp-2 min-h-[44px]">{product.name}</div>
         </Link>
         <div className="mt-1 text-[#111827] font-semibold">{variant?.finalPrice ? `৳ ${variant.finalPrice}` : ""}</div>
