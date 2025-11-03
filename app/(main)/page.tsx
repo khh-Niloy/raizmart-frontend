@@ -2,6 +2,8 @@ import OtherImages from "@/components/main/landing/OtherImages/OtherImages";
 import Slider from "@/components/main/landing/Slider/Slider";
 import React from "react";
 import WhyChooseUs from "./landing/components/WhyChooseUs/WhyChooseUs";
+import FeaturedProducts from "@/components/main/landing/FeaturedProducts/FeaturedProducts";
+import BrandProducts from "@/components/main/landing/BrandProducts/BrandProducts";
 
 export default function HomePage() {
   return (
@@ -15,7 +17,7 @@ export default function HomePage() {
             <div className="col-span-2 mt-7 h-[490px]">
               <Slider />
             </div>
-            
+
             {/* Right Side - Other Images (1/3 width) */}
             <div className="col-span-1 mt-7">
               <OtherImages />
@@ -29,7 +31,7 @@ export default function HomePage() {
           <div>
             <Slider />
           </div>
-          
+
           {/* Mobile: Other Images below */}
           <div>
             <OtherImages />
@@ -40,6 +42,12 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
         <WhyChooseUs />
       </div>
+
+      {/* Featured Products */}
+      <FeaturedProducts />
+
+      {/* Brand Products */}
+      <BrandProducts />
     </div>
   );
 }
