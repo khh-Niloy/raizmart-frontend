@@ -103,6 +103,16 @@ export const productApi = baseApi.injectEndpoints({
       transformResponse: (response: any) => response,
       providesTags: ["PRODUCTS"],
     }),
+
+    // Get All Products Stock
+    getAllProductsStock: builder.query({
+      query: () => ({
+        url: "/products/stock",
+        method: "GET",
+      }),
+      transformResponse: (response: any) => response?.data ?? response,
+      providesTags: ["PRODUCTS"],
+    }),
   }),
 })
 
@@ -115,4 +125,5 @@ export const {
   useToggleFeaturedMutation,
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,
+  useGetAllProductsStockQuery,
 } = productApi

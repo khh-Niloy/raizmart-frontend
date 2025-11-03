@@ -142,6 +142,7 @@ interface AttributeManagerProps {
   errors: FieldErrors<ProductFormData>;
   onRemove: () => void;
   canRemove: boolean;
+  existingAttributes?: any[];
 }
 
 interface AttributeValueManagerProps {
@@ -155,6 +156,7 @@ interface AttributeValueManagerProps {
   errors: FieldErrors<ProductFormData>;
   onRemove: () => void;
   canRemove: boolean;
+  existingImageUrls?: string[];
 }
 
 interface VariantPreviewProps {
@@ -172,6 +174,8 @@ interface VariantListProps {
   onEditVariant: (index: number, variant: any) => void;
   onDeleteVariant: (index: number) => void;
   attributes: any[];
+  register: UseFormRegister<ProductFormData>;
+  setValue: UseFormSetValue<ProductFormData>;
 }
 
 export default function EditProductPage() {
@@ -180,13 +184,14 @@ export default function EditProductPage() {
 
   const { data: product, isLoading: isProductLoading } =
     useGetProductByIdQuery(productId);
+  console.log("product", product);
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   const {
     control,
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields, isDirty },
     watch,
     setValue,
     reset,
@@ -214,6 +219,9 @@ export default function EditProductPage() {
       categoryAssignments: [],
     },
   });
+
+  // Determine if there are any changes in the form (built-in)
+  const isAnyDirty = isDirty;
 
   const {
     fields: attributeFields,
@@ -475,57 +483,72 @@ export default function EditProductPage() {
       // Create FormData for multer backend
       const formData = new FormData();
 
-      // Add basic product data
-      formData.append("name", data.name);
-      formData.append("brand", data.brand);
-      formData.append("category", data.category);
-      formData.append("subCategory", data.subCategory);
-      formData.append("subSubCategory", data.subSubCategory || "");
-      formData.append("searchTags", data.searchTags || "");
+      // Helper to check nested dirty
+      const hasDirty = (obj: any): boolean => {
+        if (!obj) return false;
+        if (typeof obj === "boolean") return obj;
+        if (Array.isArray(obj)) return obj.some((v) => hasDirty(v));
+        if (typeof obj === "object") return Object.values(obj).some((v) => hasDirty(v));
+        return false;
+      };
+
+      // Add only changed primitive/basic fields
+      if ((dirtyFields as any).name) formData.append("name", data.name);
+      if ((dirtyFields as any).brand) formData.append("brand", data.brand);
+      if ((dirtyFields as any).category) formData.append("category", data.category);
+      if ((dirtyFields as any).subCategory) formData.append("subCategory", data.subCategory);
+      if ((dirtyFields as any).subSubCategory) formData.append("subSubCategory", data.subSubCategory || "");
+      if ((dirtyFields as any).searchTags) formData.append("searchTags", data.searchTags || "");
 
       // Add description image if provided
-      if (data.descriptionImage) {
+      if ((dirtyFields as any).descriptionImage && data.descriptionImage) {
         formData.append("descriptionImage", data.descriptionImage);
       }
 
       // Add video URL
-      formData.append("video", data.video || "");
+      if ((dirtyFields as any).video) {
+        formData.append("video", data.video || "");
+      }
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
-      if (data.description) {
+      if ((dirtyFields as any).description && data.description) {
         formData.append("description", data.description);
       }
 
-      // Add specifications
-      formData.append("specifications", JSON.stringify(data.specifications));
+      // Add specifications only if changed
+      if (hasDirty((dirtyFields as any).specifications)) {
+        formData.append("specifications", JSON.stringify(data.specifications));
+      }
 
-      // Handle attributes with images
-      data.attributes.forEach((attribute, attrIndex) => {
-        formData.append(`attributes[${attrIndex}][name]`, attribute.name);
-        formData.append(`attributes[${attrIndex}][type]`, attribute.type);
-        formData.append(`attributes[${attrIndex}][isRequired]`, String(attribute.isRequired || true));
-        formData.append(`attributes[${attrIndex}][displayOrder]`, String(attribute.displayOrder || 0));
+      // Handle attributes with images - only if any attribute path is dirty
+      if (hasDirty((dirtyFields as any).attributes)) {
+        data.attributes.forEach((attribute, attrIndex) => {
+          formData.append(`attributes[${attrIndex}][name]`, attribute.name);
+          formData.append(`attributes[${attrIndex}][type]`, attribute.type);
+          formData.append(`attributes[${attrIndex}][isRequired]`, String(attribute.isRequired || true));
+          formData.append(`attributes[${attrIndex}][displayOrder]`, String(attribute.displayOrder || 0));
 
-        attribute.values.forEach((value, valueIndex) => {
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
-          
-          if (value.colorCode) {
-            formData.append(`attributes[${attrIndex}][values][${valueIndex}][colorCode]`, value.colorCode);
-          }
+          attribute.values.forEach((value, valueIndex) => {
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
+            
+            if (value.colorCode) {
+              formData.append(`attributes[${attrIndex}][values][${valueIndex}][colorCode]`, value.colorCode);
+            }
 
-          // Add images for color attributes
-          if (value.images && value.images.length > 0) {
-            value.images.forEach((image, imageIndex) => {
-              formData.append(
-                `attributes[${attrIndex}][values][${valueIndex}][images][${imageIndex}]`,
-                image
-              );
-            });
-          }
+            // Add images for color attributes (new uploads only)
+            if (value.images && (value.images as any[]).length > 0) {
+              (value.images as any[]).forEach((image: File, imageIndex: number) => {
+                formData.append(
+                  `attributes[${attrIndex}][values][${valueIndex}][images][${imageIndex}]`,
+                  image
+                );
+              });
+            }
+          });
         });
-      });
+      }
 
       // Handle manual variants (optional)
       const manualVariants = (data.manualVariants || []).map(variant => ({
@@ -539,28 +562,30 @@ export default function EditProductPage() {
         stock: parseInt(variant.stock)
       }));
 
-      if (manualVariants.length > 0) {
+      if (hasDirty((dirtyFields as any).manualVariants) && manualVariants.length > 0) {
         formData.append("manualVariants", JSON.stringify(manualVariants));
       }
 
       // Add simple price/stock if provided (no variants use-case)
-      if (data.simplePrice) formData.append("price", data.simplePrice);
-      if (data.simpleStock) formData.append("stock", data.simpleStock);
+      if ((dirtyFields as any).simplePrice && data.simplePrice) formData.append("price", data.simplePrice);
+      if ((dirtyFields as any).simpleStock && data.simpleStock) formData.append("stock", data.simpleStock);
 
       // Append gallery images (if any)
       const galleryImages = (data.galleryImages as unknown as File[]) || [];
-      if (Array.isArray(galleryImages) && galleryImages.length > 0) {
+      if (hasDirty((dirtyFields as any).galleryImages) && Array.isArray(galleryImages) && galleryImages.length > 0) {
         galleryImages.forEach((file) => {
           formData.append("galleryImages", file);
         });
       }
 
       // Add extra category routes
-      const validAssignments = (data.categoryAssignments || [])
-        .filter((r: any) => r?.category && r?.subCategory)
-        .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
-      if (validAssignments.length > 0) {
-        formData.append("categoryAssignments", JSON.stringify(validAssignments));
+      if (hasDirty((dirtyFields as any).categoryAssignments)) {
+        const validAssignments = (data.categoryAssignments || [])
+          .filter((r: any) => r?.category && r?.subCategory)
+          .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+        if (validAssignments.length > 0) {
+          formData.append("categoryAssignments", JSON.stringify(validAssignments));
+        }
       }
 
       console.log("FormData prepared for backend:", formData);
@@ -1248,6 +1273,7 @@ export default function EditProductPage() {
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
                     canRemove={attributeFields.length > 1}
+                  existingAttributes={(product as any)?.attributes || []}
                   />
                 ))}
               </div>
@@ -1265,6 +1291,8 @@ export default function EditProductPage() {
               onEditVariant={updateManualVariant}
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
+              register={register}
+              setValue={setValue}
             />
 
             {/* Gallery Images */}
@@ -1314,7 +1342,7 @@ export default function EditProductPage() {
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
                   const current = (watch("galleryImages") as unknown as File[]) || [];
-                  setValue("galleryImages", [...current, ...files] as any);
+                  setValue("galleryImages", [...current, ...files] as any, { shouldDirty: true, shouldValidate: false });
                 }}
               />
 
@@ -1335,7 +1363,7 @@ export default function EditProductPage() {
                       onClick={() => {
                         const current = (watch("galleryImages") as unknown as File[]) || [];
                         const updated = current.filter((_, i) => i !== idx);
-                        setValue("galleryImages", updated as any);
+                        setValue("galleryImages", updated as any, { shouldDirty: true, shouldValidate: false });
                       }}
                     >
                       <X className="h-3 w-3" />
@@ -1453,10 +1481,10 @@ export default function EditProductPage() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isUpdating}
+          disabled={isUpdating || !isAnyDirty}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 disabled:opacity-50"
               >
-                {isUpdating ? "Updating Product..." : "Update Product"}
+          {isUpdating ? "Updating Product..." : "Update Product"}
               </Button>
             </div>
           </form>
@@ -1476,6 +1504,7 @@ function AttributeManager({
   errors,
   onRemove,
   canRemove,
+  existingAttributes,
 }: AttributeManagerProps) {
   const {
     fields: valueFields,
@@ -1602,6 +1631,11 @@ function AttributeManager({
               errors={errors}
               onRemove={() => removeValue(valueIndex)}
               canRemove={valueFields.length > 1}
+              existingImageUrls={
+                Array.isArray(existingAttributes?.[attrIndex]?.values?.[valueIndex]?.images)
+                  ? (existingAttributes?.[attrIndex]?.values?.[valueIndex]?.images as string[])
+                  : []
+              }
             />
           ))}
         </div>
@@ -1633,6 +1667,7 @@ function AttributeValueManager({
   errors,
   onRemove,
   canRemove,
+  existingImageUrls,
 }: AttributeValueManagerProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-4">
@@ -1754,10 +1789,30 @@ function AttributeValueManager({
                   ) || [];
                 setValue(
                   `attributes.${attrIndex}.values.${valueIndex}.images`,
-                  [...currentImages, ...files]
+                  [...currentImages, ...files],
+                  { shouldDirty: true, shouldValidate: false }
                 );
               }}
             />
+
+            {Array.isArray(existingImageUrls) && existingImageUrls.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <p className="text-sm font-medium text-gray-700">Current Images</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {existingImageUrls.map((url: string, imageIndex: number) => (
+                    <div key={imageIndex} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Existing color ${valueIndex + 1} image ${imageIndex + 1}`}
+                        className="w-full h-16 object-cover rounded border"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">These are already saved. New uploads will be added on update.</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-4 gap-2">
               {watch(
@@ -1781,7 +1836,8 @@ function AttributeValueManager({
                       );
                       setValue(
                         `attributes.${attrIndex}.values.${valueIndex}.images`,
-                        updatedImages
+                        updatedImages,
+                        { shouldDirty: true, shouldValidate: false }
                       );
                     }}
                     variant="destructive"
@@ -1953,6 +2009,8 @@ function VariantList({
   onEditVariant,
   onDeleteVariant,
   attributes,
+  register,
+  setValue,
 }: VariantListProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
     const attribute = attributes.find((attr: any) => attr.type === attrType);
@@ -1968,6 +2026,7 @@ function VariantList({
   const calculateVariantPrice = (variant: any) => {
     return parseFloat(variant.price || "0");
   };
+
 
   if (variants.length === 0) {
     return (
@@ -1997,42 +2056,37 @@ function VariantList({
       <CardHeader>
         <CardTitle>Created Variants ({variants.length})</CardTitle>
         <p className="text-sm text-gray-600">
-          These are the exact variants that will be created for your product
+          These are the exact variants that will be created for your product. You can edit stock and price directly.
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {variants.map((variant: any, index: number) => (
             <div
               key={variant.id}
-              className="flex items-center justify-between p-4 border rounded-lg"
+              className="p-4 border rounded-lg space-y-3"
             >
-              <div className="flex-1">
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {Object.entries(variant).map(([key, value]) => {
-                    if (
-                      key !== "customPrice" &&
-                      key !== "stock" &&
-                      key !== "id" &&
-                      value
-                    ) {
-                      return (
-                        <Badge key={key} variant="secondary">
-                          {key}: {getAttributeLabel(key, value as string)}
-                        </Badge>
-                      );
-                    }
-                    return null;
-                  })}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {Object.entries(variant).map(([key, value]) => {
+                      if (
+                        key !== "customPrice" &&
+                        key !== "stock" &&
+                        key !== "id" &&
+                        key !== "price" &&
+                        value
+                      ) {
+                        return (
+                          <Badge key={key} variant="secondary">
+                            {key}: {getAttributeLabel(key, value as string)}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                 </div>
-                <div className="flex gap-4 text-sm text-gray-600">
-                  <span>Stock: {variant.stock}</span>
-                  <span>
-                    Price: ৳{calculateVariantPrice(variant).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -2042,6 +2096,35 @@ function VariantList({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Price *
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register(`manualVariants.${index}.price`)}
+                    placeholder="Enter price"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Stock *
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register(`manualVariants.${index}.stock`)}
+                    placeholder="Enter stock"
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           ))}

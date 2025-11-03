@@ -49,6 +49,10 @@ const data = {
           title: "Add Product",
           url: "/admin/dashboard/add-product",
         },
+        {
+          title: "Stock",
+          url: "/admin/dashboard/stock",
+        },
       ],
     },
     {
