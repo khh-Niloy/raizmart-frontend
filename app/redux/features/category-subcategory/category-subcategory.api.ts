@@ -4,19 +4,25 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Categories
     createCategory: builder.mutation({
-      query: (payload) => ({
+      query: (formData) => ({
         url: "/categories",
         method: "POST",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["CATEGORIES"],
     }),
 
     updateCategory: builder.mutation({
-      query: ({ id, ...payload }) => ({
+      query: ({ id, formData }) => ({
         url: `/categories/${id}`,
         method: "PATCH",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["CATEGORIES"],
     }),
@@ -32,19 +38,25 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
 
     // Subcategories
     createSubcategory: builder.mutation({
-      query: (payload) => ({
+      query: (formData) => ({
         url: "/subcategories",
         method: "POST",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["SUBCATEGORIES"],
     }),
 
     updateSubcategory: builder.mutation({
-      query: ({ id, ...payload }) => ({
+      query: ({ id, formData }) => ({
         url: `/subcategories/${id}`,
         method: "PATCH",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["SUBCATEGORIES"],
     }),
@@ -60,19 +72,25 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
 
     // Sub-Subcategories
     createSubSubcategory: builder.mutation({
-      query: (payload) => ({
+      query: (formData) => ({
         url: "/sub-subcategories",
         method: "POST",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["SUB_SUBCATEGORIES"],
     }),
 
     updateSubSubcategory: builder.mutation({
-      query: ({ id, ...payload }) => ({
+      query: ({ id, formData }) => ({
         url: `/sub-subcategories/${id}`,
         method: "PATCH",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["SUB_SUBCATEGORIES"],
     }),

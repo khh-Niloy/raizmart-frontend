@@ -181,7 +181,7 @@ export default function AllProductPage() {
                 Manage your product inventory ({filteredProducts.length} products)
               </p>
             </div>
-            <Link href="/admin/dashboard/add-product">
+            <Link href="/admin/dashboard/add-product" className="cursor-pointer">
               <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                 <Plus className="h-4 w-4" />
                 Add Product
@@ -270,7 +270,7 @@ export default function AllProductPage() {
                     ? "No products match your current filters."
                     : "Get started by adding your first product."}
                 </p>
-                <Link href="/admin/dashboard/add-product">
+                <Link href="/admin/dashboard/add-product" className="cursor-pointer">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Product
@@ -312,7 +312,7 @@ export default function AllProductPage() {
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/admin/dashboard/edit-product/${product._id}`}>
+                            <Link href={`/admin/dashboard/edit-product/${product._id}`} className="cursor-pointer">
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Product
                             </Link>

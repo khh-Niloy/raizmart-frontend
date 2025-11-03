@@ -23,7 +23,7 @@ export default function BrandListing({ params }: { params: Promise<{ brand: stri
       <h1 className="text-2xl font-semibold mb-4">{context?.brand?.name}</h1>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items?.map((p: any) => (
-          <Link key={p._id} href={`/product/${p.slug}`} className="border rounded p-3 block hover:shadow-sm">
+          <Link key={p._id} href={`/product/${p.slug}`} className="border rounded p-3 block hover:shadow-sm cursor-pointer">
             <div className="font-medium mb-1">{p.name}</div>
             <div className="text-sm text-gray-500">{p.brand?.name}</div>
           </Link>

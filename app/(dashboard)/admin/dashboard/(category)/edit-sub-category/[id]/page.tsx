@@ -15,7 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useGetCategoriesQuery, useGetSubcategoriesQuery, useUpdateSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import {
+  useGetCategoriesQuery,
+  useGetSubcategoriesQuery,
+  useUpdateSubcategoryMutation,
+} from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -24,6 +28,7 @@ const subcategorySchema = z.object({
   name: z.string().min(1, "Sub-category name is required"),
   category: z.string().min(1, "Please select a parent category"),
   isActive: z.boolean(),
+  image: z.any().optional(),
 });
 
 type SubcategoryFormData = z.infer<typeof subcategorySchema>;
@@ -31,10 +36,13 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 export default function EditSubcategoryPage() {
   const params = useParams();
   const subcategoryId = params.id as string;
-  
-  const { data: categoriesResponse, isFetching: isCategoriesLoading } = useGetCategoriesQuery(undefined);
-  const { data: subcategoriesResponse, isFetching: isSubcategoriesLoading } = useGetSubcategoriesQuery(undefined);
-  const [updateSubcategory, { isLoading: isUpdating }] = useUpdateSubcategoryMutation();
+
+  const { data: categoriesResponse, isFetching: isCategoriesLoading } =
+    useGetCategoriesQuery(undefined);
+  const { data: subcategoriesResponse, isFetching: isSubcategoriesLoading } =
+    useGetSubcategoriesQuery(undefined);
+  const [updateSubcategory, { isLoading: isUpdating }] =
+    useUpdateSubcategoryMutation();
 
   const {
     register,
@@ -51,37 +59,65 @@ export default function EditSubcategoryPage() {
     },
   });
 
+  const [currentImage, setCurrentImage] = React.useState<string | undefined>(
+    undefined
+  );
+
   // Load existing subcategory data
   useEffect(() => {
-    if (subcategoriesResponse && subcategoryId) {
-      const subcategories: any[] = (subcategoriesResponse?.data ?? subcategoriesResponse ?? []) as any[];
+    if (subcategoriesResponse && categoriesResponse && subcategoryId) {
+      // same...
+      const subcategories: any[] = (subcategoriesResponse?.data ??
+        subcategoriesResponse ??
+        []) as any[];
       const currentSubcategory = subcategories.find(
         (item: any) => (item.id ?? item._id) === subcategoryId
       );
-      
       if (currentSubcategory) {
-        const formData = {
-          name: currentSubcategory.name ?? "",
-          category: currentSubcategory.category?.id ?? currentSubcategory.category ?? "",
-          isActive: currentSubcategory.isActive ?? true,
-        };
-        reset(formData);
+        setCurrentImage(currentSubcategory?.image ?? undefined);
+        const catValue =
+          typeof currentSubcategory.category === "object"
+            ? String(
+                currentSubcategory.category._id ??
+                  currentSubcategory.category.id
+              )
+            : String(currentSubcategory.category ?? "");
+        // Check if catValue is in categories list
+        const catExists = (
+          categoriesResponse?.data ??
+          categoriesResponse ??
+          []
+        ).some((cat: any) => String(cat.id ?? cat._id) === catValue);
+        if (catExists) {
+          reset({
+            name: currentSubcategory.name ?? "",
+            category: catValue,
+            isActive: currentSubcategory.isActive ?? true,
+          });
+        }
       }
     }
-  }, [subcategoriesResponse, subcategoryId, reset]);
+  }, [subcategoriesResponse, categoriesResponse, subcategoryId, reset]);
 
   const onSubmit = async (data: SubcategoryFormData) => {
     try {
-      const payload = {
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("category", data.category);
+      formData.append("isActive", String(data.isActive));
+      if (
+        data.image &&
+        data.image instanceof FileList &&
+        data.image.length > 0
+      ) {
+        formData.append("image", data.image[0]);
+      }
+      const res = await updateSubcategory({
         id: subcategoryId,
-        ...data,
-      };
-      console.log("Update subcategory payload:", payload);
-      const res = await updateSubcategory(payload).unwrap();
-      console.log("Subcategory updated:", res);
+        formData,
+      }).unwrap();
       toast.success("Subcategory updated successfully!");
     } catch (error) {
-      console.error("Update subcategory failed:", error);
       toast.error("Failed to update subcategory. Please try again.");
     }
   };
@@ -91,43 +127,107 @@ export default function EditSubcategoryPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white">
           <div className="px-6 py-4">
-            <h1 className="text-2xl font-semibold text-gray-900">Edit Sub-category</h1>
-            <p className="text-gray-600 mt-1">Update sub-category information</p>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Edit Sub-category
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Update sub-category information
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
-            {/* Sub-category Name */}
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="px-6 pb-6 space-y-6"
+          >
+            {/* Sub-category Name & Image preview inline */}
+            <div className="flex items-center gap-6 space-y-0 mb-2">
+              <div className="flex-1">
+                <Label
+                  htmlFor="name"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Sub-category Name *
+                </Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="Enter sub-category name"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors?.name && (
+                  <p className="text-sm text-red-600">
+                    {errors?.name?.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            {!!currentImage && (
+              <div className="flex-shrink-0 my-5">
+                <img
+                  src={currentImage}
+                  alt="Current Sub-category"
+                  className="h-14 w-14 rounded border border-gray-200 object-contain"
+                />
+              </div>
+            )}
+            {/* Image upload field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                Sub-category Name *
+              <Label
+                htmlFor="image"
+                className="text-sm font-medium text-gray-700"
+              >
+                Image
               </Label>
               <Input
-                id="name"
-                {...register("name")}
-                placeholder="Enter sub-category name"
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register("image")}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.name && (
-                <p className="text-sm text-red-600">{errors.name.message}</p>
+              {errors.image && (
+                <p className="text-sm text-red-600">
+                  {errors.image.message as string}
+                </p>
               )}
             </div>
 
             {/* Parent Category Selection */}
             <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium text-gray-700">
+              <Label
+                htmlFor="category"
+                className="text-sm font-medium text-gray-700"
+              >
                 Parent Category *
               </Label>
               <Controller
                 control={control}
                 name="category"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isCategoriesLoading}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isCategoriesLoading}
+                  >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a parent category"} />
+                      <SelectValue
+                        placeholder={
+                          isCategoriesLoading
+                            ? "Loading categories..."
+                            : "Select a parent category"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {(categoriesResponse?.data ?? categoriesResponse ?? []).map((category: any) => (
-                        <SelectItem key={category.id ?? category._id} value={(category.id ?? category._id) as string}>
+                      {(
+                        categoriesResponse?.data ??
+                        categoriesResponse ??
+                        []
+                      ).map((category: any) => (
+                        <SelectItem
+                          key={category.id ?? category._id}
+                          value={(category.id ?? category._id) as string}
+                        >
                           {category.name ?? category.categoryName ?? "Unnamed"}
                         </SelectItem>
                       ))}
@@ -136,13 +236,18 @@ export default function EditSubcategoryPage() {
                 )}
               />
               {errors.category && (
-                <p className="text-sm text-red-600">{errors.category.message}</p>
+                <p className="text-sm text-red-600">
+                  {errors.category.message}
+                </p>
               )}
             </div>
 
             {/* Active Status */}
             <div className="space-y-2">
-              <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+              <Label
+                htmlFor="isActive"
+                className="text-sm font-medium text-gray-700"
+              >
                 Status
               </Label>
               <Controller
@@ -165,16 +270,14 @@ export default function EditSubcategoryPage() {
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="px-8 py-2"
-              >
+              <Button type="button" variant="outline" className="px-8 py-2">
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={isCategoriesLoading || isSubcategoriesLoading || isUpdating}
+                disabled={
+                  isCategoriesLoading || isSubcategoriesLoading || isUpdating
+                }
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 disabled:opacity-60"
               >
                 {isUpdating ? "Updating..." : "Update Sub-category"}
@@ -186,8 +289,3 @@ export default function EditSubcategoryPage() {
     </div>
   );
 }
-
-
-
-
-

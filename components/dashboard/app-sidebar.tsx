@@ -30,7 +30,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home, LayoutDashboard, Tag, Star } from "lucide-react";
+import { Home, LayoutDashboard, Tag, Star, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon } from "lucide-react";
 
 // This is sample data.
 const data = {
@@ -48,6 +48,10 @@ const data = {
         {
           title: "Add Product",
           url: "/admin/dashboard/add-product",
+        },
+        {
+          title: "Stock",
+          url: "/admin/dashboard/stock",
         },
       ],
     },
@@ -131,17 +135,45 @@ const data = {
     },
 
     {
-      title: "Offers and Free delivery",
+      title: "Free delivery",
       // url: "#",
-      icon: ShoppingCart,
+      icon: TruckIcon,
       items: [
         {
-          title: "Manage Offers",
-          url: "/admin/dashboard/manage-offers",
+          title: "All Offers",
+          url: "/admin/dashboard/all-offer",
+        },
+      ],
+    },
+
+    {
+      title: "Offers",
+      // url: "#",
+      icon: PercentIcon,
+      items: [
+        {
+          title: "All Offers",
+          url: "/admin/dashboard/all-offer",
         },
         {
-          title: "Manage Free Delivery",
-          url: "/admin/dashboard/manage-free-delivery",
+          title: "Create offer",
+          url: "/admin/dashboard/create-offer",
+        },
+      ],
+    },
+
+    {
+      title: "Coupons",
+      // url: "#",
+      icon: CouponIcon,
+      items: [
+        {
+          title: "All Coupons",
+          url: "/admin/dashboard/all-coupons",
+        },
+        {
+          title: "Create Coupon",
+          url: "/admin/dashboard/create-coupons",
         },
       ],
     },

@@ -17,6 +17,7 @@ import {
 
 const brandSchema = z.object({
   name: z.string().min(1, "Brand name is required"),
+  image: z.any().optional(),
 });
 
 type BrandFormData = z.infer<typeof brandSchema>;
@@ -38,11 +39,14 @@ export default function EditBrandPage() {
     resolver: zodResolver(brandSchema),
   });
 
+  const [currentImage, setCurrentImage] = React.useState<string | undefined>(undefined);
+
   // Load brand data when component mounts
   useEffect(() => {
     if (brandsResponse && brandId) {
       const brand = brandsResponse.find((b: any) => b._id === brandId);
       if (brand) {
+        setCurrentImage(brand.image ?? undefined);
         reset({
           name: brand.name,
         });
@@ -52,16 +56,14 @@ export default function EditBrandPage() {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      const payload = {
-        id: brandId,
-        ...data,
-      };
-      console.log("Update brand payload:", payload);
-      const res = await updateBrand(payload).unwrap();
-      console.log("Brand updated:", res);
+      const formData = new FormData();
+      formData.append('name', data.name);
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append('image', data.image[0]);
+      }
+      const res = await updateBrand({ id: brandId, formData }).unwrap();
       toast.success("Brand updated successfully!");
     } catch (error) {
-      console.error("Update brand failed:", error);
       toast.error("Failed to update brand. Please try again.");
     }
   };
@@ -77,8 +79,8 @@ export default function EditBrandPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <Card className="max-w-md mx-auto">
+    <div className="min-h-screen bg-white">
+      <Card className="w-full px-4 sm:px-6 lg:px-8 py-8 border-none">
         <CardHeader>
           <CardTitle>Edit Brand</CardTitle>
         </CardHeader>
@@ -96,7 +98,29 @@ export default function EditBrandPage() {
                 <p className="text-sm text-red-500">{errors.name.message}</p>
               )}
             </div>
-
+            {!!currentImage && (
+              <div className="my-2 flex items-center">
+                <img
+                  src={currentImage?.startsWith?.('http') ? currentImage : '/' + currentImage?.replace?.(/^\/*/, '')}
+                  alt="Brand"
+                  className="h-14 w-14 rounded border border-gray-200 object-contain mr-2"
+                />
+                <span className="text-xs text-gray-600">Current Image</span>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="image">Brand Image (optional)</Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register("image")}
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.image && (
+                <p className="text-sm text-red-500">{errors.image.message as string}</p>
+              )}
+            </div>
             <Button
               type="submit"
               className="w-full"

@@ -43,6 +43,15 @@ const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
   ssr: false,
 });
 
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp =
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
 // Tech attribute types for dropdown
 const TECH_ATTRIBUTE_TYPES = [
   { value: "color", label: "Color" },
@@ -93,21 +102,32 @@ const specificationSchema = z.object({
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
+  descriptionImage: z.instanceof(File).optional(),
+  video: z.string().optional(),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().min(1, "Sub Category is required"),
   subSubCategory: z.string().optional(),
   searchTags: z.string().optional(),
-  attributes: z
-    .array(attributeSchema)
-    .min(1, "At least one attribute is required"),
-  manualVariants: z
-    .array(manualVariantSchema)
-    .min(1, "At least one variant is required"),
-  specifications: z
-    .array(specificationSchema)
-    .min(1, "At least one specification is required"),
+  // Allow products without attributes; variants can still be created with price and stock only
+  attributes: z.array(attributeSchema).default([]),
+  // Variants are optional if simple price/stock provided
+  manualVariants: z.array(manualVariantSchema).default([]),
+  // Allow products without specifications
+  specifications: z.array(specificationSchema).default([]),
+  // Optional gallery images to upload with the product
+  galleryImages: z.array(z.instanceof(File)).optional().default([]),
+  // Optional simple pricing (no attributes/variants)
+  simplePrice: z.string().optional(),
+  simpleStock: z.string().optional(),
+  categoryAssignments: z.array(
+    z.object({
+      category: z.string().min(1, "Category is required"),
+      subCategory: z.string().min(1, "Sub Category is required"),
+      subSubCategory: z.string().optional(),
+    })
+  ).default([]),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -122,6 +142,7 @@ interface AttributeManagerProps {
   errors: FieldErrors<ProductFormData>;
   onRemove: () => void;
   canRemove: boolean;
+  existingAttributes?: any[];
 }
 
 interface AttributeValueManagerProps {
@@ -135,6 +156,7 @@ interface AttributeValueManagerProps {
   errors: FieldErrors<ProductFormData>;
   onRemove: () => void;
   canRemove: boolean;
+  existingImageUrls?: string[];
 }
 
 interface VariantPreviewProps {
@@ -152,6 +174,8 @@ interface VariantListProps {
   onEditVariant: (index: number, variant: any) => void;
   onDeleteVariant: (index: number) => void;
   attributes: any[];
+  register: UseFormRegister<ProductFormData>;
+  setValue: UseFormSetValue<ProductFormData>;
 }
 
 export default function EditProductPage() {
@@ -160,23 +184,26 @@ export default function EditProductPage() {
 
   const { data: product, isLoading: isProductLoading } =
     useGetProductByIdQuery(productId);
+  console.log("product", product);
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   const {
     control,
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields, isDirty },
     watch,
     setValue,
     reset,
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
+      descriptionImage: undefined,
+      video: "",
       description: JSON.stringify({
         type: "doc",
-        content: [],
+        content: []
       }),
       brand: "",
       category: "",
@@ -186,8 +213,15 @@ export default function EditProductPage() {
       attributes: [],
       manualVariants: [],
       specifications: [],
+      galleryImages: [],
+      simplePrice: "",
+      simpleStock: "",
+      categoryAssignments: [],
     },
   });
+
+  // Determine if there are any changes in the form (built-in)
+  const isAnyDirty = isDirty;
 
   const {
     fields: attributeFields,
@@ -217,6 +251,15 @@ export default function EditProductPage() {
     name: "specifications",
   });
 
+  const {
+    fields: assignmentFields,
+    append: appendAssignment,
+    remove: removeAssignment,
+  } = useFieldArray({
+    control,
+    name: "categoryAssignments",
+  });
+
   // Load brands, categories, subcategories and sub-subcategories
   const { data: brandsResp, isFetching: isBrandsLoading } =
     useGetBrandsQuery(undefined);
@@ -244,29 +287,31 @@ export default function EditProductPage() {
 
   const filteredSubcategories = React.useMemo(() => {
     if (!selectedCategoryId) return [];
+    const categoryIdStr = String(selectedCategoryId);
     return allSubcategories.filter((sc: any) => {
       if (typeof sc.category === "string")
-        return sc.category === selectedCategoryId;
+        return String(sc.category) === categoryIdStr;
       if (sc.category && typeof sc.category === "object") {
-        const id = (sc.category.id ?? sc.category._id) as string;
-        return id === selectedCategoryId;
+        const id = String(sc.category.id ?? sc.category._id ?? "");
+        return id === categoryIdStr;
       }
       // fallback to potential parentId field
-      return sc.parentCategoryId === selectedCategoryId;
+      return String(sc.parentCategoryId ?? "") === categoryIdStr;
     });
   }, [allSubcategories, selectedCategoryId]);
 
   const filteredSubSubcategories = React.useMemo(() => {
     if (!selectedSubCategoryId) return [];
+    const subCategoryIdStr = String(selectedSubCategoryId);
     return allSubSubcategories.filter((ssc: any) => {
       if (typeof ssc.subcategory === "string")
-        return ssc.subcategory === selectedSubCategoryId;
+        return String(ssc.subcategory) === subCategoryIdStr;
       if (ssc.subcategory && typeof ssc.subcategory === "object") {
-        const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
-        return id === selectedSubCategoryId;
+        const id = String(ssc.subcategory.id ?? ssc.subcategory._id ?? "");
+        return id === subCategoryIdStr;
       }
       // fallback to potential parentId field
-      return ssc.parentSubcategoryId === selectedSubCategoryId;
+      return String(ssc.parentSubcategoryId ?? "") === subCategoryIdStr;
     });
   }, [allSubSubcategories, selectedSubCategoryId]);
 
@@ -299,14 +344,27 @@ export default function EditProductPage() {
     prevSubCategoryRef.current = selectedSubCategoryId;
   }, [selectedSubCategoryId, setValue]);
 
-  // Load product data when component mounts
+  // Track if form has been initialized to prevent race conditions
+  const formInitialized = React.useRef(false);
+
+  // Load product data when component mounts - wait for categories to load first
   useEffect(() => {
-    if (product) {
+    // Wait for all required data to be loaded before initializing form
+    if (
+      product &&
+      !isBrandsLoading &&
+      !isCategoriesLoading &&
+      !isSubcategoriesLoading &&
+      !isSubSubcategoriesLoading &&
+      !formInitialized.current
+    ) {
       console.log("Loading product data:", product);
 
       // Convert backend data to form format
       const formData: ProductFormData = {
         name: product.name || "",
+        descriptionImage: undefined, // File uploads need to be handled separately
+        video: product.video || (product as any).video_url || "",
         description:
           product.description || JSON.stringify({ type: "doc", content: [] }),
         brand: String(product.brand?._id || product.brand || ""),
@@ -352,18 +410,40 @@ export default function EditProductPage() {
             key: spec.key || "",
             value: spec.value || "",
           })) || [],
+        galleryImages: [], // Existing gallery images will be shown separately
+        simplePrice: (product as any).price?.toString() || "",
+        simpleStock: (product as any).stock?.toString() || "",
+        categoryAssignments: (product as any)?.categoryAssignments?.map((assignment: any) => ({
+          category: String(assignment.category?._id || assignment.category || ""),
+          subCategory: String(assignment.subCategory?._id || assignment.subCategory || ""),
+          subSubCategory: assignment.subSubCategory
+            ? String(assignment.subSubCategory._id || assignment.subSubCategory)
+            : "",
+        })) || [],
       };
 
       reset(formData);
+      formInitialized.current = true;
     }
-  }, [product, reset]);
+  }, [
+    product,
+    isBrandsLoading,
+    isCategoriesLoading,
+    isSubcategoriesLoading,
+    isSubSubcategoriesLoading,
+    reset,
+    setValue,
+  ]);
 
-  // Re-assert prefilled selects after options load to ensure label displays
+  // Reset form initialization flag when product ID changes
   useEffect(() => {
-    if (!product) return;
-    const prodCategory = String(
-      product.category?._id || product.category || ""
-    );
+    formInitialized.current = false;
+  }, [productId]);
+
+  // Ensure subcategory and sub-subcategory values are set after filtering completes
+  useEffect(() => {
+    if (!product || !formInitialized.current) return;
+    
     const prodSubCategory = product.subCategory
       ? String(product.subCategory._id || product.subCategory)
       : "";
@@ -371,111 +451,142 @@ export default function EditProductPage() {
       ? String(product.subSubCategory._id || product.subSubCategory)
       : "";
 
-    if (!isCategoriesLoading && prodCategory) {
-      setValue("category", prodCategory);
+    // Only set if filtered lists have items and value exists in the filtered list
+    if (prodSubCategory && filteredSubcategories.length > 0) {
+      const exists = filteredSubcategories.some(
+        (sc: any) => String(sc.id ?? sc._id) === prodSubCategory
+      );
+      if (exists) {
+        setValue("subCategory", prodSubCategory, { shouldValidate: false });
+      }
     }
-    if (!isSubcategoriesLoading && prodSubCategory) {
-      setValue("subCategory", prodSubCategory);
-    }
-    if (!isSubSubcategoriesLoading && prodSubSubCategory) {
-      setValue("subSubCategory", prodSubSubCategory);
+
+    if (prodSubSubCategory && filteredSubSubcategories.length > 0) {
+      const exists = filteredSubSubcategories.some(
+        (ssc: any) => String(ssc.id ?? ssc._id) === prodSubSubCategory
+      );
+      if (exists) {
+        setValue("subSubCategory", prodSubSubCategory, { shouldValidate: false });
+      }
     }
   }, [
     product,
-    isCategoriesLoading,
-    isSubcategoriesLoading,
-    isSubSubcategoriesLoading,
+    filteredSubcategories,
+    filteredSubSubcategories,
     setValue,
   ]);
 
   const onSubmit = async (data: ProductFormData) => {
     try {
       console.log("Updating product with data:", data);
-
-      // Validate that at least one variant is created
-      if (!data.manualVariants || data.manualVariants.length === 0) {
-        toast.error("Please create at least one variant before submitting");
-        return;
-      }
-
+      
       // Create FormData for multer backend
       const formData = new FormData();
 
-      // Add basic product data
-      formData.append("name", data.name);
-      formData.append("brand", data.brand);
-      formData.append("category", data.category);
-      formData.append("subCategory", data.subCategory);
-      formData.append("subSubCategory", data.subSubCategory || "");
-      formData.append("searchTags", data.searchTags || "");
+      // Helper to check nested dirty
+      const hasDirty = (obj: any): boolean => {
+        if (!obj) return false;
+        if (typeof obj === "boolean") return obj;
+        if (Array.isArray(obj)) return obj.some((v) => hasDirty(v));
+        if (typeof obj === "object") return Object.values(obj).some((v) => hasDirty(v));
+        return false;
+      };
+
+      // Add only changed primitive/basic fields
+      if ((dirtyFields as any).name) formData.append("name", data.name);
+      if ((dirtyFields as any).brand) formData.append("brand", data.brand);
+      if ((dirtyFields as any).category) formData.append("category", data.category);
+      if ((dirtyFields as any).subCategory) formData.append("subCategory", data.subCategory);
+      if ((dirtyFields as any).subSubCategory) formData.append("subSubCategory", data.subSubCategory || "");
+      if ((dirtyFields as any).searchTags) formData.append("searchTags", data.searchTags || "");
+
+      // Add description image if provided
+      if ((dirtyFields as any).descriptionImage && data.descriptionImage) {
+        formData.append("descriptionImage", data.descriptionImage);
+      }
+
+      // Add video URL
+      if ((dirtyFields as any).video) {
+        formData.append("video", data.video || "");
+      }
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
-      if (data.description) {
+      if ((dirtyFields as any).description && data.description) {
         formData.append("description", data.description);
       }
 
-      // Add specifications
-      formData.append("specifications", JSON.stringify(data.specifications));
+      // Add specifications only if changed
+      if (hasDirty((dirtyFields as any).specifications)) {
+        formData.append("specifications", JSON.stringify(data.specifications));
+      }
 
-      // Handle attributes with images
-      data.attributes.forEach((attribute, attrIndex) => {
-        formData.append(`attributes[${attrIndex}][name]`, attribute.name);
-        formData.append(`attributes[${attrIndex}][type]`, attribute.type);
-        formData.append(
-          `attributes[${attrIndex}][isRequired]`,
-          String(attribute.isRequired || true)
-        );
-        formData.append(
-          `attributes[${attrIndex}][displayOrder]`,
-          String(attribute.displayOrder || 0)
-        );
+      // Handle attributes with images - only if any attribute path is dirty
+      if (hasDirty((dirtyFields as any).attributes)) {
+        data.attributes.forEach((attribute, attrIndex) => {
+          formData.append(`attributes[${attrIndex}][name]`, attribute.name);
+          formData.append(`attributes[${attrIndex}][type]`, attribute.type);
+          formData.append(`attributes[${attrIndex}][isRequired]`, String(attribute.isRequired || true));
+          formData.append(`attributes[${attrIndex}][displayOrder]`, String(attribute.displayOrder || 0));
 
-        attribute.values.forEach((value, valueIndex) => {
-          formData.append(
-            `attributes[${attrIndex}][values][${valueIndex}][label]`,
-            value.label
-          );
-          formData.append(
-            `attributes[${attrIndex}][values][${valueIndex}][value]`,
-            value.value
-          );
-          formData.append(
-            `attributes[${attrIndex}][values][${valueIndex}][isDefault]`,
-            String(value.isDefault || false)
-          );
+          attribute.values.forEach((value, valueIndex) => {
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
+            formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
+            
+            if (value.colorCode) {
+              formData.append(`attributes[${attrIndex}][values][${valueIndex}][colorCode]`, value.colorCode);
+            }
 
-          if (value.colorCode) {
-            formData.append(
-              `attributes[${attrIndex}][values][${valueIndex}][colorCode]`,
-              value.colorCode
-            );
-          }
-
-          // Add images for color attributes
-          if (value.images && value.images.length > 0) {
-            value.images.forEach((image, imageIndex) => {
-              formData.append(
-                `attributes[${attrIndex}][values][${valueIndex}][images][${imageIndex}]`,
-                image
-              );
-            });
-          }
+            // Add images for color attributes (new uploads only)
+            if (value.images && (value.images as any[]).length > 0) {
+              (value.images as any[]).forEach((image: File, imageIndex: number) => {
+                formData.append(
+                  `attributes[${attrIndex}][values][${valueIndex}][images][${imageIndex}]`,
+                  image
+                );
+              });
+            }
+          });
         });
-      });
+      }
 
-      // Handle manual variants
-      const manualVariants = data.manualVariants.map((variant) => ({
+      // Handle manual variants (optional)
+      const manualVariants = (data.manualVariants || []).map(variant => ({
         attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== "price" && key !== "stock" && value)
+          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
           .map(([key, value]) => ({
             attributeType: key,
-            selectedValue: value,
+            selectedValue: value
           })),
         price: parseInt(variant.price),
-        stock: parseInt(variant.stock),
+        stock: parseInt(variant.stock)
       }));
 
-      formData.append("manualVariants", JSON.stringify(manualVariants));
+      if (hasDirty((dirtyFields as any).manualVariants) && manualVariants.length > 0) {
+        formData.append("manualVariants", JSON.stringify(manualVariants));
+      }
+
+      // Add simple price/stock if provided (no variants use-case)
+      if ((dirtyFields as any).simplePrice && data.simplePrice) formData.append("price", data.simplePrice);
+      if ((dirtyFields as any).simpleStock && data.simpleStock) formData.append("stock", data.simpleStock);
+
+      // Append gallery images (if any)
+      const galleryImages = (data.galleryImages as unknown as File[]) || [];
+      if (hasDirty((dirtyFields as any).galleryImages) && Array.isArray(galleryImages) && galleryImages.length > 0) {
+        galleryImages.forEach((file) => {
+          formData.append("galleryImages", file);
+        });
+      }
+
+      // Add extra category routes
+      if (hasDirty((dirtyFields as any).categoryAssignments)) {
+        const validAssignments = (data.categoryAssignments || [])
+          .filter((r: any) => r?.category && r?.subCategory)
+          .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+        if (validAssignments.length > 0) {
+          formData.append("categoryAssignments", JSON.stringify(validAssignments));
+        }
+      }
 
       console.log("FormData prepared for backend:", formData);
 
@@ -602,6 +713,98 @@ export default function EditProductPage() {
                   )}
                 </div>
 
+                {/* Description Image */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Description Image
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="descriptionImage"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <div className="space-y-2">
+                        <Input
+                          {...field}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            onChange(file);
+                          }}
+                          className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                        {value && (
+                          <div className="relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={URL.createObjectURL(value)}
+                              alt="Description preview"
+                              className="w-full h-48 object-cover rounded border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                              onClick={() => onChange(undefined)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                        {product && (product.descriptionImage || (product as any).description_image) && !value && (
+                          <div className="space-y-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={(product.descriptionImage || (product as any).description_image) as string}
+                              alt="Current description image"
+                              className="w-full h-48 object-cover rounded border"
+                            />
+                            <p className="text-xs text-gray-500">
+                              Current image. Upload a new image to replace it.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Video URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Video URL
+                  </Label>
+                  <Input
+                    {...register("video")}
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter a valid video URL (e.g., YouTube link) or leave empty to clear
+                  </p>
+                  {(() => {
+                    const videoUrl = watch("video");
+                    const videoId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                    return videoId ? (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
+                        <div className="relative w-full pt-[56.25%] bg-gray-200 rounded-lg overflow-hidden">
+                          <iframe
+                            className="absolute top-0 left-0 w-full h-full"
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            title="Video preview"
+                          />
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+
                 {/* Product Description */}
                 <div className="space-y-2">
                   <Label
@@ -705,11 +908,12 @@ export default function EditProductPage() {
                           key={
                             isSubcategoriesLoading
                               ? "subcategory-loading"
-                              : field.value
-                              ? String(field.value)
-                              : ""
+                              : `${field.value || ""}-${filteredSubcategories.length}-${selectedCategoryId || ""}`
                           }
-                          onValueChange={(val) => field.onChange(String(val))}
+                          onValueChange={(val) => {
+                            field.onChange(String(val));
+                            setValue("subCategory", String(val));
+                          }}
                           value={field.value ? String(field.value) : ""}
                           disabled={
                             !selectedCategoryId || isSubcategoriesLoading
@@ -764,11 +968,12 @@ export default function EditProductPage() {
                           key={
                             isSubSubcategoriesLoading
                               ? "subsubcategory-loading"
-                              : field.value
-                              ? String(field.value)
-                              : ""
+                              : `${field.value || ""}-${filteredSubSubcategories.length}-${selectedSubCategoryId || ""}`
                           }
-                          onValueChange={(val) => field.onChange(String(val))}
+                          onValueChange={(val) => {
+                            field.onChange(String(val));
+                            setValue("subSubCategory", String(val));
+                          }}
                           value={field.value ? String(field.value) : ""}
                           disabled={
                             !selectedSubCategoryId || isSubSubcategoriesLoading
@@ -828,6 +1033,210 @@ export default function EditProductPage() {
               </div>
             </div>
 
+            {/* Extra Category Routes */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Extra Category Routes
+                </h2>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    appendAssignment({ category: "", subCategory: "", subSubCategory: "" })
+                  }
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Route
+                </Button>
+              </div>
+
+              {assignmentFields.length === 0 ? (
+                <p className="text-sm text-gray-500">Add additional category paths as needed.</p>
+              ) : (
+                <div className="space-y-6">
+                  {assignmentFields.map((field, index) => {
+                    const selectedAssignCategoryId = watch(`categoryAssignments.${index}.category`);
+                    const selectedAssignSubCategoryId = watch(`categoryAssignments.${index}.subCategory`);
+
+                    const filteredAssignSubcategories = !selectedAssignCategoryId
+                      ? ([] as any[])
+                      : allSubcategories.filter((sc: any) => {
+                          if (typeof sc.category === "string") return sc.category === selectedAssignCategoryId;
+                          if (sc.category && typeof sc.category === "object") {
+                            const id = (sc.category.id ?? sc.category._id) as string;
+                            return id === selectedAssignCategoryId;
+                          }
+                          return sc.parentCategoryId === selectedAssignCategoryId;
+                        });
+
+                    const filteredAssignSubSubcategories = !selectedAssignSubCategoryId
+                      ? ([] as any[])
+                      : allSubSubcategories.filter((ssc: any) => {
+                          if (typeof ssc.subcategory === "string") return ssc.subcategory === selectedAssignSubCategoryId;
+                          if (ssc.subcategory && typeof ssc.subcategory === "object") {
+                            const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
+                            return id === selectedAssignSubCategoryId;
+                          }
+                          return ssc.parentSubcategoryId === selectedAssignSubCategoryId;
+                        });
+
+                    return (
+                      <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-gray-900">Route {index + 1}</h3>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removeAssignment(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.category` as const}
+                              render={({ field }) => (
+                                <Select
+                                  key={
+                                    isCategoriesLoading
+                                      ? `assign-category-loading-${index}`
+                                      : field.value
+                                      ? String(field.value)
+                                      : `assign-category-empty-${index}`
+                                  }
+                                  onValueChange={(val) => {
+                                    const valStr = String(val);
+                                    field.onChange(valStr);
+                                    setValue(`categoryAssignments.${index}.category`, valStr);
+                                    setValue(`categoryAssignments.${index}.subCategory`, "");
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  value={field.value ? String(field.value) : ""}
+                                  disabled={isCategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {categories.map((c: any) => {
+                                      const id = (c.id ?? c._id) as string;
+                                      const idStr = String(id);
+                                      const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={idStr} value={idStr}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  key={
+                                    isSubcategoriesLoading
+                                      ? `assign-subcategory-loading-${index}`
+                                      : field.value
+                                      ? String(field.value)
+                                      : `assign-subcategory-empty-${index}`
+                                  }
+                                  onValueChange={(val) => {
+                                    const valStr = String(val);
+                                    field.onChange(valStr);
+                                    setValue(`categoryAssignments.${index}.subCategory`, valStr);
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  value={field.value ? String(field.value) : ""}
+                                  disabled={!selectedAssignCategoryId || isSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredAssignSubcategories.length ? "Select a sub category" : "No sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubcategories.map((sc: any) => {
+                                      const id = (sc.id ?? sc._id) as string;
+                                      const idStr = String(id);
+                                      const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={idStr} value={idStr}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Sub Category (optional)</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subSubCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  key={
+                                    isSubSubcategoriesLoading
+                                      ? `assign-subsubcategory-loading-${index}`
+                                      : field.value
+                                      ? String(field.value)
+                                      : `assign-subsubcategory-empty-${index}`
+                                  }
+                                  onValueChange={(val) => {
+                                    const valStr = String(val);
+                                    field.onChange(valStr);
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, valStr);
+                                  }}
+                                  value={field.value ? String(field.value) : ""}
+                                  disabled={!selectedAssignSubCategoryId || isSubSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignSubCategoryId ? "Select a sub category first" : isSubSubcategoriesLoading ? "Loading sub sub categories..." : filteredAssignSubSubcategories.length ? "Select a sub sub category" : "No sub sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubSubcategories.map((ssc: any) => {
+                                      const id = (ssc.id ?? ssc._id) as string;
+                                      const idStr = String(id);
+                                      const name = (ssc.name ?? ssc.subSubCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={idStr} value={idStr}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Product Attributes Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -864,6 +1273,7 @@ export default function EditProductPage() {
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
                     canRemove={attributeFields.length > 1}
+                  existingAttributes={(product as any)?.attributes || []}
                   />
                 ))}
               </div>
@@ -881,7 +1291,117 @@ export default function EditProductPage() {
               onEditVariant={updateManualVariant}
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
+              register={register}
+              setValue={setValue}
             />
+
+            {/* Gallery Images */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
+                <Button
+                  type="button"
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    const input = document.getElementById("gallery-images-input") as HTMLInputElement;
+                    input?.click();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Images
+                </Button>
+              </div>
+
+              {/* Show existing gallery images if available */}
+              {(product as any)?.images && Array.isArray((product as any).images) && ((product as any).images as string[]).length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Current Gallery Images:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {((product as any).images as string[]).map((imgUrl, idx) => (
+                      <div key={idx} className="relative group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imgUrl}
+                          alt={`Gallery image ${idx + 1}`}
+                          className="w-full h-28 object-cover rounded border"
+                        />
+                        <p className="text-xs text-gray-500 mt-1 text-center">Current Image {idx + 1}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Upload new images below to add to gallery.</p>
+                </div>
+              )}
+
+              <input
+                id="gallery-images-input"
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const current = (watch("galleryImages") as unknown as File[]) || [];
+                  setValue("galleryImages", [...current, ...files] as any, { shouldDirty: true, shouldValidate: false });
+                }}
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {(watch("galleryImages") as unknown as File[] | undefined)?.map((file, idx) => (
+                  <div key={idx} className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Gallery image ${idx + 1}`}
+                      className="w-full h-28 object-cover rounded border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                      onClick={() => {
+                        const current = (watch("galleryImages") as unknown as File[]) || [];
+                        const updated = current.filter((_, i) => i !== idx);
+                        setValue("galleryImages", updated as any, { shouldDirty: true, shouldValidate: false });
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Simple Pricing (no attributes/variants) */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Price</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register("simplePrice")}
+                    placeholder="Enter price"
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Stock</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register("simpleStock")}
+                    placeholder="Enter stock"
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
+            </div>
 
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -961,10 +1481,10 @@ export default function EditProductPage() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isUpdating}
+          disabled={isUpdating || !isAnyDirty}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 disabled:opacity-50"
               >
-                {isUpdating ? "Updating Product..." : "Update Product"}
+          {isUpdating ? "Updating Product..." : "Update Product"}
               </Button>
             </div>
           </form>
@@ -984,6 +1504,7 @@ function AttributeManager({
   errors,
   onRemove,
   canRemove,
+  existingAttributes,
 }: AttributeManagerProps) {
   const {
     fields: valueFields,
@@ -1110,6 +1631,11 @@ function AttributeManager({
               errors={errors}
               onRemove={() => removeValue(valueIndex)}
               canRemove={valueFields.length > 1}
+              existingImageUrls={
+                Array.isArray(existingAttributes?.[attrIndex]?.values?.[valueIndex]?.images)
+                  ? (existingAttributes?.[attrIndex]?.values?.[valueIndex]?.images as string[])
+                  : []
+              }
             />
           ))}
         </div>
@@ -1141,6 +1667,7 @@ function AttributeValueManager({
   errors,
   onRemove,
   canRemove,
+  existingImageUrls,
 }: AttributeValueManagerProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-4">
@@ -1262,10 +1789,30 @@ function AttributeValueManager({
                   ) || [];
                 setValue(
                   `attributes.${attrIndex}.values.${valueIndex}.images`,
-                  [...currentImages, ...files]
+                  [...currentImages, ...files],
+                  { shouldDirty: true, shouldValidate: false }
                 );
               }}
             />
+
+            {Array.isArray(existingImageUrls) && existingImageUrls.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <p className="text-sm font-medium text-gray-700">Current Images</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {existingImageUrls.map((url: string, imageIndex: number) => (
+                    <div key={imageIndex} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Existing color ${valueIndex + 1} image ${imageIndex + 1}`}
+                        className="w-full h-16 object-cover rounded border"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">These are already saved. New uploads will be added on update.</p>
+              </div>
+            )}
 
             <div className="grid grid-cols-4 gap-2">
               {watch(
@@ -1289,7 +1836,8 @@ function AttributeValueManager({
                       );
                       setValue(
                         `attributes.${attrIndex}.values.${valueIndex}.images`,
-                        updatedImages
+                        updatedImages,
+                        { shouldDirty: true, shouldValidate: false }
                       );
                     }}
                     variant="destructive"
@@ -1317,8 +1865,8 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const [stock, setStock] = React.useState("");
 
   const handleAddVariant = () => {
-    if (Object.keys(selections).length === 0 || !price || !stock) {
-      toast.error("Please select attributes, set price and stock");
+    if (!price || !stock) {
+      toast.error("Please set price and stock");
       return;
     }
 
@@ -1461,6 +2009,8 @@ function VariantList({
   onEditVariant,
   onDeleteVariant,
   attributes,
+  register,
+  setValue,
 }: VariantListProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
     const attribute = attributes.find((attr: any) => attr.type === attrType);
@@ -1476,6 +2026,7 @@ function VariantList({
   const calculateVariantPrice = (variant: any) => {
     return parseFloat(variant.price || "0");
   };
+
 
   if (variants.length === 0) {
     return (
@@ -1505,42 +2056,37 @@ function VariantList({
       <CardHeader>
         <CardTitle>Created Variants ({variants.length})</CardTitle>
         <p className="text-sm text-gray-600">
-          These are the exact variants that will be created for your product
+          These are the exact variants that will be created for your product. You can edit stock and price directly.
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {variants.map((variant: any, index: number) => (
             <div
               key={variant.id}
-              className="flex items-center justify-between p-4 border rounded-lg"
+              className="p-4 border rounded-lg space-y-3"
             >
-              <div className="flex-1">
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {Object.entries(variant).map(([key, value]) => {
-                    if (
-                      key !== "customPrice" &&
-                      key !== "stock" &&
-                      key !== "id" &&
-                      value
-                    ) {
-                      return (
-                        <Badge key={key} variant="secondary">
-                          {key}: {getAttributeLabel(key, value as string)}
-                        </Badge>
-                      );
-                    }
-                    return null;
-                  })}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {Object.entries(variant).map(([key, value]) => {
+                      if (
+                        key !== "customPrice" &&
+                        key !== "stock" &&
+                        key !== "id" &&
+                        key !== "price" &&
+                        value
+                      ) {
+                        return (
+                          <Badge key={key} variant="secondary">
+                            {key}: {getAttributeLabel(key, value as string)}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                 </div>
-                <div className="flex gap-4 text-sm text-gray-600">
-                  <span>Stock: {variant.stock}</span>
-                  <span>
-                    Price: ৳{calculateVariantPrice(variant).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -1550,6 +2096,35 @@ function VariantList({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Price *
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register(`manualVariants.${index}.price`)}
+                    placeholder="Enter price"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Stock *
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register(`manualVariants.${index}.stock`)}
+                    placeholder="Enter stock"
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           ))}

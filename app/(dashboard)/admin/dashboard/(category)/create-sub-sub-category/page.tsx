@@ -21,6 +21,7 @@ import { toast } from "sonner";
 const subSubCategorySchema = z.object({
   name: z.string().min(1, "Sub-sub-category name is required"),
   subcategory: z.string().min(1, "Please select a parent sub-category"),
+  image: z.any().optional(),
 });
 
 type SubSubCategoryFormData = z.infer<typeof subSubCategorySchema>;
@@ -45,12 +46,14 @@ export default function CreateSubSubCategoryPage() {
 
   const onSubmit = async (data: SubSubCategoryFormData) => {
     try {
-      const payload = {
-        name: data.name,
-        subcategory: data.subcategory,
-      };
-      console.log("Sub-sub-category payload:", payload);
-      const res = await createSubSubcategory(payload).unwrap();
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('subcategory', data.subcategory);
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append('image', data.image[0]);
+      }
+      console.log("Sub-sub-category FormData:", Array.from(formData.entries()));
+      const res = await createSubSubcategory(formData).unwrap();
       console.log("Sub-sub-category created:", res);
       toast.success("Sub-sub-category created successfully!");
       reset();
@@ -83,6 +86,22 @@ export default function CreateSubSubCategoryPage() {
               />
               {errors.name && (
                 <p className="text-sm text-red-600">{errors.name.message}</p>
+              )}
+            </div>
+            {/* Image upload */}
+            <div className="space-y-2">
+              <Label htmlFor="image" className="text-sm font-medium text-gray-700">
+                Image
+              </Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register('image')}
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.image && (
+                <p className="text-sm text-red-600">{errors.image.message as string}</p>
               )}
             </div>
 

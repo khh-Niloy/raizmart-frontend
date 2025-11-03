@@ -13,6 +13,7 @@ import { toast } from "sonner";
 // Validation schema
 const brandSchema = z.object({
   name: z.string().min(1, "Brand name is required"),
+  image: z.any().optional(),
 });
 
 type BrandFormData = z.infer<typeof brandSchema>;
@@ -34,7 +35,12 @@ export default function CreateBrandPage() {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      const res = await createBrand(data).unwrap();
+      const formData = new FormData();
+      formData.append('name', data.name);
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append('image', data.image[0]);
+      }
+      const res = await createBrand(formData).unwrap();
       console.log("Brand created:", res);
       toast.success("Brand created successfully!");
       reset();
@@ -67,6 +73,22 @@ export default function CreateBrandPage() {
               />
               {errors.name && (
                 <p className="text-sm text-red-600">{errors.name.message}</p>
+              )}
+            </div>
+            {/* Brand Image */}
+            <div className="space-y-2">
+              <Label htmlFor="image" className="text-sm font-medium text-gray-700">
+                Brand Image
+              </Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register("image")}
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.image && (
+                <p className="text-sm text-red-600">{(errors.image as any).message}</p>
               )}
             </div>
 

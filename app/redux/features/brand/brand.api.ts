@@ -4,10 +4,13 @@ export const brandApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create Brand
     createBrand: builder.mutation({
-      query: (payload) => ({
+      query: (formData) => ({
         url: "/brands",
         method: "POST",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["BRANDS"],
     }),
@@ -24,10 +27,13 @@ export const brandApi = baseApi.injectEndpoints({
 
     // Update Brand
     updateBrand: builder.mutation({
-      query: ({ id, ...payload }) => ({
+      query: ({ id, formData }) => ({
         url: `/brands/${id}`,
         method: "PATCH",
-        data: payload,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       }),
       invalidatesTags: ["BRANDS"],
     }),

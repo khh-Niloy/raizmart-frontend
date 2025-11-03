@@ -36,7 +36,7 @@ export default function AllSubSubCategoryPage() {
                 <h1 className="text-2xl font-semibold text-gray-900">All Sub-Sub-Categories</h1>
                 <p className="text-gray-600 mt-1">Manage your sub-sub-categories</p>
               </div>
-              <Link href="/admin/dashboard/create-sub-sub-category">
+              <Link href="/admin/dashboard/create-sub-sub-category" className="cursor-pointer">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Sub-Sub-Category
@@ -60,13 +60,16 @@ export default function AllSubSubCategoryPage() {
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <CardTitle className="text-lg">{subSubCategory.name}</CardTitle>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {subSubCategory.name}
+                          </CardTitle>
                           <Badge variant={subSubCategory.isActive ? "default" : "secondary"}>
                             {subSubCategory.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </div>
+                        
                         <div className="flex items-center space-x-2">
-                          <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`}>
+                          <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`} className="cursor-pointer">
                             <Button variant="outline" size="sm">
                               <Edit className="w-4 h-4 mr-1" />
                               Edit
@@ -85,6 +88,13 @@ export default function AllSubSubCategoryPage() {
                         </div>
                       </div>
                     </CardHeader>
+                    {!!subSubCategory?.image && (
+                              <img
+                                src={subSubCategory.image}
+                                alt="Image"
+                                className="h-14 w-14 object-contain rounded border border-gray-200 bg-white ml-10"
+                              />
+                            )}
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         <div>

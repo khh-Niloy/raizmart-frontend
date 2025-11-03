@@ -17,5 +17,7 @@ export const baseApi = createApi({
     "SLIDERS",
     "OTHERS_IMAGES",
     "FEATURED_ITEMS",
+    "COUPONS",
+    "OFFERS",
   ],
 });

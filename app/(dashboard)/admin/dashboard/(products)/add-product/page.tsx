@@ -33,6 +33,15 @@ const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
   ssr: false,
 });
 
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp =
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
 // Tech attribute types for dropdown
 const TECH_ATTRIBUTE_TYPES = [
   { value: "color", label: "Color" },
@@ -81,15 +90,32 @@ const specificationSchema = z.object({
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
+  descriptionImage: z.instanceof(File).optional(),
+  video: z.string().optional(),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   category: z.string().min(1, "Category is required"),
   subCategory: z.string().min(1, "Sub Category is required"),
   subSubCategory: z.string().optional(),
   searchTags: z.string().optional(),
-  attributes: z.array(attributeSchema).min(1, "At least one attribute is required"),
-  manualVariants: z.array(manualVariantSchema).min(1, "At least one variant is required"),
-  specifications: z.array(specificationSchema).min(1, "At least one specification is required"),
+  // Allow products without attributes; variants can still be created with price and stock only
+  attributes: z.array(attributeSchema).default([]),
+  // Variants are optional if simple price/stock provided
+  manualVariants: z.array(manualVariantSchema).default([]),
+  // Allow products without specifications
+  specifications: z.array(specificationSchema).default([]),
+  // Optional gallery images to upload with the product
+  galleryImages: z.array(z.instanceof(File)).optional().default([]),
+  // Optional simple pricing (no attributes/variants)
+  simplePrice: z.string().optional(),
+  simpleStock: z.string().optional(),
+  categoryAssignments: z.array(
+    z.object({
+      category: z.string().min(1, "Category is required"),
+      subCategory: z.string().min(1, "Sub Category is required"),
+      subSubCategory: z.string().optional(),
+    })
+  ).default([]),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -147,9 +173,11 @@ export default function AddProductPage() {
     watch,
     setValue,
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
+      descriptionImage: undefined,
+      video: "",
       description: JSON.stringify({
         type: "doc",
         content: []
@@ -162,6 +190,10 @@ export default function AddProductPage() {
       attributes: [],
       manualVariants: [],
       specifications: [],
+      galleryImages: [],
+      simplePrice: "",
+      simpleStock: "",
+      categoryAssignments: [],
     },
   });
 
@@ -193,15 +225,18 @@ export default function AddProductPage() {
     name: "specifications",
   });
 
+  const {
+    fields: assignmentFields,
+    append: appendAssignment,
+    remove: removeAssignment,
+  } = useFieldArray({
+    control,
+    name: "categoryAssignments",
+  });
+
   const onSubmit = async (data: ProductFormData) => {
     try {
       console.log(data);
-      
-      // Validate that at least one variant is created
-      if (!data.manualVariants || data.manualVariants.length === 0) {
-        toast.error("Please create at least one variant before submitting");
-        return;
-      }
       
       // Create FormData for multer backend
       const formData = new FormData();
@@ -213,6 +248,14 @@ export default function AddProductPage() {
       formData.append("subCategory", data.subCategory);
       formData.append("subSubCategory", data.subSubCategory || "");
       formData.append("searchTags", data.searchTags || "");
+
+      // Add description image if provided
+      if (data.descriptionImage) {
+        formData.append("descriptionImage", data.descriptionImage);
+      }
+
+      // Add video URL
+      formData.append("video", data.video || "");
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
       if (data.description) {
@@ -250,8 +293,8 @@ export default function AddProductPage() {
         });
       });
 
-      // Handle manual variants
-      const manualVariants = data.manualVariants.map(variant => ({
+      // Handle manual variants (optional)
+      const manualVariants = (data.manualVariants || []).map(variant => ({
         attributeSelections: Object.entries(variant)
           .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
           .map(([key, value]) => ({
@@ -261,8 +304,30 @@ export default function AddProductPage() {
         price: parseInt(variant.price),
         stock: parseInt(variant.stock)
       }));
-      
-      formData.append("manualVariants", JSON.stringify(manualVariants));
+
+      if (manualVariants.length > 0) {
+        formData.append("manualVariants", JSON.stringify(manualVariants));
+      }
+
+      // Add simple price/stock if provided (no variants use-case)
+      if (data.simplePrice) formData.append("price", data.simplePrice);
+      if (data.simpleStock) formData.append("stock", data.simpleStock);
+
+      // Append gallery images (if any)
+      const galleryImages = (data.galleryImages as unknown as File[]) || [];
+      if (Array.isArray(galleryImages) && galleryImages.length > 0) {
+        galleryImages.forEach((file) => {
+          formData.append("galleryImages", file);
+        });
+      }
+
+      // Add extra category routes
+      const validAssignments = (data.categoryAssignments || [])
+        .filter((r: any) => r?.category && r?.subCategory)
+        .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+      if (validAssignments.length > 0) {
+        formData.append("categoryAssignments", JSON.stringify(validAssignments));
+      }
 
       console.log("FormData prepared for backend:", formData);
 
@@ -416,6 +481,85 @@ export default function AddProductPage() {
                       {errors.brand.message}
                     </p>
                   )}
+                </div>
+
+                {/* Description Image */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Description Image
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="descriptionImage"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <div className="space-y-2">
+                        <Input
+                          {...field}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            onChange(file);
+                          }}
+                          className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        />
+                        {value && (
+                          <div className="relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={URL.createObjectURL(value)}
+                              alt="Description preview"
+                              className="w-full h-48 object-cover rounded border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                              onClick={() => onChange(undefined)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Video URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Video URL
+                  </Label>
+                  <Input
+                    {...register("video")}
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter a valid video URL (e.g., YouTube link) or leave empty to clear
+                  </p>
+                  {(() => {
+                    const videoUrl = watch("video");
+                    const videoId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                    return videoId ? (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
+                        <div className="relative w-full pt-[56.25%] bg-gray-200 rounded-lg overflow-hidden">
+                          <iframe
+                            className="absolute top-0 left-0 w-full h-full"
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            title="Video preview"
+                          />
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Product Description */}
@@ -614,6 +758,178 @@ export default function AddProductPage() {
               </div>
             </div>
 
+            {/* Extra Category Routes */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Extra Category Routes
+                </h2>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    appendAssignment({ category: "", subCategory: "", subSubCategory: "" })
+                  }
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Route
+                </Button>
+              </div>
+
+              {assignmentFields.length === 0 ? (
+                <p className="text-sm text-gray-500">Add additional category paths as needed.</p>
+              ) : (
+                <div className="space-y-6">
+                  {assignmentFields.map((field, index) => {
+                    const selectedAssignCategoryId = watch(`categoryAssignments.${index}.category`);
+                    const selectedAssignSubCategoryId = watch(`categoryAssignments.${index}.subCategory`);
+
+                    const filteredAssignSubcategories = !selectedAssignCategoryId
+                      ? ([] as any[])
+                      : allSubcategories.filter((sc: any) => {
+                          if (typeof sc.category === "string") return sc.category === selectedAssignCategoryId;
+                          if (sc.category && typeof sc.category === "object") {
+                            const id = (sc.category.id ?? sc.category._id) as string;
+                            return id === selectedAssignCategoryId;
+                          }
+                          return sc.parentCategoryId === selectedAssignCategoryId;
+                        });
+
+                    const filteredAssignSubSubcategories = !selectedAssignSubCategoryId
+                      ? ([] as any[])
+                      : allSubSubcategories.filter((ssc: any) => {
+                          if (typeof ssc.subcategory === "string") return ssc.subcategory === selectedAssignSubCategoryId;
+                          if (ssc.subcategory && typeof ssc.subcategory === "object") {
+                            const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
+                            return id === selectedAssignSubCategoryId;
+                          }
+                          return ssc.parentSubcategoryId === selectedAssignSubCategoryId;
+                        });
+
+                    return (
+                      <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-gray-900">Route {index + 1}</h3>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removeAssignment(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.category` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue(`categoryAssignments.${index}.subCategory`, "");
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  defaultValue={field.value}
+                                  disabled={isCategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {categories.map((c: any) => {
+                                      const id = (c.id ?? c._id) as string;
+                                      const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Category</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                  }}
+                                  defaultValue={field.value}
+                                  disabled={!selectedAssignCategoryId || isSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredAssignSubcategories.length ? "Select a sub category" : "No sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubcategories.map((sc: any) => {
+                                      const id = (sc.id ?? sc._id) as string;
+                                      const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-gray-700">Sub Sub Category (optional)</Label>
+                            <Controller
+                              control={control}
+                              name={`categoryAssignments.${index}.subSubCategory` as const}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                  disabled={!selectedAssignSubCategoryId || isSubSubcategoriesLoading}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue
+                                      placeholder={!selectedAssignSubCategoryId ? "Select a sub category first" : isSubSubcategoriesLoading ? "Loading sub sub categories..." : filteredAssignSubSubcategories.length ? "Select a sub sub category" : "No sub sub categories"}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredAssignSubSubcategories.map((ssc: any) => {
+                                      const id = (ssc.id ?? ssc._id) as string;
+                                      const name = (ssc.name ?? ssc.subSubCategoryName ?? "Unnamed") as string;
+                                      return (
+                                        <SelectItem key={id} value={id}>
+                                          {name}
+                                        </SelectItem>
+                                      );
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Product Attributes Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -668,6 +984,93 @@ export default function AddProductPage() {
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
             />
+
+            {/* Gallery Images */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
+              <Button
+                type="button"
+                className="flex items-center gap-2"
+                onClick={() => {
+                  const input = document.getElementById("gallery-images-input") as HTMLInputElement;
+                  input?.click();
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Images
+              </Button>
+            </div>
+
+            <input
+              id="gallery-images-input"
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                const current = (watch("galleryImages") as unknown as File[]) || [];
+                setValue("galleryImages", [...current, ...files] as any);
+              }}
+            />
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {(watch("galleryImages") as unknown as File[] | undefined)?.map((file, idx) => (
+                <div key={idx} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Gallery image ${idx + 1}`}
+                    className="w-full h-28 object-cover rounded border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => {
+                      const current = (watch("galleryImages") as unknown as File[]) || [];
+                      const updated = current.filter((_, i) => i !== idx);
+                      setValue("galleryImages", updated as any);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Simple Pricing (no attributes/variants) */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Price</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  {...register("simplePrice")}
+                  placeholder="Enter price"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Stock</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  {...register("simpleStock")}
+                  placeholder="Enter stock"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
+          </div>
 
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1077,8 +1480,8 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const [stock, setStock] = React.useState("");
 
   const handleAddVariant = () => {
-    if (Object.keys(selections).length === 0 || !price || !stock) {
-      toast.error("Please select attributes, set price and stock");
+    if (!price || !stock) {
+      toast.error("Please set price and stock");
       return;
     }
 

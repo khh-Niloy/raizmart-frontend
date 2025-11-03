@@ -1,7 +1,18 @@
 "use client";
 import React from "react";
+import { useLocalCart } from "@/hooks/useLocalCart";
+import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
 import Link from "next/link";
+
+// Helper function to extract YouTube video ID from URL
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp =
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
 
 export default function ProductDetailBySlug({
   params,
@@ -13,6 +24,7 @@ export default function ProductDetailBySlug({
     resolvedParams.slug
   );
   const product = (data as any)?.data ?? null;
+  console.log(product);
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -86,6 +98,7 @@ export default function ProductDetailBySlug({
   });
   const specRef = React.useRef<HTMLDivElement | null>(null);
   const descRef = React.useRef<HTMLDivElement | null>(null);
+  const videoRef = React.useRef<HTMLDivElement | null>(null);
   const warrantyRef = React.useRef<HTMLDivElement | null>(null);
   const scrollToWithOffset = (el: HTMLElement | null, offset = 100) => {
     if (!el) return;
@@ -134,11 +147,17 @@ export default function ProductDetailBySlug({
     return map;
   }, [colorAttr]);
 
-  // Always show all images across variants
-  const galleryImages: string[] = React.useMemo(
-    () => allColorImages,
-    [allColorImages]
+  // Product-level images fallback when variant/color images are missing
+  const productLevelImages: string[] = React.useMemo(
+    () => (Array.isArray((product as any)?.images) ? ((product as any)?.images as string[]) : []),
+    [product?.images]
   );
+
+  // Prefer variant/color images; if none, fall back to product.images
+  const galleryImages: string[] = React.useMemo(() => {
+    if (allColorImages.length > 0) return allColorImages;
+    return productLevelImages;
+  }, [allColorImages, productLevelImages]);
 
   React.useEffect(() => {
     if (galleryImages.length > 0) {
@@ -259,6 +278,32 @@ export default function ProductDetailBySlug({
     if (typeof desc === "string") return desc; // assume already HTML
     return "";
   }, [product?.description]);
+
+  // Extract video and descriptionImage from product
+  const videoUrl = React.useMemo(() => {
+    return (product as any)?.video || (product as any)?.video_url || "";
+  }, [product]);
+
+  const descriptionImageUrl = React.useMemo(() => {
+    return (product as any)?.descriptionImage || (product as any)?.description_image || "";
+  }, [product]);
+
+  const videoId = React.useMemo(() => {
+    return videoUrl ? getYouTubeVideoId(videoUrl) : null;
+  }, [videoUrl]);
+
+  // Presence flags
+  const hasSpecs = React.useMemo(
+    () => Array.isArray((product as any)?.specifications) && ((product as any)?.specifications?.length || 0) > 0,
+    [product?.specifications]
+  );
+  const hasDescription = React.useMemo(() => {
+    if (!descriptionHtml) return false;
+    const textOnly = descriptionHtml.replace(/<[^>]*>/g, "").trim();
+    return textOnly.length > 0;
+  }, [descriptionHtml]);
+  const hasVideo = React.useMemo(() => !!videoId, [videoId]);
+  const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
 
   return (
     <div className="w-full px-16 mx-auto py-20 bg-white">
@@ -432,19 +477,92 @@ export default function ProductDetailBySlug({
           </div>
 
           {/* Quantity + actions */}
-          <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="inline-flex items-center border rounded-md overflow-hidden">
-              <button className="px-3 py-2 hover:bg-gray-50">-</button>
-              <div className="px-4">1</div>
-              <button className="px-3 py-2 hover:bg-gray-50">+</button>
-            </div>
-            <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors">
-              Shop Now
-            </button>
-            <button className="flex-1 sm:flex-none px-5 py-3 border rounded-md hover:bg-gray-50 transition-colors">
-              Add To Cart
-            </button>
-          </div>
+          {/** Cart state for this page */}
+          {(() => {
+            // Inline IIFE to keep local state near the buttons
+            const QuantityControls: React.FC = () => {
+              const [qty, setQty] = React.useState<number>(1);
+              const { addItem, has } = useLocalCart();
+              const { toggle, has: hasWish } = useLocalWishlist();
+
+              const primaryImage =
+                (selectedColor?.images && selectedColor.images[0]) ||
+                (product?.images?.[0] as string | undefined);
+
+              const matcher = {
+                productId: product?._id as string,
+                slug: product?.slug as string,
+                name: product?.name as string,
+                image: primaryImage,
+                price: selectedVariant?.finalPrice as number,
+                sku: selectedVariant?.sku as string | undefined,
+                selectedOptions: selectedByName,
+              };
+
+              const inCart = product && selectedVariant ? has(matcher as any) : false;
+              const inWishlist = product ? hasWish(matcher) : false;
+
+              const onAddToCart = () => {
+                if (!product || !selectedVariant) return;
+                addItem({
+                  ...matcher,
+                  quantity: qty,
+                });
+              };
+
+              const onToggleWishlist = () => {
+                if (!product) return;
+                toggle({
+                  productId: product._id,
+                  slug: product.slug,
+                  name: product.name,
+                  image: primaryImage,
+                  price: selectedVariant?.finalPrice,
+                  sku: selectedVariant?.sku,
+                  selectedOptions: selectedByName,
+                });
+              };
+
+              return (
+                <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="inline-flex items-center border rounded-md overflow-hidden">
+                    <button
+                      className="px-3 py-2 hover:bg-gray-50"
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    >
+                      -
+                    </button>
+                    <div className="px-4" aria-live="polite">{qty}</div>
+                    <button
+                      className="px-3 py-2 hover:bg-gray-50"
+                      onClick={() => setQty((q) => q + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors cursor-pointer">
+                    Shop Now
+                  </button>
+                  <button
+                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inCart ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    onClick={!inCart ? onAddToCart : undefined}
+                    disabled={inCart}
+                  >
+                    {inCart ? "Added" : "Add To Cart"}
+                  </button>
+                  <button
+                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inWishlist ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    onClick={!inWishlist ? onToggleWishlist : undefined}
+                    disabled={inWishlist}
+                  >
+                    {inWishlist ? "In Wishlist" : "Add To Wishlist"}
+                  </button>
+                </div>
+              );
+            };
+
+            return <QuantityControls />;
+          })()}
 
           {/* Small details */}
           <div className="mt-6 text-sm text-gray-600">
@@ -455,20 +573,33 @@ export default function ProductDetailBySlug({
       {/* Product details sections */}
       <div className="mt-20 space-y-10">
         <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
-            onClick={() => scrollToWithOffset(specRef.current)}
-          >
-            Specification
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
-            onClick={() => scrollToWithOffset(descRef.current)}
-          >
-            Description
-          </button>
+          {hasSpecs && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(specRef.current)}
+            >
+              Specification
+            </button>
+          )}
+          {(hasDescription || hasDescriptionImage || hasVideo) && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(descRef.current)}
+            >
+              Description
+            </button>
+          )}
+          {hasVideo && (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              onClick={() => scrollToWithOffset(videoRef.current)}
+            >
+              Video
+            </button>
+          )}
           <button
             type="button"
             className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
@@ -478,56 +609,93 @@ export default function ProductDetailBySlug({
           </button>
         </div>
         {/* Specification */}
-        <div className="w-[50%]" ref={specRef} id="specification">
-          <h2 className="text-2xl font-semibold mb-4">Specification</h2>
-          <div className="border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody>
-                {(product?.specifications || []).map(
-                  (row: any, idx: number) => (
-                    <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                      <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
-                        {row.key}
-                      </td>
-                      <td className="p-4 text-gray-800 border-b border-gray-100">
-                        {row.value}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
+        {hasSpecs && (
+          <div className="w-[50%]" ref={specRef} id="specification">
+            <h2 className="text-2xl font-semibold mb-4">Specification</h2>
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  {(product?.specifications || []).map(
+                    (row: any, idx: number) => (
+                      <tr key={idx} className="odd:bg-white even:bg-gray-50">
+                        <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                          {row.key}
+                        </td>
+                        <td className="p-4 text-gray-800 border-b border-gray-100">
+                          {row.value}
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Description */}
-        <div ref={descRef} id="description">
-          <h2 className="text-2xl font-semibold mb-4">Description</h2>
-          <div className="prose max-w-none">
-            <style
-              dangerouslySetInnerHTML={{
-                __html: `
-                .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
-                .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
-                .desc-content li { margin: .25rem 0; }
-                .desc-content h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 .5rem; }
-                .desc-content h2 { font-size: 1.5rem; font-weight: 600; margin: .875rem 0 .5rem; }
-                .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
-                .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
-                .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
-              `,
-              }}
-            />
-            <div
-              className="desc-content"
-              dangerouslySetInnerHTML={{
-                __html:
-                  descriptionHtml ||
-                  '<p class="text-gray-500">No description available.</p>',
-              }}
-            />
+        {(hasDescription || hasDescriptionImage || hasVideo) && (
+          <div ref={descRef} id="description">
+            <h2 className="text-2xl font-semibold mb-4">Description</h2>
+            <div className="space-y-6">
+              {/* Description Image */}
+              {hasDescriptionImage && (
+                <div className="w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={descriptionImageUrl}
+                    alt="Product description"
+                    className="w-full h-auto rounded-lg object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Video */}
+              {hasVideo && (
+                <div className="w-full" ref={videoRef} id="video">
+                  <div className="relative w-[50%] h-[400px] bg-gray-200 rounded-lg overflow-hidden">
+                    <iframe
+                      className="absolute top-0 left-0 w-full h-full"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      title="Product video"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Description Text */}
+              {hasDescription && (
+                <div className="prose max-w-none">
+                  <style
+                    dangerouslySetInnerHTML={{
+                      __html: `
+                    .desc-content ul { list-style-type: disc; padding-left: 1.5rem; margin: .5rem 0; }
+                    .desc-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: .5rem 0; }
+                    .desc-content li { margin: .25rem 0; }
+                    .desc-content h1 { font-size: 1.875rem; font-weight: 700; margin: 1rem 0 .5rem; }
+                    .desc-content h2 { font-size: 1.5rem; font-weight: 600; margin: .875rem 0 .5rem; }
+                    .desc-content h3 { font-size: 1.25rem; font-weight: 600; margin: .75rem 0 .5rem; }
+                    .desc-content blockquote { border-left: 4px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
+                    .desc-content code { background-color: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
+                  `,
+                    }}
+                  />
+                  <div
+                    className="desc-content"
+                    dangerouslySetInnerHTML={{
+                      __html:
+                        descriptionHtml ||
+                        '<p class="text-gray-500">No description available.</p>',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Warranty */}
         <div ref={warrantyRef} id="warranty">

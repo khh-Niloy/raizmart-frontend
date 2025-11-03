@@ -13,6 +13,7 @@ import { toast } from "sonner";
 // Validation schema
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
+  image: z.any().optional(), // Add image field (will validate in handler)
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -33,7 +34,14 @@ export default function CreateCategoryPage() {
 
   const onSubmit = async (data: CategoryFormData) => {
     try {
-      const res = await createCategory(data).unwrap();
+      const formData = new FormData();
+      formData.append("name", data.name);
+      // Check for file
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append("image", data.image[0]);
+      }
+      // Create with FormData
+      const res = await createCategory(formData).unwrap();
       console.log("Category created:", res);
       toast.success("Category created successfully!");
       reset();
@@ -66,6 +74,22 @@ export default function CreateCategoryPage() {
               />
               {errors.name && (
                 <p className="text-sm text-red-600">{errors.name.message}</p>
+              )}
+            </div>
+            {/* Category Image */}
+            <div className="space-y-2">
+              <Label htmlFor="image" className="text-sm font-medium text-gray-700">
+                Category Image
+              </Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register("image")}
+                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {errors.image && (
+                <p className="text-sm text-red-600">{errors.image.message as string}</p>
               )}
             </div>
 

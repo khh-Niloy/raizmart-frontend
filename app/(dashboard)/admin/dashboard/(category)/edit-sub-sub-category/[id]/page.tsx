@@ -23,7 +23,8 @@ import { toast } from "sonner";
 const subSubCategorySchema = z.object({
   name: z.string().min(1, "Sub-sub-category name is required"),
   subcategory: z.string().min(1, "Please select a parent sub-category"),
-  isActive: z.boolean(),
+  isActive: z.boolean().optional(),
+  image: z.any().optional(),
 });
 
 type SubSubCategoryFormData = z.infer<typeof subSubCategorySchema>;
@@ -51,37 +52,46 @@ export default function EditSubSubCategoryPage() {
     },
   });
 
+  const [currentImage, setCurrentImage] = React.useState<string | undefined>(undefined);
+
   // Load existing sub-sub-category data
   useEffect(() => {
-    if (subSubCategoriesResponse && subSubCategoryId) {
-      const subSubCategories: any[] = (subSubCategoriesResponse?.data ?? subSubCategoriesResponse ?? []) as any[];
+    if (subSubCategoriesResponse && subSubCategoryId && subcategoriesResponse) {
+      const subSubCategories = (subSubCategoriesResponse?.data ?? subSubCategoriesResponse ?? []) as any[];
       const currentSubSubCategory = subSubCategories.find(
         (item: any) => (item.id ?? item._id) === subSubCategoryId
       );
-      
       if (currentSubSubCategory) {
-        const formData = {
-          name: currentSubSubCategory.name ?? "",
-          subcategory: currentSubSubCategory.subcategory?.id ?? currentSubSubCategory.subcategory ?? "",
-          isActive: currentSubSubCategory.isActive ?? true,
-        };
-        reset(formData);
+        setCurrentImage(currentSubSubCategory?.image ?? undefined);
+        const subVal =
+          typeof currentSubSubCategory.subcategory === "object"
+            ? String(currentSubSubCategory.subcategory._id ?? currentSubSubCategory.subcategory.id)
+            : String(currentSubSubCategory.subcategory ?? "");
+        const subExists = (subcategoriesResponse?.data ?? subcategoriesResponse ?? [])
+          .some((sc: any) => String(sc.id ?? sc._id) === subVal);
+        if (subExists) {
+          reset({
+            name: currentSubSubCategory.name ?? "",
+            subcategory: subVal,
+            isActive: currentSubSubCategory.isActive ?? true
+          });
+        }
       }
     }
-  }, [subSubCategoriesResponse, subSubCategoryId, reset]);
+  }, [subSubCategoriesResponse, subcategoriesResponse, subSubCategoryId, reset]);
 
   const onSubmit = async (data: SubSubCategoryFormData) => {
     try {
-      const payload = {
-        id: subSubCategoryId,
-        ...data,
-      };
-      console.log("Update sub-sub-category payload:", payload);
-      const res = await updateSubSubcategory(payload).unwrap();
-      console.log("Sub-sub-category updated:", res);
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('subcategory', data.subcategory);
+      formData.append('isActive', String(data.isActive));
+      if (data.image && data.image instanceof FileList && data.image.length > 0) {
+        formData.append('image', data.image[0]);
+      }
+      await updateSubSubcategory({ id: subSubCategoryId, formData }).unwrap();
       toast.success("Sub-sub-category updated successfully!");
     } catch (error) {
-      console.error("Update sub-sub-category failed:", error);
       toast.error("Failed to update sub-sub-category. Please try again.");
     }
   };
@@ -96,19 +106,46 @@ export default function EditSubSubCategoryPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-6 space-y-6">
-            {/* Sub-Sub-Category Name */}
+            {/* Sub-Sub-Category Name & Image preview inline */}
+            <div className="flex items-center gap-6 space-y-0 mb-2">
+              <div className="flex-1">
+                <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                  Sub-Sub-Category Name *
+                </Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="Enter sub-sub-category name"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+                {errors?.name && (
+                  <p className="text-sm text-red-600">{errors?.name?.message}</p>
+                )}
+              </div>
+              {!!currentImage && (
+                <div className="flex-shrink-0 ml-2">
+                  <img
+                    src={currentImage?.startsWith?.("http") ? currentImage : "/" + currentImage?.replace?.(/^\/*/, "")}
+                    alt="Current Sub-sub-category"
+                    className="h-14 w-14 rounded border border-gray-200 object-contain"
+                  />
+                </div>
+              )}
+            </div>
+            {/* Image upload field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                Sub-Sub-Category Name *
+              <Label htmlFor="image" className="text-sm font-medium text-gray-700">
+                Image
               </Label>
               <Input
-                id="name"
-                {...register("name")}
-                placeholder="Enter sub-sub-category name"
+                id="image"
+                type="file"
+                accept="image/*"
+                {...register("image")}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
-              {errors.name && (
-                <p className="text-sm text-red-600">{errors.name.message}</p>
+              {errors.image && (
+                <p className="text-sm text-red-600">{errors.image.message as string}</p>
               )}
             </div>
 
