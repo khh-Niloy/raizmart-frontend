@@ -25,6 +25,7 @@ interface AuthModalProps {
 
 export default function AuthModal({ children }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const pathname = usePathname();
@@ -43,8 +44,28 @@ export default function AuthModal({ children }: AuthModalProps) {
     console.log(data);
 
     if (isSignUp) {
+      // Basic validation for password confirmation
+      if (data.password !== data.confirmPassword) {
+        toast.error("Passwords do not match.");
+        return;
+      }
+      const identifier: string | undefined = data.identifier;
+      const isEmail = !!identifier && /@/.test(identifier);
       try {
-        const res = await userRegister(data).unwrap();
+        const payload = isEmail
+          ? {
+              name: data.name,
+              email: identifier,
+              password: data.password,
+              confirmPassword: data.confirmPassword,
+            }
+          : {
+              name: data.name,
+              phone: identifier,
+              password: data.password,
+              confirmPassword: data.confirmPassword,
+            };
+        const res = await userRegister(payload).unwrap();
         if (res.success === true) {
           toast.success("Account created successfully!");
           setIsOpen(false);
@@ -59,7 +80,12 @@ export default function AuthModal({ children }: AuthModalProps) {
       }
     } else {
       try {
-        const res = await login(data).unwrap();
+        const identifier: string | undefined = data.identifier;
+        const isEmail = !!identifier && /@/.test(identifier);
+        const payload = isEmail
+          ? { email: identifier, password: data.password }
+          : { phone: identifier, password: data.password };
+        const res = await login(payload).unwrap();
         if (res.success === true) {
           toast.success("Login successful!");
           setIsOpen(false);
@@ -90,15 +116,28 @@ export default function AuthModal({ children }: AuthModalProps) {
 
         <div className="space-y-3">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            {/* Email/Phone Input */}
+            {/* Email or Phone Input */}
+            {isSignUp && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-900">
+                  Name
+                </label>
+                <input
+                  {...register("name")}
+                  type="text"
+                  placeholder="Enter full name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-custom focus:border-custom transition-all duration-200"
+                />
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-semibold text-gray-900">
-                Email
+                Email or Phone Number
               </label>
               <input
-                {...register("email")}
+                {...register("identifier")}
                 type="text"
-                placeholder="Enter email"
+                placeholder="Enter email or phone number"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-custom focus:border-custom transition-all duration-200"
               />
             </div>
@@ -129,6 +168,60 @@ export default function AuthModal({ children }: AuthModalProps) {
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Password & Confirm Password - Only show for Sign Up */}
+            {isSignUp && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-900">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      {...register("password")}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create Password"
+                      className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-custom focus:border-custom transition-all duration-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-custom transition-colors duration-200"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-900">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      {...register("confirmPassword")}
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm Password"
+                      className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-custom focus:border-custom transition-all duration-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-custom transition-colors duration-200"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Forget Password Link - Only show for Sign In */}
