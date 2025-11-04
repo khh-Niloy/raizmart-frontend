@@ -93,6 +93,8 @@ const manualVariantSchema = z.object({
   region: z.string().optional(),
   price: z.string().min(1, "Price is required"),
   stock: z.string().min(1, "Stock is required"),
+  discount: z.string().optional(),
+  discountedPrice: z.string().optional(),
 });
 
 const specificationSchema = z.object({
@@ -121,6 +123,7 @@ const productSchema = z.object({
   // Optional simple pricing (no attributes/variants)
   simplePrice: z.string().optional(),
   simpleStock: z.string().optional(),
+  simpleDiscount: z.string().optional(),
   categoryAssignments: z.array(
     z.object({
       category: z.string().min(1, "Category is required"),
@@ -174,8 +177,6 @@ interface VariantListProps {
   onEditVariant: (index: number, variant: any) => void;
   onDeleteVariant: (index: number) => void;
   attributes: any[];
-  register: UseFormRegister<ProductFormData>;
-  setValue: UseFormSetValue<ProductFormData>;
 }
 
 export default function EditProductPage() {
@@ -216,6 +217,7 @@ export default function EditProductPage() {
       galleryImages: [],
       simplePrice: "",
       simpleStock: "",
+      simpleDiscount: "",
       categoryAssignments: [],
     },
   });
@@ -394,8 +396,10 @@ export default function EditProductPage() {
         manualVariants:
           product.variants?.map((variant: any) => {
             const variantData: any = {
-              price: variant.finalPrice?.toString() || "",
+              price: (variant.finalPrice ?? variant.price ?? "").toString() || "",
               stock: variant.stock?.toString() || "",
+              discount: (variant.discountPercentage ?? "").toString() || "",
+              discountedPrice: (variant.discountedPrice ?? "").toString() || "",
             };
 
             // Map attribute combinations to variant fields
@@ -413,6 +417,7 @@ export default function EditProductPage() {
         galleryImages: [], // Existing gallery images will be shown separately
         simplePrice: (product as any).price?.toString() || "",
         simpleStock: (product as any).stock?.toString() || "",
+        simpleDiscount: ((product as any).discountPercentage ?? "").toString() || "",
         categoryAssignments: (product as any)?.categoryAssignments?.map((assignment: any) => ({
           category: String(assignment.category?._id || assignment.category || ""),
           subCategory: String(assignment.subCategory?._id || assignment.subCategory || ""),
@@ -551,24 +556,61 @@ export default function EditProductPage() {
       }
 
       // Handle manual variants (optional)
-      const manualVariants = (data.manualVariants || []).map(variant => ({
-        attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
-          .map(([key, value]) => ({
-            attributeType: key,
-            selectedValue: value
-          })),
-        price: parseInt(variant.price),
-        stock: parseInt(variant.stock)
-      }));
+      const manualVariants = (data.manualVariants || []).map(variant => {
+        const priceStr = (variant.price ?? '').toString().trim();
+        const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+        const priceVal = isNumeric ? parseFloat(priceStr) : priceStr;
+        const discountPct = variant.discount ? parseFloat(variant.discount) : undefined;
+        
+        // Calculate discountedPrice: prefer explicit value, else calculate from price and discountPercentage
+        let discountedPrice: number | undefined = undefined;
+        if (variant.discountedPrice) {
+          const dpStr = variant.discountedPrice.toString().trim();
+          if (/^\d+(?:\.\d+)?$/.test(dpStr)) {
+            discountedPrice = parseFloat(dpStr);
+          }
+        }
+        // If no explicit discountedPrice but we have numeric price and discountPercentage, calculate it
+        if (discountedPrice === undefined && typeof priceVal === 'number' && discountPct !== undefined && !isNaN(discountPct) && discountPct >= 0 && discountPct <= 100) {
+          discountedPrice = priceVal * (1 - discountPct / 100);
+        }
+        
+        return {
+          attributeSelections: Object.entries(variant)
+            .filter(([key, value]) => key !== 'price' && key !== 'stock' && key !== 'discount' && key !== 'discountedPrice' && value)
+            .map(([key, value]) => ({
+              attributeType: key,
+              selectedValue: value
+            })),
+          price: priceVal,
+          stock: parseInt(variant.stock),
+          discountPercentage: discountPct,
+          discountedPrice: discountedPrice
+        };
+      });
 
       if (hasDirty((dirtyFields as any).manualVariants) && manualVariants.length > 0) {
         formData.append("manualVariants", JSON.stringify(manualVariants));
       }
 
-      // Add simple price/stock if provided (no variants use-case)
+      // Add simple price/stock/discount if provided (no variants use-case)
       if ((dirtyFields as any).simplePrice && data.simplePrice) formData.append("price", data.simplePrice);
       if ((dirtyFields as any).simpleStock && data.simpleStock) formData.append("stock", data.simpleStock);
+      if ((dirtyFields as any).simpleDiscount && data.simpleDiscount) formData.append("discountPercentage", data.simpleDiscount);
+      // Also send discountedPrice if price is numeric and discount valid
+      if ((dirtyFields as any).simplePrice || (dirtyFields as any).simpleDiscount) {
+        const priceStr = (data.simplePrice || "").toString().trim();
+        const discountStr = (data.simpleDiscount || "").toString().trim();
+        const isPriceNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+        const discountNum = parseFloat(discountStr);
+        if (isPriceNumeric && !isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+          const priceNum = parseFloat(priceStr);
+          const dPrice = priceNum * (1 - discountNum / 100);
+          if (Number.isFinite(dPrice)) {
+            formData.append("discountedPrice", dPrice.toFixed(2));
+          }
+        }
+      }
 
       // Append gallery images (if any)
       const galleryImages = (data.galleryImages as unknown as File[]) || [];
@@ -1291,8 +1333,6 @@ export default function EditProductPage() {
               onEditVariant={updateManualVariant}
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
-              register={register}
-              setValue={setValue}
             />
 
             {/* Gallery Images */}
@@ -1380,11 +1420,9 @@ export default function EditProductPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Price</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    step="1"
+                    type="text"
                     {...register("simplePrice")}
-                    placeholder="Enter price"
+                    placeholder="Enter price (e.g., 10000 or TBA)"
                     className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -1398,6 +1436,41 @@ export default function EditProductPage() {
                     placeholder="Enter stock"
                     className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Discount (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    {...register("simpleDiscount")}
+                    placeholder="Enter discount percentage"
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500">0 to 100. Leave empty if none.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Discounted Price</Label>
+                  <Input
+                    type="text"
+                    readOnly
+                    value={(function(){
+                      const priceStr = (watch("simplePrice") || "").toString().trim();
+                      const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                      const discStr = watch("simpleDiscount") || "";
+                      const discount = parseFloat(discStr);
+                      if (!isNumeric || isNaN(discount) || discount < 0 || discount > 100) return "";
+                      const price = parseFloat(priceStr);
+                      const calc = price * (1 - discount/100);
+                      return Number.isFinite(calc) ? calc.toFixed(2) : "";
+                    })()}
+                    placeholder="Auto-calculated"
+                    className="w-full border-gray-300 bg-gray-100 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500">Auto-calculated when price is numeric.</p>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
@@ -1863,6 +1936,20 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   );
   const [price, setPrice] = React.useState("");
   const [stock, setStock] = React.useState("");
+  const [discount, setDiscount] = React.useState("");
+
+  // Calculate discounted price
+  const calculateDiscountedPrice = () => {
+    if (!price) return null;
+    const priceNum = parseFloat(price);
+    const hasDiscountInput = discount !== "" && discount !== null && discount !== undefined;
+    const discountNum = hasDiscountInput ? parseFloat(discount) : NaN;
+    if (isNaN(priceNum)) return null;
+    if (!hasDiscountInput) return null;
+    if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
+    return priceNum * (1 - discountNum / 100);
+  };
+  const discountedPrice = calculateDiscountedPrice();
 
   const handleAddVariant = () => {
     if (!price || !stock) {
@@ -1870,10 +1957,18 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       return;
     }
 
+    const priceNum = parseFloat(price);
+    const discountNum = discount ? parseFloat(discount) : NaN;
+    const dPrice = !isNaN(priceNum) && !isNaN(discountNum) && discountNum >= 0 && discountNum <= 100
+      ? (priceNum * (1 - discountNum / 100)).toFixed(2)
+      : undefined;
+
     const variant = {
       ...selections,
       price: price,
       stock: stock,
+      discount: discount || undefined,
+      discountedPrice: dPrice
     };
 
     onAddVariant(variant);
@@ -1881,6 +1976,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
     setSelections({});
     setPrice("");
     setStock("");
+    setDiscount("");
   };
 
   const getAttributeLabel = (attrType: string, value: string) => {
@@ -1958,11 +2054,10 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           <div className="space-y-2">
             <Label>Price *</Label>
             <Input
-              type="number"
+              type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter variant price"
-              min="0"
+              placeholder="Enter variant price (e.g., 10000 or TBA)"
             />
           </div>
           <div className="space-y-2">
@@ -1977,7 +2072,43 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           </div>
         </div>
 
-        {Object.keys(selections).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Discount (%)</Label>
+            <Input
+              type="number"
+              value={discount}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "" || (parseFloat(value) >= 0 && parseFloat(value) <= 100)) {
+                  setDiscount(value);
+                }
+              }}
+              placeholder="Enter discount percentage"
+              min="0"
+              max="100"
+              step="0.01"
+            />
+            <p className="text-xs text-gray-500">
+              Enter a percentage between 0 and 100
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Discounted Price</Label>
+            <Input
+              type="number"
+              value={discountedPrice !== null ? discountedPrice.toFixed(2) : ""}
+              placeholder="Auto-calculated"
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">
+              Calculated automatically from price and discount
+            </p>
+          </div>
+        </div>
+
+        {(Object.keys(selections).length > 0 || price || stock) && (
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm font-medium text-blue-800 mb-2">Preview:</p>
             <div className="flex flex-wrap gap-1">
@@ -1988,8 +2119,22 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
               ))}
               <Badge variant="outline">Stock: {stock || "0"}</Badge>
               <Badge variant="outline">
-                Price: ৳{price ? parseInt(price).toLocaleString() : "0"}
+                {(() => {
+                  const isNumeric = /^\d+(?:\.\d+)?$/.test(price);
+                  if (!price) return "Price: 0";
+                  return isNumeric ? `Price: ৳${parseFloat(price).toLocaleString()}` : `Price: ${price}`;
+                })()}
               </Badge>
+              {discount && (
+                <Badge variant="outline">
+                  Discount: {discount}%
+                </Badge>
+              )}
+              {discountedPrice !== null && (
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  Discounted Price: ৳{discountedPrice.toFixed(2)}
+                </Badge>
+              )}
             </div>
           </div>
         )}
@@ -2009,8 +2154,6 @@ function VariantList({
   onEditVariant,
   onDeleteVariant,
   attributes,
-  register,
-  setValue,
 }: VariantListProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
     const attribute = attributes.find((attr: any) => attr.type === attrType);
@@ -2024,7 +2167,23 @@ function VariantList({
   };
 
   const calculateVariantPrice = (variant: any) => {
-    return parseFloat(variant.price || "0");
+    const priceVal = variant.price;
+    if (typeof priceVal === "number") return priceVal;
+    const priceStr = (priceVal ?? "").toString();
+    const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+    return isNumeric ? parseFloat(priceStr) : priceStr;
+  };
+
+  const calculateDiscountedPrice = (variant: any) => {
+    const priceVal = calculateVariantPrice(variant);
+    if (typeof priceVal !== "number") return null;
+    const priceNum = priceVal;
+    // allow 0% discount; treat empty string as no-discount (null result)
+    const hasDiscountInput = variant.discount !== "" && variant.discount !== null && variant.discount !== undefined;
+    if (!hasDiscountInput) return null;
+    const discountNum = parseFloat(variant.discount);
+    if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
+    return priceNum * (1 - discountNum / 100);
   };
 
 
@@ -2056,7 +2215,7 @@ function VariantList({
       <CardHeader>
         <CardTitle>Created Variants ({variants.length})</CardTitle>
         <p className="text-sm text-gray-600">
-          These are the exact variants that will be created for your product. You can edit stock and price directly.
+          These are the exact variants that will be created for your product
         </p>
       </CardHeader>
       <CardContent>
@@ -2098,31 +2257,101 @@ function VariantList({
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Price *
-                  </Label>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Price</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    {...register(`manualVariants.${index}.price`)}
-                    placeholder="Enter price"
-                    className="w-full"
+                    type="text"
+                    value={variant.price ?? ""}
+                    onChange={(e) => {
+                      const newPrice = e.target.value;
+                      // Recalculate discountedPrice if discount exists
+                      let newDiscountedPrice: string | undefined = undefined;
+                      const priceStr = newPrice.trim();
+                      const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                      if (isNumeric && variant.discount && variant.discount !== "") {
+                        const priceNum = parseFloat(priceStr);
+                        const discountNum = parseFloat(variant.discount);
+                        if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+                          const calc = priceNum * (1 - discountNum / 100);
+                          if (Number.isFinite(calc)) {
+                            newDiscountedPrice = calc.toFixed(2);
+                          }
+                        }
+                      }
+                      onEditVariant(index, { 
+                        ...variant, 
+                        price: newPrice, 
+                        discountedPrice: newDiscountedPrice,
+                        id: variant.id 
+                      });
+                    }}
+                    placeholder="e.g., 10000 or TBA"
+                    className="w-32"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Stock *
-                  </Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Stock</Label>
                   <Input
                     type="number"
                     min="0"
                     step="1"
-                    {...register(`manualVariants.${index}.stock`)}
-                    placeholder="Enter stock"
-                    className="w-full"
+                    value={variant.stock ?? ""}
+                    onChange={(e) => {
+                      onEditVariant(index, { ...variant, stock: e.target.value, id: variant.id });
+                    }}
+                    className="w-28"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Discount (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={variant.discount ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || (parseFloat(v) >= 0 && parseFloat(v) <= 100)) {
+                        // Calculate discountedPrice when discount changes
+                        const priceVal = calculateVariantPrice(variant);
+                        let newDiscountedPrice: string | undefined = undefined;
+                        if (typeof priceVal === "number" && v !== "") {
+                          const discountNum = parseFloat(v);
+                          if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+                            const calc = priceVal * (1 - discountNum / 100);
+                            if (Number.isFinite(calc)) {
+                              newDiscountedPrice = calc.toFixed(2);
+                            }
+                          }
+                        }
+                        onEditVariant(index, { 
+                          ...variant, 
+                          discount: v, 
+                          discountedPrice: newDiscountedPrice,
+                          id: variant.id 
+                        });
+                      }
+                    }}
+                    className="w-28"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Discounted Price</Label>
+                  <Input
+                    type="text"
+                    readOnly
+                    value={(function(){
+                      const calc = calculateDiscountedPrice(variant);
+                      if (calc !== null) return calc.toFixed(2);
+                      const dp = variant.discountedPrice;
+                      if (dp === undefined || dp === null || dp === '') return '';
+                      const n = parseFloat(dp);
+                      return Number.isFinite(n) ? n.toFixed(2) : '';
+                    })()}
+                    placeholder="Auto-calculated or saved"
+                    className="w-32 bg-gray-100 cursor-not-allowed"
                   />
                 </div>
               </div>

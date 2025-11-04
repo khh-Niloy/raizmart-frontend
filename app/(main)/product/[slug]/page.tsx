@@ -388,26 +388,85 @@ export default function ProductDetailBySlug({
             )}
           </h1>
 
-          {selectedVariant && (
-            <div className="mb-6 flex items-center gap-4">
-              <div className="text-2xl font-bold tracking-tight text-gray-900">
-                ৳{selectedVariant.finalPrice}
+          {(() => {
+            const formatPrice = (v: any) => `৳${Number(v).toLocaleString()}`;
+            const hasVariants = Array.isArray(variants) && variants.length > 0;
+            const sv: any = selectedVariant as any;
+            const variantFinal = hasVariants ? sv?.finalPrice : undefined;
+            const variantDiscPrice = hasVariants ? sv?.discountedPrice : undefined;
+            const variantDiscPct = hasVariants ? (sv?.discountPercentage ?? sv?.discount) : undefined;
+
+            const productFinal = !hasVariants ? (product as any)?.price : undefined;
+            const productDiscPrice = !hasVariants ? (product as any)?.discountedPrice : undefined;
+            const productDiscPct = !hasVariants ? (product as any)?.discountPercentage : undefined;
+
+            const basePrice = hasVariants ? variantFinal : productFinal;
+            const discounted = hasVariants ? variantDiscPrice : productDiscPrice;
+            const pct = hasVariants ? variantDiscPct : productDiscPct;
+            const stockCount = hasVariants ? parseInt(String(sv?.stock ?? 0)) : parseInt(String((product as any)?.stock ?? 0));
+            const inStock = Number.isFinite(stockCount) ? stockCount > 0 : false;
+
+            if (basePrice === undefined && discounted === undefined) return null;
+
+            const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+            const isTBA = basePrice && !isNumeric(basePrice) && String(basePrice).toUpperCase().trim() === 'TBA';
+            const showDiscount = isNumeric(discounted) && isNumeric(basePrice) && Number(discounted) < Number(basePrice);
+            const pctText = (() => {
+              if (pct !== undefined && pct !== null && pct !== '') return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
+              if (showDiscount) {
+                const p = Number(basePrice);
+                const d = Number(discounted);
+                if (p > 0) return `${Math.round((1 - d / p) * 100)}% OFF`;
+              }
+              return null;
+            })();
+
+            return (
+              <div className="mb-6 flex items-center gap-4">
+                {!inStock ? (
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">
+                    {(!isNumeric(basePrice) && basePrice) ? basePrice : "Not available"}
+                  </div>
+                ) : showDiscount ? (
+                  <>
+                    <div className="text-2xl font-bold tracking-tight text-rose-600">
+                      {formatPrice(discounted)}
+                    </div>
+                    <div className="text-lg text-gray-500 line-through">
+                      {formatPrice(basePrice)}
+                    </div>
+                    {pctText && (
+                      <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-sm font-semibold">
+                        {pctText}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">
+                    {isNumeric(basePrice) ? formatPrice(basePrice) : basePrice}
+                  </div>
+                )}
+
+                {!isTBA && (
+                  <>
+                    <div className="text-lg">
+                      <span className="font-semibold">Availability:</span>
+                      <span className="ml-1">
+                        {inStock ? "In Stock" : "Out of stock"}
+                      </span>
+                    </div>
+                    <span className="h-4 w-px bg-gray-200" />
+                  </>
+                )}
+                {sv?.sku && (
+                  <div className="text-lg">
+                    <span className="font-semibold">Code:</span>
+                    <span className="ml-1">{sv.sku}</span>
+                  </div>
+                )}
               </div>
-              <div className="text-lg">
-                <span className="font-semibold">Availability:</span>
-                <span className="ml-1">
-                  {product.status === "active" ? "In Stock" : "Unavailable"}
-                </span>
-              </div>
-              <span className="h-4 w-px bg-gray-200" />
-              {selectedVariant?.sku && (
-                <div className="text-lg">
-                  <span className="font-semibold">Code:</span>
-                  <span className="ml-1">{selectedVariant.sku}</span>
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {/* Attribute selectors */}
           <div className="grid grid-cols-2 gap-4">
