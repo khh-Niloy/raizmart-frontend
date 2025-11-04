@@ -3,6 +3,8 @@ import React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useGetBrandProductsQuery } from "@/app/redux/features/brand/brand.api";
+import { ProductGridSkeleton } from "@/components/ui/loading";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function BrandListing({ params }: { params: Promise<{ brand: string }> }) {
   const resolved = React.use(params);
@@ -13,8 +15,25 @@ export default function BrandListing({ params }: { params: Promise<{ brand: stri
 
   const { data, isLoading, isError } = useGetBrandProductsQuery({ brand: resolved.brand, page, limit, sort });
 
-  if (isLoading) return <div className="py-10">Loading...</div>;
-  if (isError || !data?.success) return <div className="py-10">Failed to load brand products</div>;
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-20">
+        <Skeleton className="h-8 w-64 mb-6" />
+        <ProductGridSkeleton count={limit} />
+      </div>
+    );
+  }
+
+  if (isError || !data?.success) {
+    return (
+      <div className="container mx-auto py-20">
+        <div className="text-center space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">Failed to Load Products</h2>
+          <p className="text-gray-600">Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
 
   const { items, meta, context } = data as any;
 

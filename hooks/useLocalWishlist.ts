@@ -7,7 +7,9 @@ export type WishlistItem = {
   slug?: string;
   name: string;
   image?: string;
-  price?: number; // optional snapshot
+  price?: number; // optional snapshot (final price after discount)
+  basePrice?: number; // original price before discount
+  discountedPrice?: number; // discounted price (same as price if discount exists)
   sku?: string;
   selectedOptions?: Record<string, string>;
 };
@@ -100,7 +102,34 @@ export function useLocalWishlist() {
     return state.items.some((it) => itemKey(it) === itemKey(matcher));
   }, [state.items]);
 
-  return { items: state.items, count, toggle, remove, clear, has };
+  const updateItemPrice = useCallback((
+    matcher: WishlistItem,
+    updates: { price?: number; basePrice?: number; discountedPrice?: number }
+  ) => {
+    const key = itemKey(matcher);
+    const next = state.items.map((it) =>
+      itemKey(it) === key
+        ? { ...it, ...updates }
+        : it
+    );
+    persist(next);
+  }, [state.items, persist]);
+
+  const updatePricesForProduct = useCallback((
+    productId: string,
+    price?: number,
+    basePrice?: number,
+    discountedPrice?: number
+  ) => {
+    const next = state.items.map((it) =>
+      it.productId === productId
+        ? { ...it, price, basePrice, discountedPrice }
+        : it
+    );
+    persist(next);
+  }, [state.items, persist]);
+
+  return { items: state.items, count, toggle, remove, clear, has, updateItemPrice, updatePricesForProduct };
 }
 
 

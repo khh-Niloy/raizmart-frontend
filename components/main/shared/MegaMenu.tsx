@@ -85,9 +85,9 @@ export default function MegaMenu() {
   if (categoriesLoading || subSubcategoriesLoading) {
     return (
       <div className="flex items-center space-x-8">
-        <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
-        <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
-        <div className="animate-pulse bg-gray-200 h-6 w-28 rounded"></div>
+        <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-6 w-20 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-6 w-28 bg-gray-200 rounded animate-pulse"></div>
       </div>
     );
   }

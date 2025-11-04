@@ -3,7 +3,9 @@ import React from "react";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
+import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
+import { ProductDetailSkeleton, PageLoader } from "@/components/ui/loading";
 
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
@@ -25,6 +27,9 @@ export default function ProductDetailBySlug({
   );
   const product = (data as any)?.data ?? null;
   console.log(product);
+
+  // Sync cart and wishlist prices when product data changes
+  useSyncProductPrices(product?._id, product);
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -305,6 +310,31 @@ export default function ProductDetailBySlug({
   const hasVideo = React.useMemo(() => !!videoId, [videoId]);
   const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
 
+  // Loading state
+  if (isLoading) {
+    return <ProductDetailSkeleton />;
+  }
+
+  // Error state
+  if (isError || !product) {
+    return (
+      <div className="container mx-auto px-4 py-20">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">Product Not Found</h1>
+          <p className="text-gray-600">
+            {isError ? "Failed to load product. Please try again." : "The product you're looking for doesn't exist."}
+          </p>
+          <Link
+            href="/"
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full px-16 mx-auto py-20 bg-white">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -555,12 +585,58 @@ export default function ProductDetailBySlug({
                 (selectedColor?.images && selectedColor.images[0]) ||
                 (product?.images?.[0] as string | undefined);
 
+              // Calculate correct price with discount
+              const calculatePrice = React.useMemo(() => {
+                const hasVariants = Array.isArray(variants) && variants.length > 0;
+                const sv: any = selectedVariant as any;
+                
+                if (hasVariants && sv) {
+                  const variantFinal = sv?.finalPrice;
+                  const variantDiscPrice = sv?.discountedPrice;
+                  const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const isTBA = variantFinal && !isNumeric(variantFinal) && String(variantFinal).toUpperCase().trim() === 'TBA';
+                  
+                  if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
+                  
+                  const basePrice = typeof variantFinal === 'number' ? variantFinal : (isNumeric(variantFinal) ? parseFloat(String(variantFinal)) : undefined);
+                  const discounted = typeof variantDiscPrice === 'number' ? variantDiscPrice : (isNumeric(variantDiscPrice) ? parseFloat(String(variantDiscPrice)) : undefined);
+                  
+                  const finalPrice = (discounted && basePrice && discounted < basePrice) ? discounted : basePrice;
+                  return { 
+                    price: finalPrice, 
+                    basePrice: basePrice, 
+                    discountedPrice: (discounted && basePrice && discounted < basePrice) ? discounted : undefined,
+                    isTBA: false 
+                  };
+                } else {
+                  const productFinal = (product as any)?.price;
+                  const productDiscPrice = (product as any)?.discountedPrice;
+                  const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const isTBA = productFinal && !isNumeric(productFinal) && String(productFinal).toUpperCase().trim() === 'TBA';
+                  
+                  if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
+                  
+                  const basePrice = typeof productFinal === 'number' ? productFinal : (isNumeric(productFinal) ? parseFloat(String(productFinal)) : undefined);
+                  const discounted = typeof productDiscPrice === 'number' ? productDiscPrice : (isNumeric(productDiscPrice) ? parseFloat(String(productDiscPrice)) : undefined);
+                  
+                  const finalPrice = (discounted && basePrice && discounted < basePrice) ? discounted : basePrice;
+                  return { 
+                    price: finalPrice, 
+                    basePrice: basePrice, 
+                    discountedPrice: (discounted && basePrice && discounted < basePrice) ? discounted : undefined,
+                    isTBA: false 
+                  };
+                }
+              }, [selectedVariant, variants, product]);
+
               const matcher = {
                 productId: product?._id as string,
                 slug: product?.slug as string,
                 name: product?.name as string,
                 image: primaryImage,
-                price: selectedVariant?.finalPrice as number,
+                price: typeof calculatePrice.price === 'number' ? calculatePrice.price : 0,
+                basePrice: calculatePrice.basePrice,
+                discountedPrice: calculatePrice.discountedPrice,
                 sku: selectedVariant?.sku as string | undefined,
                 selectedOptions: selectedByName,
               };
@@ -568,8 +644,10 @@ export default function ProductDetailBySlug({
               const inCart = product && selectedVariant ? has(matcher as any) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
+              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number';
+
               const onAddToCart = () => {
-                if (!product || !selectedVariant) return;
+                if (!product || !selectedVariant || !canAddToCart) return;
                 addItem({
                   ...matcher,
                   quantity: qty,
@@ -583,7 +661,9 @@ export default function ProductDetailBySlug({
                   slug: product.slug,
                   name: product.name,
                   image: primaryImage,
-                  price: selectedVariant?.finalPrice,
+                  price: typeof calculatePrice.price === 'number' ? calculatePrice.price : undefined,
+                  basePrice: calculatePrice.basePrice,
+                  discountedPrice: calculatePrice.discountedPrice,
                   sku: selectedVariant?.sku,
                   selectedOptions: selectedByName,
                 });
@@ -610,11 +690,16 @@ export default function ProductDetailBySlug({
                     Shop Now
                   </button>
                   <button
-                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inCart ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
-                    onClick={!inCart ? onAddToCart : undefined}
-                    disabled={inCart}
+                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${
+                      inCart || !canAddToCart 
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        : "hover:bg-gray-50"
+                    }`}
+                    onClick={!inCart && canAddToCart ? onAddToCart : undefined}
+                    disabled={inCart || !canAddToCart}
+                    title={!canAddToCart ? "Price is TBA - Cannot add to cart" : undefined}
                   >
-                    {inCart ? "Added" : "Add To Cart"}
+                    {inCart ? "Added" : !canAddToCart ? "Price TBA" : "Add To Cart"}
                   </button>
                   <button
                     className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inWishlist ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}

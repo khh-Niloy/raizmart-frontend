@@ -66,7 +66,16 @@ export default function Cart() {
                     />
                     <div>
                       <div className="font-medium">{it.name}</div>
-                      <div className="text-sm text-gray-600">৳ {it.price.toFixed(2)}</div>
+                      <div className="text-sm text-gray-600 flex items-center gap-2">
+                        {it.discountedPrice && it.basePrice && it.discountedPrice < it.basePrice ? (
+                          <>
+                            <span className="text-rose-600 font-semibold">৳ {it.discountedPrice.toFixed(2)}</span>
+                            <span className="text-gray-400 line-through">৳ {it.basePrice.toFixed(2)}</span>
+                          </>
+                        ) : (
+                          <span>৳ {it.price.toFixed(2)}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

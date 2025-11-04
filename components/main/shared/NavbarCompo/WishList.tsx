@@ -59,7 +59,16 @@ export default function WishList() {
                   <div>
                     <div className="font-medium">{it.name}</div>
                     {typeof it.price === "number" && (
-                      <div className="text-sm text-gray-600">৳ {it.price.toFixed(2)}</div>
+                      <div className="text-sm text-gray-600 flex items-center gap-2">
+                        {it.discountedPrice && it.basePrice && it.discountedPrice < it.basePrice ? (
+                          <>
+                            <span className="text-rose-600 font-semibold">৳ {it.discountedPrice.toFixed(2)}</span>
+                            <span className="text-gray-400 line-through">৳ {it.basePrice.toFixed(2)}</span>
+                          </>
+                        ) : (
+                          <span>৳ {it.price.toFixed(2)}</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -71,24 +80,28 @@ export default function WishList() {
                       name: it.name,
                       image: it.image,
                       price: (it.price as number) || 0,
+                      basePrice: it.basePrice,
+                      discountedPrice: it.discountedPrice,
                       sku: it.sku,
                       selectedOptions: it.selectedOptions,
                     };
                     const inCart = has(matcher as any);
+                    const canAddToCart = typeof it.price === "number" && it.price > 0;
                     return (
                       <button
                         className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm ${
-                          inCart
+                          inCart || !canAddToCart
                             ? "bg-gray-200 text-gray-600 cursor-not-allowed"
                             : "bg-[#02C1BE] hover:bg-[#02C1BE]/80 text-white"
                         }`}
                         onClick={() => {
-                          if (inCart) return;
+                          if (inCart || !canAddToCart) return;
                           addItem({ ...matcher, quantity: 1 });
                         }}
-                        disabled={inCart}
+                        disabled={inCart || !canAddToCart}
+                        title={!canAddToCart ? "Price is TBA - Cannot add to cart" : undefined}
                       >
-                        <ShoppingCart className="h-4 w-4" /> {inCart ? "In Cart" : "Add to Cart"}
+                        <ShoppingCart className="h-4 w-4" /> {inCart ? "In Cart" : !canAddToCart ? "Price TBA" : "Add to Cart"}
                       </button>
                     );
                   })()}

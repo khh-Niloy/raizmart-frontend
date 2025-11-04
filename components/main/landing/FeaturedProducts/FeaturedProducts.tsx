@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useGetFeaturedProductsQuery } from "@/app/redux/features/product/product.api";
+import { ProductCardSkeleton } from "@/components/ui/loading";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeaturedProducts() {
   const { data, isLoading, isError } = useGetFeaturedProductsQuery(undefined);
@@ -19,12 +21,26 @@ export default function FeaturedProducts() {
     el.scrollBy({ left: delta, behavior: "smooth" });
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-10">
-        <div className="h-40 rounded-2xl bg-gray-100 animate-pulse" />
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="hidden md:flex items-center gap-2">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </div>
+        <div className="flex gap-4 overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="min-w-[240px] max-w-[240px]">
+              <ProductCardSkeleton />
+            </div>
+          ))}
+        </div>
       </div>
     );
+  }
 
   if (isError || !items?.length) return null;
 

@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useGetBlogByIdQuery, useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper to parse and render Tiptap content
 const renderTiptapContent = (content: any) => {
@@ -145,7 +146,16 @@ export default function BlogDetailPage({
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-20">
-        <div className="text-center">Loading blog post...</div>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        </div>
       </div>
     );
   }

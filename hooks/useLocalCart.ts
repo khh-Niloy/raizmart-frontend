@@ -7,7 +7,9 @@ export type CartItem = {
   slug?: string;
   name: string;
   image?: string;
-  price: number; // unit price snapshot
+  price: number; // unit price snapshot (final price after discount)
+  basePrice?: number; // original price before discount
+  discountedPrice?: number; // discounted price (same as price if discount exists)
   sku?: string;
   selectedOptions?: Record<string, string>; // attributeName -> value
   quantity: number;
@@ -135,6 +137,33 @@ export function useLocalCart() {
     persist(next);
   }, [cart.items, persist]);
 
+  const updateItemPrice = useCallback((
+    matcher: Omit<CartItem, "quantity">,
+    updates: { price?: number; basePrice?: number; discountedPrice?: number }
+  ) => {
+    const key = itemKey(matcher);
+    const next = cart.items.map((it) =>
+      itemKey(it) === key
+        ? { ...it, ...updates }
+        : it
+    );
+    persist(next);
+  }, [cart.items, persist]);
+
+  const updatePricesForProduct = useCallback((
+    productId: string,
+    price: number,
+    basePrice?: number,
+    discountedPrice?: number
+  ) => {
+    const next = cart.items.map((it) =>
+      it.productId === productId
+        ? { ...it, price, basePrice, discountedPrice }
+        : it
+    );
+    persist(next);
+  }, [cart.items, persist]);
+
   return {
     items: cart.items,
     totalQuantity,
@@ -143,6 +172,8 @@ export function useLocalCart() {
     updateQuantity,
     removeItem,
     clear,
+    updateItemPrice,
+    updatePricesForProduct,
     has: (matcher: Omit<CartItem, "quantity">) =>
       cart.items.some((it) => itemKey(it) === itemKey(matcher)),
   };
