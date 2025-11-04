@@ -81,6 +81,9 @@ const manualVariantSchema = z.object({
   region: z.string().optional(),
   price: z.string().min(1, "Price is required"),
   stock: z.string().min(1, "Stock is required"),
+  discount: z.string().optional(),
+  // Discounted price (derived from price and discount percentage)
+  discountedPrice: z.string().optional(),
 });
 
 const specificationSchema = z.object({
@@ -109,6 +112,8 @@ const productSchema = z.object({
   // Optional simple pricing (no attributes/variants)
   simplePrice: z.string().optional(),
   simpleStock: z.string().optional(),
+  // Optional simple discount percentage (applies to simplePrice)
+  simpleDiscount: z.string().optional(),
   categoryAssignments: z.array(
     z.object({
       category: z.string().min(1, "Category is required"),
@@ -193,6 +198,7 @@ export default function AddProductPage() {
       galleryImages: [],
       simplePrice: "",
       simpleStock: "",
+      simpleDiscount: "",
       categoryAssignments: [],
     },
   });
@@ -296,22 +302,47 @@ export default function AddProductPage() {
       // Handle manual variants (optional)
       const manualVariants = (data.manualVariants || []).map(variant => ({
         attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
+          .filter(([key, value]) => key !== 'price' && key !== 'stock' && key !== 'discount' && key !== 'discountedPrice' && value)
           .map(([key, value]) => ({
             attributeType: key,
             selectedValue: value
           })),
-        price: parseInt(variant.price),
-        stock: parseInt(variant.stock)
+        price: (() => {
+          const priceStr = (variant.price ?? '').toString().trim();
+          const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+          return isNumeric ? parseFloat(priceStr) : priceStr;
+        })(),
+        stock: parseInt(variant.stock),
+        discount: variant.discount ? parseFloat(variant.discount) : undefined,
+        discountedPrice: (() => {
+          const priceStr = (variant.price ?? '').toString().trim();
+          const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+          return isNumeric && variant.discountedPrice ? parseFloat(variant.discountedPrice) : undefined;
+        })()
       }));
 
       if (manualVariants.length > 0) {
         formData.append("manualVariants", JSON.stringify(manualVariants));
       }
 
-      // Add simple price/stock if provided (no variants use-case)
+      // Add simple price/stock/discount if provided (no variants use-case)
       if (data.simplePrice) formData.append("price", data.simplePrice);
       if (data.simpleStock) formData.append("stock", data.simpleStock);
+      if (data.simpleDiscount) formData.append("discount", data.simpleDiscount);
+      // Also send discountedPrice if price is numeric and discount valid
+      (function(){
+        const priceStr = (data.simplePrice || "").toString().trim();
+        const discountStr = (data.simpleDiscount || "").toString().trim();
+        const isPriceNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+        const discountNum = parseFloat(discountStr);
+        if (isPriceNumeric && !isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+          const priceNum = parseFloat(priceStr);
+          const dPrice = priceNum * (1 - discountNum / 100);
+          if (Number.isFinite(dPrice)) {
+            formData.append("discountedPrice", dPrice.toFixed(2));
+          }
+        }
+      })();
 
       // Append gallery images (if any)
       const galleryImages = (data.galleryImages as unknown as File[]) || [];
@@ -448,7 +479,7 @@ export default function AddProductPage() {
                     render={({ field }) => (
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         disabled={isBrandsLoading}
                       >
                         <SelectTrigger className="w-full">
@@ -604,7 +635,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={isCategoriesLoading}
                         >
                           <SelectTrigger className="w-full">
@@ -649,7 +680,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={
                             !selectedCategoryId || isSubcategoriesLoading
                           }
@@ -700,7 +731,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={
                             !selectedSubCategoryId || isSubSubcategoriesLoading
                           }
@@ -834,7 +865,7 @@ export default function AddProductPage() {
                                     setValue(`categoryAssignments.${index}.subCategory`, "");
                                     setValue(`categoryAssignments.${index}.subSubCategory`, "");
                                   }}
-                                  defaultValue={field.value}
+                                  value={field.value}
                                   disabled={isCategoriesLoading}
                                 >
                                   <SelectTrigger className="w-full">
@@ -867,7 +898,7 @@ export default function AddProductPage() {
                                     field.onChange(val);
                                     setValue(`categoryAssignments.${index}.subSubCategory`, "");
                                   }}
-                                  defaultValue={field.value}
+                                  value={field.value}
                                   disabled={!selectedAssignCategoryId || isSubcategoriesLoading}
                                 >
                                   <SelectTrigger className="w-full">
@@ -899,7 +930,7 @@ export default function AddProductPage() {
                               render={({ field }) => (
                                 <Select
                                   onValueChange={field.onChange}
-                                  defaultValue={field.value}
+                                  value={field.value}
                                   disabled={!selectedAssignSubCategoryId || isSubSubcategoriesLoading}
                                 >
                                   <SelectTrigger className="w-full">
@@ -985,22 +1016,32 @@ export default function AddProductPage() {
               attributes={watch("attributes")}
             />
 
-            {/* Gallery Images */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
-              <Button
-                type="button"
-                className="flex items-center gap-2"
-                onClick={() => {
-                  const input = document.getElementById("gallery-images-input") as HTMLInputElement;
-                  input?.click();
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Add Images
-              </Button>
-            </div>
+          {/* Gallery Images */}
+          {(() => {
+            const hasAttributes = (watch("attributes") || []).length > 0;
+            const hasManualVariants = (watch("manualVariants") || []).length > 0;
+            const noVariants = !hasAttributes && !hasManualVariants;
+            return (
+              <div className={`bg-white rounded-lg border p-6 ${noVariants ? "border-blue-200 ring-1 ring-blue-300/60 bg-blue-50/40" : "border-gray-200"}`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
+                  {noVariants && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      for no variants
+                    </Badge>
+                  )}
+                  <Button
+                    type="button"
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      const input = document.getElementById("gallery-images-input") as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Images
+                  </Button>
+                </div>
 
             <input
               id="gallery-images-input"
@@ -1041,19 +1082,31 @@ export default function AddProductPage() {
               ))}
             </div>
           </div>
+            );
+          })()}
 
           {/* Simple Pricing (no attributes/variants) */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
+          {(() => {
+            const hasAttributes = (watch("attributes") || []).length > 0;
+            const hasManualVariants = (watch("manualVariants") || []).length > 0;
+            const noVariants = !hasAttributes && !hasManualVariants;
+            return (
+              <div className={`bg-white rounded-lg border p-6 ${noVariants ? "border-blue-200 ring-1 ring-blue-300/60 bg-blue-50/40" : "border-gray-200"}`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">Simple Pricing</h2>
+                  {noVariants && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      for no variants
+                    </Badge>
+                  )}
+                </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Price</Label>
                 <Input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
                   {...register("simplePrice")}
-                  placeholder="Enter price"
+                  placeholder="Enter price (e.g., 10000 or TBA)"
                   className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -1069,8 +1122,45 @@ export default function AddProductPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Discount (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  {...register("simpleDiscount")}
+                  placeholder="Enter discount percentage"
+                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500">0 to 100. Leave empty if none.</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Discounted Price</Label>
+                <Input
+                  type="text"
+                  readOnly
+                  value={(function(){
+                    const priceStr = (watch("simplePrice") || "").toString().trim();
+                    const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                    const discStr = watch("simpleDiscount") || "";
+                    const discount = parseFloat(discStr);
+                    if (!isNumeric || isNaN(discount) || discount < 0 || discount > 100) return "";
+                    const price = parseFloat(priceStr);
+                    const calc = price * (1 - discount/100);
+                    return Number.isFinite(calc) ? calc.toFixed(2) : "";
+                  })()}
+                  placeholder="Auto-calculated"
+                  className="w-full border-gray-300 bg-gray-100 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500">Auto-calculated when price is numeric.</p>
+              </div>
+            </div>
             <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
           </div>
+            );
+          })()}
 
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1231,7 +1321,7 @@ function AttributeManager({
                       setValue(`attributes.${attrIndex}.name`, selectedType.label);
                     }
                   }} 
-                  defaultValue={field.value}
+                  value={field.value}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select attribute type" />
@@ -1478,6 +1568,18 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   const [selections, setSelections] = React.useState<{[key: string]: string}>({});
   const [price, setPrice] = React.useState("");
   const [stock, setStock] = React.useState("");
+  const [discount, setDiscount] = React.useState("");
+
+  // Calculate discounted price
+  const calculateDiscountedPrice = () => {
+    if (!price || !discount) return null;
+    const priceNum = parseFloat(price);
+    const discountNum = parseFloat(discount);
+    if (isNaN(priceNum) || isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
+    return priceNum * (1 - discountNum / 100);
+  };
+
+  const discountedPrice = calculateDiscountedPrice();
 
   const handleAddVariant = () => {
     if (!price || !stock) {
@@ -1485,10 +1587,18 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       return;
     }
 
+    const priceNum = parseFloat(price);
+    const discountNum = discount ? parseFloat(discount) : NaN;
+    const dPrice = !isNaN(priceNum) && !isNaN(discountNum) && discountNum >= 0 && discountNum <= 100
+      ? (priceNum * (1 - discountNum / 100)).toFixed(2)
+      : undefined;
+
     const variant = {
       ...selections,
       price: price,
-      stock: stock
+      stock: stock,
+      discount: discount || undefined,
+      discountedPrice: dPrice
     };
 
     onAddVariant(variant);
@@ -1496,6 +1606,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
     setSelections({});
     setPrice("");
     setStock("");
+    setDiscount("");
   };
 
   const getAttributeLabel = (attrType: string, value: string) => {
@@ -1569,11 +1680,10 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           <div className="space-y-2">
             <Label>Price *</Label>
             <Input
-              type="number"
+              type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter variant price"
-              min="0"
+              placeholder="Enter variant price (e.g., 10000 or TBA)"
             />
           </div>
           <div className="space-y-2">
@@ -1588,7 +1698,43 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           </div>
         </div>
 
-        {Object.keys(selections).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Discount (%)</Label>
+            <Input
+              type="number"
+              value={discount}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "" || (parseFloat(value) >= 0 && parseFloat(value) <= 100)) {
+                  setDiscount(value);
+                }
+              }}
+              placeholder="Enter discount percentage"
+              min="0"
+              max="100"
+              step="0.01"
+            />
+            <p className="text-xs text-gray-500">
+              Enter a percentage between 0 and 100
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Discounted Price</Label>
+            <Input
+              type="number"
+              value={discountedPrice !== null ? discountedPrice.toFixed(2) : ""}
+              placeholder="Auto-calculated"
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">
+              Calculated automatically from price and discount
+            </p>
+          </div>
+        </div>
+
+        {(Object.keys(selections).length > 0 || price || stock) && (
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm font-medium text-blue-800 mb-2">Preview:</p>
             <div className="flex flex-wrap gap-1">
@@ -1601,13 +1747,27 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                 Stock: {stock || "0"}
               </Badge>
               <Badge variant="outline">
-                Price: ৳{price ? parseInt(price).toLocaleString() : "0"}
+                {(() => {
+                  const isNumeric = /^\d+(?:\.\d+)?$/.test(price);
+                  if (!price) return "Price: 0";
+                  return isNumeric ? `Price: ৳${parseFloat(price).toLocaleString()}` : `Price: ${price}`;
+                })()}
               </Badge>
+              {discount && (
+                <Badge variant="outline">
+                  Discount: {discount}%
+                </Badge>
+              )}
+              {discountedPrice !== null && (
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  Discounted Price: ৳{discountedPrice.toFixed(2)}
+                </Badge>
+              )}
             </div>
           </div>
         )}
 
-        <Button onClick={handleAddVariant} className="w-full">
+        <Button type="button" onClick={handleAddVariant} className="w-full">
           <Plus className="h-4 w-4 mr-2" />
           Add Variant
         </Button>
@@ -1628,7 +1788,22 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
   };
 
   const calculateVariantPrice = (variant: any) => {
-    return parseFloat(variant.price || "0");
+    const priceVal = variant.price;
+    if (typeof priceVal === "number") return priceVal;
+    const priceStr = (priceVal ?? "").toString();
+    const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+    return isNumeric ? parseFloat(priceStr) : priceStr;
+  };
+
+  const calculateDiscountedPrice = (variant: any) => {
+    const priceVal = calculateVariantPrice(variant);
+    if (typeof priceVal !== "number") return null;
+    const priceNum = priceVal;
+    const discountNum = variant.discount ? parseFloat(variant.discount) : 0;
+    if (discountNum > 0 && discountNum <= 100) {
+      return priceNum * (1 - discountNum / 100);
+    }
+    return null;
   };
 
   if (variants.length === 0) {
@@ -1669,7 +1844,7 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
               <div className="flex-1">
                 <div className="flex flex-wrap gap-1 mb-2">
                   {Object.entries(variant).map(([key, value]) => {
-                    if (key !== 'customPrice' && key !== 'stock' && key !== 'id' && value) {
+                    if (key !== 'customPrice' && key !== 'stock' && key !== 'price' && key !== 'discount' && key !== 'id' && value) {
                       return (
                         <Badge key={key} variant="secondary">
                           {key}: {getAttributeLabel(key, value as string)}
@@ -1679,9 +1854,26 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
                     return null;
                   })}
                 </div>
-                <div className="flex gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                   <span>Stock: {variant.stock}</span>
-                  <span>Price: ৳{calculateVariantPrice(variant).toLocaleString()}</span>
+                  <span>
+                    {(() => {
+                      const val = calculateVariantPrice(variant);
+                      return typeof val === "number"
+                        ? `Price: ৳${val.toLocaleString()}`
+                        : `Price: ${val}`;
+                    })()}
+                  </span>
+                  {variant.discount && parseFloat(variant.discount) > 0 && (
+                    <>
+                      <span>Discount: {variant.discount}%</span>
+                      {calculateDiscountedPrice(variant) !== null && (
+                        <span className="text-green-600 font-semibold">
+                          Discounted: ৳{calculateDiscountedPrice(variant)!.toFixed(2)}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
