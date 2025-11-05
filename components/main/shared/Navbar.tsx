@@ -76,6 +76,10 @@ export default function Navbar() {
       label: "Offers",
       href: "/offers",
     },
+    {
+      label: "Orders",
+      href: "/profile/orders",
+    },
   ];
 
   const { data: userInfo } = useUserInfoQuery(undefined);

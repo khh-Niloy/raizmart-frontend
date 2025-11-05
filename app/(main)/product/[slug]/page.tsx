@@ -450,6 +450,9 @@ export default function ProductDetailBySlug({
               }
               return null;
             })();
+            const savedAmount = showDiscount && isNumeric(basePrice) && isNumeric(discounted)
+              ? Math.max(0, Number(basePrice) - Number(discounted))
+              : undefined;
 
             return (
               <div className="mb-6 flex items-center gap-4">
@@ -470,6 +473,11 @@ export default function ProductDetailBySlug({
                         {pctText}
                       </span>
                     )}
+                  {savedAmount !== undefined && (
+                    <span className="text-sm font-medium text-green-700">
+                      You save {formatPrice(savedAmount)}
+                    </span>
+                  )}
                   </>
                 ) : (
                   <div className="text-2xl font-bold tracking-tight text-gray-900">
@@ -686,9 +694,7 @@ export default function ProductDetailBySlug({
                       +
                     </button>
                   </div>
-                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors cursor-pointer">
-                    Shop Now
-                  </button>
+                  
                   <button
                     className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${
                       inCart || !canAddToCart 

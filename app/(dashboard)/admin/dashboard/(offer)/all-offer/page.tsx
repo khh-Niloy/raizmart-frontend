@@ -19,6 +19,7 @@ import {
   useDeleteOfferMutation,
 } from "@/app/redux/features/offer/offer.api";
 import { toast } from "sonner";
+import CountdownTimer from "@/components/ui/countdown-timer";
 
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
@@ -106,6 +107,12 @@ export default function AllOfferPage() {
                 <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
                   <img src={offer.imageUrl} alt="Offer preview" className="w-full h-full object-cover" />
                 </div>
+
+                {offer.endAt && (
+                  <div className="flex justify-center">
+                    <CountdownTimer endAt={offer.endAt} darkLabels />
+                  </div>
+                )}
 
                 {offer.urlLink && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">

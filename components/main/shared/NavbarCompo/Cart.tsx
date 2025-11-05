@@ -148,24 +148,14 @@ export default function Cart() {
             <div className="mt-8">
               <div className="text-xl font-semibold">Order Summary</div>
               <div className="mt-4">
-                <div className="flex items-center gap-3">
-                  <input
-                    className="flex-1 border rounded-full px-4 py-3 text-sm"
-                    placeholder="Apply Coupon"
-                    disabled
-                  />
-                  <button className="px-4 py-3 rounded-full bg-black/90 text-white text-sm cursor-pointer" disabled>
-                    Apply Coupon
-                  </button>
-                </div>
                 <div className="mt-5 space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Sub Total ({items.length} items)</span>
                     <span>৳ {subTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Discount</span>
-                    <span>৳ 0.00</span>
+                    <span className="text-gray-600 italic">Go to checkout!</span>
+                    <span></span>
                   </div>
                   <div className="border-t pt-3 flex justify-between font-semibold text-lg">
                     <span>Total Amount</span>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteCouponMutation, useGetCouponsQuery, useToggleCouponStatusMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
 import { Edit, Trash2 } from "lucide-react";
+import CountdownTimer from "@/components/ui/countdown-timer";
 
 export default function AllCouponsPage() {
   const { data, isFetching } = useGetCouponsQuery(undefined);
@@ -72,6 +73,7 @@ export default function AllCouponsPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Type</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Value</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Valid</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Ends In</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Min Order</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Actions</th>
@@ -93,6 +95,15 @@ export default function AllCouponsPage() {
                               <span className="text-xs">From: {formatDate(c.startDate)}</span>
                               <span className="text-xs">To: {formatDate(c.endDate)}</span>
                             </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {c.endDate ? (
+                              <div className="inline-flex">
+                                <CountdownTimer endAt={c.endDate} darkLabels />
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 text-xs">N/A</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">{c.minOrderAmount ?? 0}</td>
                           <td className="px-4 py-3 text-sm">
