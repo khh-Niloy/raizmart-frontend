@@ -6,6 +6,7 @@ import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.a
 import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
 import { ProductDetailSkeleton, PageLoader } from "@/components/ui/loading";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
@@ -584,10 +585,11 @@ export default function ProductDetailBySlug({
           {/** Cart state for this page */}
           {(() => {
             // Inline IIFE to keep local state near the buttons
-            const QuantityControls: React.FC = () => {
+              const QuantityControls: React.FC = () => {
               const [qty, setQty] = React.useState<number>(1);
               const { addItem, has } = useLocalCart();
               const { toggle, has: hasWish } = useLocalWishlist();
+                const { requireAuth: ensureAuth } = useAuthGate();
 
               const primaryImage =
                 (selectedColor?.images && selectedColor.images[0]) ||
@@ -656,6 +658,7 @@ export default function ProductDetailBySlug({
 
               const onAddToCart = () => {
                 if (!product || !selectedVariant || !canAddToCart) return;
+                if (!ensureAuth()) return;
                 addItem({
                   ...matcher,
                   quantity: qty,

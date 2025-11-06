@@ -55,14 +55,14 @@ export default function OtherImages() {
   // Take only the first 2 images
   const displayImages = activeOthersImages.slice(0, 2);
 
-  console.log("Display images:", displayImages);
+  // console.log("Display images:", displayImages);
   displayImages.forEach(
     (
       image: { imageUrl: string; redirectUrl: string; _id: string },
       index: number
     ) => {
-      console.log(`Other Image ${index + 1}:`, image);
-      console.log(`Other Image ${index + 1} URL:`, image.imageUrl);
+      // console.log(`Other Image ${index + 1}:`, image);
+      // console.log(`Other Image ${index + 1} URL:`, image.imageUrl);
     }
   );
 
@@ -85,10 +85,10 @@ export default function OtherImages() {
                 console.error("❌ Other image failed to load:", image.imageUrl);
               }}
               onLoad={() => {
-                console.log(
-                  "✅ Other image loaded successfully:",
-                  image.imageUrl
-                );
+                // console.log(
+                //   "✅ Other image loaded successfully:",
+                //   image.imageUrl
+                // );
               }}
               onLoadStart={() => {
                 console.log("🔄 Starting to load other image:", image.imageUrl);

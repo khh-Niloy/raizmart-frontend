@@ -1,17 +1,31 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { Package, Search, Filter } from "lucide-react";
 import { useGetMyOrdersQuery } from "@/app/redux/features/order/order.api";
+import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function OrdersPage() {
-  const { data: orders = [], isLoading } = useGetMyOrdersQuery();
+  const { data: userInfo, isLoading: isLoadingUser } = useUserInfoQuery(undefined);
+  const { openAuth } = useAuthGate();
+  const { data: orders = [], isLoading } = useGetMyOrdersQuery(undefined as any, { skip: !userInfo });
   console.log("orders", orders);
   const [open, setOpen] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<any | null>(null);
+
+  const hasOpenedAuthRef = React.useRef(false);
+  
+  React.useEffect(() => {
+    // Only open auth modal once when page loads if user is not logged in
+    // Wait for auth query to finish loading before checking
+    if (!isLoadingUser && !userInfo && !hasOpenedAuthRef.current) {
+      hasOpenedAuthRef.current = true;
+      openAuth();
+    }
+  }, [userInfo, isLoadingUser, openAuth]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

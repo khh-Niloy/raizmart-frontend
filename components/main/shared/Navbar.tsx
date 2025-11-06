@@ -9,6 +9,8 @@ import MegaMenu from "./MegaMenu";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import WishList from "./NavbarCompo/WishList";
 import Cart from "./NavbarCompo/Cart";
+import { useAuthGate } from "@/hooks/useAuthGate";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -83,6 +85,18 @@ export default function Navbar() {
   ];
 
   const { data: userInfo } = useUserInfoQuery(undefined);
+  // console.log("userInfo", userInfo);
+  const { requireAuth, openAuth } = useAuthGate();
+  const router = useRouter();
+
+  const handleOrdersClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (userInfo) {
+      router.push("/profile/orders");
+    } else {
+      openAuth();
+    }
+  };
 
   const navbarLinks =
     userInfo?.role === "ADMIN"
@@ -200,16 +214,31 @@ export default function Navbar() {
 
               {/* Additional Navigation Links */}
               <div className="hidden xl:flex items-center space-x-6 ml-6">
-                {navbarLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-gray-700 hover:text-[#02C1BE] transition-colors duration-200 font-medium relative group"
-                  >
-                    <span>{link.label}</span>
-                    <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#02C1BE] transition-all duration-200 group-hover:w-full"></div>
-                  </Link>
-                ))}
+                {navbarLinks.map((link) => {
+                  // Special handling for Orders link
+                  if (link.href === "/profile/orders") {
+                    return (
+                      <button
+                        key={link.href}
+                        onClick={handleOrdersClick}
+                        className="text-gray-700 hover:text-[#02C1BE] transition-colors duration-200 font-medium relative group"
+                      >
+                        <span>{link.label}</span>
+                        <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#02C1BE] transition-all duration-200 group-hover:w-full"></div>
+                      </button>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-gray-700 hover:text-[#02C1BE] transition-colors duration-200 font-medium relative group"
+                    >
+                      <span>{link.label}</span>
+                      <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#02C1BE] transition-all duration-200 group-hover:w-full"></div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -316,17 +345,36 @@ export default function Navbar() {
           }`}
         >
           <div className="py-4 space-y-1">
-            {navbarLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center space-x-3 text-gray-700 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 transition-all duration-200 font-medium py-3 px-4 rounded-lg mx-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <div className="w-2 h-2 bg-[#02C1BE] rounded-full"></div>
-                <span>{link.label}</span>
-              </Link>
-            ))}
+            {navbarLinks.map((link) => {
+              // Special handling for Orders link
+              if (link.href === "/profile/orders") {
+                return (
+                  <button
+                    key={link.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMobileMenuOpen(false);
+                      handleOrdersClick(e);
+                    }}
+                    className="flex items-center space-x-3 text-gray-700 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 transition-all duration-200 font-medium py-3 px-4 rounded-lg mx-2 w-full text-left"
+                  >
+                    <div className="w-2 h-2 bg-[#02C1BE] rounded-full"></div>
+                    <span>{link.label}</span>
+                  </button>
+                );
+              }
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 transition-all duration-200 font-medium py-3 px-4 rounded-lg mx-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-2 h-2 bg-[#02C1BE] rounded-full"></div>
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
 
             {/* Mobile User Actions */}
             <div className="border-t border-gray-100 pt-4 mt-4">

@@ -7,6 +7,7 @@ import { useGetProductsBySlugsQuery } from "@/app/redux/features/product/product
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { ProductGridSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function SubSubcategoryListing({ params }: { params: Promise<{ category: string; subcategory: string; subsubcategory: string }> }) {
   const resolvedParams = React.use(params);
@@ -48,6 +49,7 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
 
   const Card: React.FC<{ product: any }> = ({ product }) => {
     const { addItem, has } = useLocalCart();
+    const { requireAuth } = useAuthGate();
     const colorAttr = (product?.attributes || []).find(
       (a: any) => a.type?.toLowerCase?.() === "color" || a.name?.toLowerCase?.() === "color"
     );
@@ -142,6 +144,7 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
           }`}
           onClick={() => {
             if (inCart) return;
+            if (!requireAuth()) return;
             addItem({ ...matcher, quantity: 1 });
           }}
           disabled={inCart}

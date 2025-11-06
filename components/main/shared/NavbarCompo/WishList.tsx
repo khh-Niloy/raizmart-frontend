@@ -10,14 +10,29 @@ import {
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useRouter } from "next/navigation";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function WishList() {
   const { items, count, remove, clear } = useLocalWishlist();
   const { addItem, has } = useLocalCart();
   const router = useRouter();
+  const { requireAuth } = useAuthGate();
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const onCloseAll = () => setIsOpen(false);
+    if (typeof window !== "undefined") {
+      window.addEventListener("dialog:closeAll", onCloseAll as any);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("dialog:closeAll", onCloseAll as any);
+      }
+    };
+  }, []);
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <div className="flex items-center space-x-2 p-2.5 text-gray-600 hover:text-[#02C1BE] hover:bg-[#02C1BE]/10 rounded-xl transition-all duration-200 cursor-pointer relative">
           <Heart className="h-5 w-5" />
@@ -96,6 +111,10 @@ export default function WishList() {
                         }`}
                         onClick={() => {
                           if (inCart || !canAddToCart) return;
+                          if (!requireAuth()) {
+                            setIsOpen(false);
+                            return;
+                          }
                           addItem({ ...matcher, quantity: 1 });
                         }}
                         disabled={inCart || !canAddToCart}

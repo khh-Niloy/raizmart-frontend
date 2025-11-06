@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
@@ -101,6 +101,62 @@ export default function AuthModal({ children }: AuthModalProps) {
       }
     }
   };
+
+  // Listen for global "auth:open" event to open this modal programmatically
+  // Use a global flag to prevent multiple modals from opening
+  const modalInstanceIdRef = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Generate unique ID for this modal instance
+    if (!modalInstanceIdRef.current) {
+      modalInstanceIdRef.current = `auth-modal-${Date.now()}-${Math.random()}`;
+    }
+
+    const onOpen = () => {
+      // Initialize global state if needed
+      if (!(window as any).__authModalState) {
+        (window as any).__authModalState = { openInstanceId: null };
+      }
+
+      const state = (window as any).__authModalState;
+
+      // If another modal is already open, don't open this one
+      if (
+        state.openInstanceId &&
+        state.openInstanceId !== modalInstanceIdRef.current
+      ) {
+        return;
+      }
+
+      // Set this instance as the open one and open the modal
+      state.openInstanceId = modalInstanceIdRef.current;
+      setIsOpen(true);
+    };
+
+    window.addEventListener("auth:open", onOpen as any);
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth:open", onOpen as any);
+      }
+    };
+  }, []);
+
+  // Clear global flag when modal closes
+  useEffect(() => {
+    if (
+      !isOpen &&
+      typeof window !== "undefined" &&
+      modalInstanceIdRef.current
+    ) {
+      const state = (window as any).__authModalState;
+      if (state && state.openInstanceId === modalInstanceIdRef.current) {
+        state.openInstanceId = null;
+      }
+    }
+  }, [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -210,7 +266,9 @@ export default function AuthModal({ children }: AuthModalProps) {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-custom transition-colors duration-200"
                     >
                       {showConfirmPassword ? (
@@ -291,7 +349,9 @@ export default function AuthModal({ children }: AuthModalProps) {
                 <span className="mx-3 text-gray-400">Or continue with</span>
                 <div className="flex-grow h-px bg-gray-400 opacity-40" />
               </div>
-              <Link href={`http://localhost:5000/api/v1/auth/google?redirect=${pathname}`}>
+              <Link
+                href={`http://localhost:5000/api/v1/auth/google?redirect=${pathname}`}
+              >
                 <button
                   type="button"
                   className="mt-5 w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-2 bg-white hover:bg-gray-100 transition-all duration-200 cursor-pointer"

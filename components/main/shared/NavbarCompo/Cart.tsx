@@ -10,14 +10,33 @@ import {
 } from "@/components/ui/dialog";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useRouter } from "next/navigation";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function Cart() {
   const { items, subTotal, totalQuantity, clear, updateQuantity, removeItem } =
     useLocalCart();
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
+  const { requireAuth, openAuth } = useAuthGate();
+
+  React.useEffect(() => {
+    const onCloseAll = () => setIsOpen(false);
+    if (typeof window !== "undefined") {
+      window.addEventListener("dialog:closeAll", onCloseAll as any);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("dialog:closeAll", onCloseAll as any);
+      }
+    };
+  }, []);
 
   const handleContinue = () => {
+    if (!requireAuth()) {
+      // ensure any open cart dialog is closed before showing auth
+      setIsOpen(false);
+      return;
+    }
     setIsOpen(false);
     router.push("/checkout");
   };
@@ -167,7 +186,11 @@ export default function Cart() {
 
             <div className="mt-6">
               <button
-                className="w-full h-14 rounded-full bg-[#02C1BE] hover:bg-[#02C1BE]/80 hover:cursor-pointer text-white font-semibold"
+                className={`w-full h-14 rounded-full text-white font-semibold ${
+                  items.length === 0
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-[#02C1BE] hover:bg-[#02C1BE]/80 hover:cursor-pointer"
+                }`}
                 onClick={handleContinue}
                 disabled={items.length === 0}
               >

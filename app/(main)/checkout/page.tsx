@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useCreateOrderMutation } from "@/app/redux/features/order/order.api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -16,7 +17,8 @@ export default function CheckoutPage() {
   const [agree, setAgree] = React.useState(false);
   const [payment, setPayment] = React.useState<"COD" | "ONLINE">("COD");
   const [deliveryMethod, setDeliveryMethod] = React.useState<"COURIER">("COURIER");
-  const { data: userInfo } = useUserInfoQuery(undefined);
+  const { data: userInfo, isLoading: isLoadingUser } = useUserInfoQuery(undefined);
+  const { openAuth } = useAuthGate();
 
   const [fullName, setFullName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -28,6 +30,16 @@ export default function CheckoutPage() {
   const [upazila, setUpazila] = React.useState("");
   const [postCode, setPostCode] = React.useState("");
   const [createOrder, { isLoading: creatingOrder }] = useCreateOrderMutation();
+  const hasOpenedAuthRef = React.useRef(false);
+  
+  React.useEffect(() => {
+    // Only open auth modal once when page loads if user is not logged in
+    // Wait for auth query to finish loading before checking
+    if (!isLoadingUser && !userInfo && !hasOpenedAuthRef.current) {
+      hasOpenedAuthRef.current = true;
+      openAuth();
+    }
+  }, [userInfo, isLoadingUser, openAuth]);
 
   // Location data (basic cascading)
   const divisionOptions = [
