@@ -11,6 +11,7 @@ import {
   useUseLogoutMutation,
 } from "@/app/redux/features/auth/auth.api";
 import { useAppDispatch } from "@/app/redux/hooks";
+import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 
 // Profile navigation data
 const profileNavItems = [
@@ -44,6 +45,7 @@ export function ProfileSidebar({
   const router = useRouter();
   const [logout, { isLoading }] = useUseLogoutMutation();
   const dispatch = useAppDispatch();
+  const { data: userInfo } = useUserInfoQuery(undefined);
   // console.log(data?.data?.email)
 
   const handleLogout = async () => {
@@ -67,6 +69,7 @@ export function ProfileSidebar({
 
           // Handle logout separately
           if (item.title === "Log Out") {
+            if (!userInfo) return null;
             return (
               <button
                 key={item.title}

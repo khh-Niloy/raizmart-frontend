@@ -37,9 +37,48 @@ export const orderApi = baseApi.injectEndpoints({
         data: payload,
       }),
     }),
+    // Admin: Get all orders without pagination (returns { items })
+    getAllOrdersAdmin: builder.query<
+      { items: any[] },
+      { sort?: string; status?: string; startDate?: string; endDate?: string }
+    >({
+      query: (params) => ({
+        url: "/orders",
+        method: "GET",
+        params,
+      }),
+      transformResponse: (response: any) => ({
+        items: response?.items ?? [],
+      }),
+      providesTags: ["ORDERS" as any],
+    }),
+    // Admin: Search orders by user info (kept as before)
+    searchOrdersByUserAdmin: builder.query<
+      { items: any[]; users: any[]; meta: any },
+      { searchTerm: string; page?: number; limit?: number; sort?: string }
+    >({
+      query: (params) => ({
+        url: "/orders/search",
+        method: "GET",
+        params,
+      }),
+      transformResponse: (response: any) => ({
+        items: response?.items ?? [],
+        users: response?.users ?? [],
+        meta: response?.meta ?? { page: 1, limit: 10, total: 0, totalPage: 0 },
+      }),
+      providesTags: ["ORDERS" as any],
+    }),
   }),
 });
 
-export const { useCreateOrderMutation, useGetMyOrdersQuery, useGetOrderByIdQuery, useGetOrderBySlugQuery } = orderApi;
+export const { 
+  useCreateOrderMutation, 
+  useGetMyOrdersQuery, 
+  useGetOrderByIdQuery, 
+  useGetOrderBySlugQuery,
+  useGetAllOrdersAdminQuery,
+  useSearchOrdersByUserAdminQuery,
+} = orderApi;
 
 

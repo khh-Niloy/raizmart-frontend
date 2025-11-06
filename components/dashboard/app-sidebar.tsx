@@ -12,6 +12,7 @@ import {
   Landmark,
   List,
   Map,
+  Package,
   PieChart,
   Settings2,
   ShoppingCart,
@@ -52,6 +53,18 @@ const data = {
         {
           title: "Stock",
           url: "/admin/dashboard/stock",
+        },
+      ],
+    },
+    {
+      title: "Order Management",
+      // url: "",
+      icon: Package,
+      isActive: true,
+      items: [
+        {
+          title: "All Orders",
+          url: "/admin/dashboard/all-orders",
         },
       ],
     },
