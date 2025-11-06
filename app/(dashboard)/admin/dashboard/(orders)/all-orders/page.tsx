@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  useGetAllOrdersAdminQuery,
-  useSearchOrdersByUserAdminQuery,
-} from "@/app/redux/features/order/order.api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  useGetAllOrdersAdminQuery,
+  useSearchOrdersByUserAdminQuery,
+} from "@/app/redux/features/order/order.api";
 
 const formatDateInput = (d?: Date | string) => {
   if (!d) return "";
@@ -45,7 +45,6 @@ export default function AdminAllOrdersPage() {
     isFetching: isFetchingAll,
     refetch: refetchAll,
   } = useGetAllOrdersAdminQuery(allParams);
-  console.log("allOrders", allOrders);
   const {
     data: searchData,
     isLoading: isLoadingSearch,
@@ -57,7 +56,6 @@ export default function AdminAllOrdersPage() {
   );
 
   useEffect(() => {
-    // When filters/search change, refetch current mode
     if (isSearching) {
       refetchSearch();
     } else {
@@ -109,8 +107,8 @@ export default function AdminAllOrdersPage() {
       </div>
 
       <Card className="p-3">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <div className="col-span-2 md:col-span-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="col-span-2 md:col-span-2 space-y-1">
             <label className="text-sm text-muted-foreground">Status</label>
             <select
               className="w-full border rounded-md h-9 px-2"
@@ -122,7 +120,7 @@ export default function AdminAllOrdersPage() {
               <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
             </select>
           </div>
-          <div>
+          <div className="space-y-1">
             <label className="text-sm text-muted-foreground">Start date</label>
             <Input
               type="date"
@@ -131,7 +129,7 @@ export default function AdminAllOrdersPage() {
               max={formatDateInput(new Date())}
             />
           </div>
-          <div>
+          <div className="space-y-1">
             <label className="text-sm text-muted-foreground">End date</label>
             <Input
               type="date"
@@ -140,7 +138,7 @@ export default function AdminAllOrdersPage() {
               max={formatDateInput(new Date())}
             />
           </div>
-          <div>
+          <div className="space-y-1">
             <label className="text-sm text-muted-foreground">Sort</label>
             <select
               className="w-full border rounded-md h-9 px-2"
@@ -154,22 +152,15 @@ export default function AdminAllOrdersPage() {
         </div>
       </Card>
 
-      <Card className="p-0 overflow-x-auto">
-        <div className="min-w-[800px]">
-          <div className="grid grid-cols-12 px-4 py-2 text-sm font-medium bg-muted/40">
-            <div className="col-span-2">Order</div>
-            <div className="col-span-3">Customer</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-3">Totals</div>
-            <div className="col-span-2 text-right">Date</div>
-          </div>
+      <Card className="p-0 overflow-x-auto shadow-none border-none">
+        <div className="min-w-[900px]">
           {(isLoadingAll ||
             isFetchingAll ||
             isLoadingSearch ||
             isFetchingSearch) && (
             <div className="px-4 py-3 space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+                <Skeleton key={i} className="h-24 w-full" />
               ))}
             </div>
           )}
@@ -184,23 +175,58 @@ export default function AdminAllOrdersPage() {
                 No orders found.
               </div>
             )}
-          {orders?.map((o: any) => (
-            <div key={o._id} className="border-t">
-              <div className="grid grid-cols-12 px-4 py-3 text-sm">
-                <div className="col-span-2">
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium">{o.order_slug}</div>
-                    {o?.couponCode ? (
-                      <Badge variant="secondary">
-                        Coupon used
-                        {typeof o.couponCode === "string" && o.couponCode.trim()
-                          ? `: ${o.couponCode}`
-                          : ""}
-                      </Badge>
-                    ) : null}
+          {orders?.map((o: any, idx: number) => (
+            <div
+              key={o._id}
+              className={`rounded-md border mb-4 overflow-hidden ${
+                idx % 2 === 0 ? "bg-background" : "bg-muted/10"
+              }`}
+            >
+              {/* Colored separator without extra padding */}
+              {/* <div className="h-10 rounded-b-sm  w-full bg-[#02C1BE]" /> */}
+
+              {/* Header */}
+              <div 
+              className={`flex items-center justify-between px-4 py-3  ${
+                idx % 2 === 0 ? "bg-muted/10" : "bg-muted/10"
+              }`}>
+                <div className="flex items-center flex-wrap gap-2">
+                  <span className="text-lg md:text-xl font-extrabold tracking-tight">
+                    Order {idx + 1}
+                  </span>
+                  <div className="font-semibold tracking-wide">
+                    {o.order_slug}
                   </div>
+                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {o.status}
+                  </span>
+                  {o?.couponCode ? (
+                    <Badge variant="secondary">
+                      Coupon used
+                      {typeof o.couponCode === "string" && o.couponCode.trim()
+                        ? `: ${o.couponCode}`
+                        : ""}
+                    </Badge>
+                  ) : null}
+                  {o?.delivery?.method ? (
+                    <Badge variant="outline">
+                      {o.delivery.method}
+                      {o?.delivery?.division ? ` • ${o.delivery.division}` : ""}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline">
+                    Items: {Array.isArray(o.items) ? o.items.length : 0}
+                  </Badge>
                 </div>
-                <div className="col-span-3">
+                <div className="text-xs text-muted-foreground">
+                  {new Date(o.createdAt).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="grid grid-cols-12 gap-6 px-4 py-4 text-sm">
+                <div className="col-span-12 md:col-span-4 space-y-1.5">
+                  <div className="text-xs text-muted-foreground">Customer</div>
                   <div className="font-medium">
                     {o?.customer?.fullName || o?.userId?.name || "-"}
                   </div>
@@ -211,137 +237,326 @@ export default function AdminAllOrdersPage() {
                     {o?.userId?.phone || o?.customer?.phone || "-"}
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                    {o.status}
-                  </span>
+                <div className="col-span-12 md:col-span-4 space-y-2">
+                  <div className="text-xs text-muted-foreground">Totals</div>
+                  {(o as any)?.humanTotals ? (
+                    <div className="divide-y rounded-md border bg-background">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Regular</span>
+                        <span className="font-medium">
+                          {o.humanTotals["regular price"]}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">
+                          Product discount
+                        </span>
+                        <span>{o.humanTotals["total product discount"]}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">
+                          After discount
+                        </span>
+                        <span className="font-medium">
+                          {o.humanTotals["after discount price"]}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Coupon</span>
+                        <span>{o.humanTotals["coupon discount"]}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">
+                          After coupon
+                        </span>
+                        <span className="font-medium">
+                          {o.humanTotals["after coupon discount"]}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Shipping</span>
+                        <span>{o.humanTotals["shipping"]}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                        <span className="font-medium">Grand total</span>
+                        <span className="font-semibold">
+                          {o.humanTotals["grand total"]}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="divide-y rounded-md border bg-background">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>৳ {o?.totals?.subtotal ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span>৳ {o?.totals?.discountTotal ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span className="text-muted-foreground">Shipping</span>
+                        <span>৳ {o?.totals?.shippingTotal ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                        <span className="font-medium">Grand total</span>
+                        <span className="font-semibold">
+                          ৳ {o?.totals?.grandTotal ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="col-span-3">
-                  <div className="font-medium">
-                    ৳ {o?.totals?.grandTotal ?? 0}
+                <div className="col-span-12 md:col-span-4 space-y-1.5">
+                  <div className="text-xs text-muted-foreground">Delivery</div>
+                  <div>
+                    Method:{" "}
+                    <span className="font-medium">
+                      {o?.delivery?.method || "-"}
+                    </span>
                   </div>
-                  <div className="text-muted-foreground">
-                    Subtotal: ৳ {o?.totals?.subtotal ?? 0}
+                  <div>
+                    Division:{" "}
+                    <span className="font-medium">
+                      {o?.delivery?.division || "-"}
+                    </span>
                   </div>
-                  <div className="text-muted-foreground">
-                    Discount: ৳ {o?.totals?.discountTotal ?? 0}
+                  <div>
+                    Charge:{" "}
+                    <span className="font-medium">
+                      ৳ {o?.delivery?.charge ?? 0}
+                    </span>
                   </div>
-                  <div className="text-muted-foreground">
-                    Shipping: ৳ {o?.totals?.shippingTotal ?? 0}
-                  </div>
-                  <div className="text-xs mt-1 text-muted-foreground">
-                    Delivery: {o?.delivery?.method || "-"}
-                    {o?.delivery?.division ? ` • ${o.delivery.division}` : ""}
-                    {o?.delivery?.charge != null
-                      ? ` • ৳ ${o.delivery.charge}`
-                      : ""}
-                  </div>
-                </div>
-                <div className="col-span-2 text-right">
-                  {new Date(o.createdAt).toLocaleString()}
                 </div>
               </div>
 
-              {Array.isArray(o.items) && o.items.length > 0 && (
-                <div className="bg-muted/20">
-                  <div className="px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    Items
-                  </div>
-                  <div className="px-4 pb-4 space-y-3">
+              {/* Items */}
+              <div className="px-4 pb-4">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                  Items
+                </div>
+                {Array.isArray(o.items) && o.items.length > 0 ? (
+                  <div className="space-y-3">
                     {o.items.map((it: any, idx: number) => (
                       <div
                         key={idx}
-                        className="grid grid-cols-12 gap-3 rounded-md border bg-background p-3"
+                        className="rounded-md border bg-background p-3"
                       >
-                        <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
-                          {it.images?.[0] || it.productDetails?.images?.[0] ? (
-                            <img
-                              src={
-                                it.images?.[0] || it.productDetails?.images?.[0]
-                              }
-                              alt={
-                                it.productName ||
-                                it.productDetails?.name ||
-                                "product"
-                              }
-                              className="h-12 w-12 rounded object-cover border"
-                            />
-                          ) : (
-                            <div className="h-12 w-12 rounded bg-muted" />
-                          )}
-                          <div>
-                            <div className="font-medium">
-                              {it.productName || it.productDetails?.name}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              SKU: {it.sku}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              Slug: {it.productSlug || it.productDetails?.slug}
+                        <div className="grid grid-cols-12 gap-4">
+                          <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
+                            {it.images?.[0] ||
+                            it.productDetails?.images?.[0] ? (
+                              <img
+                                src={
+                                  it.images?.[0] ||
+                                  it.productDetails?.images?.[0]
+                                }
+                                alt={
+                                  it.productName ||
+                                  it.productDetails?.name ||
+                                  "product"
+                                }
+                                className="h-12 w-12 rounded object-cover border"
+                              />
+                            ) : (
+                              <div className="h-12 w-12 rounded bg-muted" />
+                            )}
+                            <div className="space-y-0.5">
+                              <div className="font-medium">
+                                {it.productName || it.productDetails?.name}
+                              </div>
+                              <div className="text-muted-foreground text-xs">
+                                SKU: {it.sku}
+                              </div>
+                              <div className="text-muted-foreground text-xs">
+                                Slug:{" "}
+                                {it.productSlug || it.productDetails?.slug}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Pricing block: prefers humanPricing if present */}
-                        <div className="col-span-12 md:col-span-3 text-sm">
-                          {it.humanPricing ? (
-                            <div className="space-y-0.5">
-                              <div>Qty: <span className="font-medium">{it.humanPricing["quantity"] ?? it.quantity}</span></div>
-                              <div>Product Real Price: {it.humanPricing["product real price"]}</div>
-                              <div>Discount: {it.humanPricing["discount x %"]}</div>
-                              <div>After Discount Unit: <span className="font-medium">{it.humanPricing["after discount product price"]}</span></div>
-                              <div>{it.humanPricing["quantity x final unit = line total"]}</div>
+                          {/* Pricing block */}
+                          <div className="col-span-12 md:col-span-4">
+                            <div className="divide-y rounded-md border">
+                              {it.humanPricing ? (
+                                <>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Qty
+                                    </span>
+                                    <span className="font-medium">
+                                      {it.humanPricing["quantity"] ??
+                                        it.quantity}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Product price
+                                    </span>
+                                    <span>
+                                      {it.humanPricing["product real price"]}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Discount
+                                    </span>
+                                    <span>
+                                      {it.humanPricing["discount x %"]}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      After discount unit
+                                    </span>
+                                    <span className="font-medium">
+                                      {
+                                        it.humanPricing[
+                                          "after discount product price"
+                                        ]
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Qty × unit = total
+                                    </span>
+                                    <span>
+                                      {
+                                        it.humanPricing[
+                                          "quantity x final unit = line total"
+                                        ]
+                                      }
+                                    </span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Qty
+                                    </span>
+                                    <span className="font-medium">
+                                      {it.quantity}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Unit original
+                                    </span>
+                                    <span>৳ {it.unitPriceOriginal}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Unit final
+                                    </span>
+                                    <span className="font-medium">
+                                      ৳ {it.unitPriceFinal}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Discount %
+                                    </span>
+                                    <span>{it.unitDiscountPct ?? 0}%</span>
+                                  </div>
+                                </>
+                              )}
                             </div>
-                          ) : (
-                            <div className="space-y-0.5">
-                              <div>Qty: <span className="font-medium">{it.quantity}</span></div>
-                              <div>Unit Original: ৳ {it.unitPriceOriginal}</div>
-                              <div>Unit Final: <span className="font-medium">৳ {it.unitPriceFinal}</span></div>
-                              <div>Unit Discount %: {it.unitDiscountPct ?? 0}%</div>
-                            </div>
-                          )}
-                        </div>
+                          </div>
 
-                        <div className="col-span-12 md:col-span-2 text-sm">
-                          {it.humanPricing ? (
-                            <div className="space-y-0.5">
-                              <div>Line Subtotal: {it.humanPricing["line subtotal"]}</div>
-                              <div>Line Discount: {it.humanPricing["line discount"]}</div>
-                              <div>Line Total: <span className="font-medium">{it.humanPricing["line total"]}</span></div>
+                          {/* Line totals */}
+                          <div className="col-span-12 md:col-span-3">
+                            <div className="divide-y rounded-md border">
+                              {it.humanPricing ? (
+                                <>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Regular
+                                    </span>
+                                    <span>
+                                      {it.humanPricing["regular price"]}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Product discount
+                                    </span>
+                                    <span>
+                                      {
+                                        it.humanPricing[
+                                          "total product discount"
+                                        ]
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                    <span className="font-medium">
+                                      After discount
+                                    </span>
+                                    <span className="font-semibold">
+                                      {it.humanPricing["after discount price"]}
+                                    </span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Line subtotal
+                                    </span>
+                                    <span>৳ {it.lineSubtotal}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <span className="text-muted-foreground">
+                                      Line discount
+                                    </span>
+                                    <span>৳ {it.lineDiscount}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                    <span className="font-medium">
+                                      Line total
+                                    </span>
+                                    <span className="font-semibold">
+                                      ৳ {it.lineTotal}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
                             </div>
-                          ) : (
-                            <div className="space-y-0.5">
-                              <div>Line Subtotal: ৳ {it.lineSubtotal}</div>
-                              <div>Line Discount: ৳ {it.lineDiscount}</div>
-                              <div>Line Total: <span className="font-medium">৳ {it.lineTotal}</span></div>
-                            </div>
-                          )}
-                        </div>
+                          </div>
 
-                        <div className="col-span-12 md:col-span-2 text-xs">
-                          <div className="font-medium mb-1">Attributes</div>
-                          {Array.isArray(it.attributes) &&
-                          it.attributes.length > 0 ? (
+                          {/* Attributes */}
+                          <div className="col-span-12">
                             <div className="flex flex-wrap gap-1">
-                              {it.attributes.map((a: any, ai: number) => (
-                                <span
-                                  key={ai}
-                                  className="inline-flex items-center rounded bg-muted px-2 py-0.5"
-                                >
-                                  {a.attributeName || a.attributeLabel}:{" "}
-                                  {a.attributeLabel || a.attributeValue}
+                              {Array.isArray(it.attributes) &&
+                              it.attributes.length > 0 ? (
+                                it.attributes.map((a: any, ai: number) => (
+                                  <span
+                                    key={ai}
+                                    className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs"
+                                  >
+                                    {a.attributeName || a.attributeLabel}:{" "}
+                                    {a.attributeLabel || a.attributeValue}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground text-xs">
+                                  No attributes
                                 </span>
-                              ))}
+                              )}
                             </div>
-                          ) : (
-                            <div className="text-muted-foreground">-</div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No items for this order.
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
