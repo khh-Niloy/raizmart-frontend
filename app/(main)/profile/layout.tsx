@@ -7,21 +7,17 @@ export default function ProfileLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white py-8 px-16">
-      <div className="mx-auto">
-        <div className="">
-          <div className="flex gap-8 pt-10">
-            {/* Left Sidebar */}
-            <div className="">
-              <ProfileSidebar />
-            </div>
-            
-            {/* Right Content Area */}
-            <div className="flex-1 p-8 bg-gray-50/80 rounded-xl">
-              {children}
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#f3fffe] via-white to-white">
+      <div className="mx-auto flex mt-10 flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:gap-8 lg:py-10 xl:gap-12">
+        {/* Sidebar */}
+        <aside className="lg:sticky lg:top-6 z-10 h-full shrink-0 rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] backdrop-blur">
+          <ProfileSidebar />
+        </aside>
+
+        {/* Content */}
+        <main className="flex-1 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_35px_110px_-80px_rgba(5,150,145,0.4)] backdrop-blur sm:p-7 lg:p-9">
+          {children}
+        </main>
       </div>
     </div>
   );

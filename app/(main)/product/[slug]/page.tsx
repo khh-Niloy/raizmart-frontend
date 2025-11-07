@@ -337,10 +337,33 @@ export default function ProductDetailBySlug({
   }
 
   return (
-    <div className="w-full px-16 mx-auto py-20 bg-white">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#f3fffe] via-white to-white">
+      <main className="mx-auto flex w-[90%] mx-auto flex-col gap-12 px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+        <header className="flex flex-col gap-3 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">Product</p>
+              <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">{product?.name}</h1>
+              <p className="text-sm text-slate-500">
+                Discover premium specs, live pricing, and flexible delivery options tailored for you.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+              {product?.brand?.name && (
+                <Link
+                  href={`/brands/${product?.brand?.name}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/30 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+                >
+                  Brand: {product.brand.name}
+                </Link>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* Left: Gallery with vertical thumbnails on desktop */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="flex flex-col gap-5 rounded-3xl border border-white/70 bg-white/95 p-4 shadow-[0_25px_80px_-60px_rgba(5,150,145,0.4)]">
           {/* Local styles for slide animations */}
           <style jsx>{`
             @keyframes slideInRight {
@@ -358,7 +381,7 @@ export default function ProductDetailBySlug({
             }
           `}</style>
           <div
-            className="w-full h-[420px] md:h-[480px] border rounded-lg flex items-center justify-center overflow-hidden bg-white relative group"
+            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 sm:aspect-[4/5] lg:aspect-[5/6]"
             onMouseMove={handleZoomMove}
           >
             {activeImage ? (
@@ -367,7 +390,7 @@ export default function ProductDetailBySlug({
                 key={`${activeIndex}-${activeImage}`}
                 src={activeImage}
                 alt={product.name}
-                className={`max-h-full max-w-full object-contain slide-right-in transition-transform duration-300 ease-out group-hover:scale-[1.6]`}
+                className={`max-h-full max-w-full object-contain slide-right-in transition-transform duration-300 ease-out hover:scale-[1.5]`}
                 style={{ transformOrigin: `${zoomOrigin.x} ${zoomOrigin.y}` }}
               />
             ) : (
@@ -377,17 +400,17 @@ export default function ProductDetailBySlug({
 
           {/* Thumbnails below the main image (all screens) */}
           {galleryImages.length > 0 && (
-            <div className="flex flex-wrap gap-3 mt-1">
+            <div className="flex gap-3 overflow-x-auto pb-1">
               {galleryImages.map((src, idx) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={idx}
                   src={src}
                   alt={`thumb-${idx}`}
-                  className={`h-16 w-16 object-cover rounded-md border bg-white cursor-pointer ${
+                  className={`h-16 w-16 flex-shrink-0 cursor-pointer rounded-xl border bg-white object-cover transition ${
                     activeIndex === idx
-                      ? "ring-2 ring-teal-500"
-                      : "hover:shadow"
+                      ? "border-[#02C1BE] shadow-[0_10px_25px_-15px_rgba(5,150,145,0.6)]"
+                      : "hover:border-[#02C1BE]/40 hover:shadow-md"
                   }`}
                   onClick={() => goToIndex(idx)}
                 />
@@ -397,27 +420,12 @@ export default function ProductDetailBySlug({
         </div>
 
         {/* Right: Info & selectors */}
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            {product?.brand?.name && (
-              <Link
-                href={`/brands/${product?.brand?.name}`}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Brand: {product.brand.name}
-              </Link>
-            )}
-          </div>
-          <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight flex items-center gap-3">
-            {product?.name}
-            {product?.isFreeDelivery && (
-              <span className="inline-flex">
-                <span className="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-medium px-2 py-0.5">
-                  Free Delivery
-                </span>
-              </span>
-            )}
-          </h1>
+        <div className="flex flex-col gap-6 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
+          {product?.isFreeDelivery && (
+            <span className="inline-flex w-max items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+              Free Delivery
+            </span>
+          )}
 
           {(() => {
             const formatPrice = (v: any) => `৳${Number(v).toLocaleString()}`;
@@ -456,9 +464,9 @@ export default function ProductDetailBySlug({
               : undefined;
 
             return (
-              <div className="mb-6 flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
                 {!inStock ? (
-                  <div className="text-2xl font-bold tracking-tight text-gray-900">
+                  <div className="text-2xl font-bold tracking-tight text-rose-600">
                     {(!isNumeric(basePrice) && basePrice) ? basePrice : "Not available"}
                   </div>
                 ) : showDiscount ? (
@@ -470,12 +478,12 @@ export default function ProductDetailBySlug({
                       {formatPrice(basePrice)}
                     </div>
                     {pctText && (
-                      <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-sm font-semibold">
+                      <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600">
                         {pctText}
                       </span>
                     )}
                   {savedAmount !== undefined && (
-                    <span className="text-sm font-medium text-green-700">
+                    <span className="text-sm font-semibold text-emerald-600">
                       You save {formatPrice(savedAmount)}
                     </span>
                   )}
@@ -508,7 +516,7 @@ export default function ProductDetailBySlug({
           })()}
 
           {/* Attribute selectors */}
-          <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
             {attributes.map((attr) => {
               const isColor =
                 attr.type?.toLowerCase?.() === "color" ||
@@ -681,17 +689,17 @@ export default function ProductDetailBySlug({
               };
 
               return (
-                <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="inline-flex items-center border rounded-md overflow-hidden">
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-inner">
                     <button
-                      className="px-3 py-2 hover:bg-gray-50"
+                      className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
                     >
                       -
                     </button>
-                    <div className="px-4" aria-live="polite">{qty}</div>
+                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{qty}</div>
                     <button
-                      className="px-3 py-2 hover:bg-gray-50"
+                      className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => q + 1)}
                     >
                       +
@@ -699,10 +707,10 @@ export default function ProductDetailBySlug({
                   </div>
                   
                   <button
-                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${
+                    className={`flex-1 sm:flex-none rounded-full border border-[#02C1BE]/30 px-5 py-3 text-sm font-semibold transition ${
                       inCart || !canAddToCart 
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed" 
-                        : "hover:bg-gray-50"
+                        ? "cursor-not-allowed bg-slate-100 text-slate-400" 
+                        : "bg-[#02C1BE] text-white shadow-[0_20px_40px_-30px_rgba(5,150,145,0.6)] hover:bg-[#01b1ae]"
                     }`}
                     onClick={!inCart && canAddToCart ? onAddToCart : undefined}
                     disabled={inCart || !canAddToCart}
@@ -711,7 +719,7 @@ export default function ProductDetailBySlug({
                     {inCart ? "Added" : !canAddToCart ? "Price TBA" : "Add To Cart"}
                   </button>
                   <button
-                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inWishlist ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    className={`flex-1 sm:flex-none rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold transition ${inWishlist ? "cursor-not-allowed bg-slate-100 text-slate-400" : "hover:border-[#02C1BE]/40 hover:text-[#02C1BE]"}`}
                     onClick={!inWishlist ? onToggleWishlist : undefined}
                     disabled={inWishlist}
                   >
@@ -725,18 +733,18 @@ export default function ProductDetailBySlug({
           })()}
 
           {/* Small details */}
-          <div className="mt-6 text-sm text-gray-600">
-            <div>1 Year Official Warranty Support</div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
+            Enjoy 1-year official warranty support plus expert assistance from our customer care team.
           </div>
         </div>
       </div>
       {/* Product details sections */}
-      <div className="mt-20 space-y-10">
-        <div className="mt-8 flex flex-wrap gap-3">
+      <div className="space-y-10">
+        <div className="flex flex-wrap gap-3">
           {hasSpecs && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(specRef.current)}
             >
               Specification
@@ -745,7 +753,7 @@ export default function ProductDetailBySlug({
           {(hasDescription || hasDescriptionImage || hasVideo) && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(descRef.current)}
             >
               Description
@@ -754,7 +762,7 @@ export default function ProductDetailBySlug({
           {hasVideo && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(videoRef.current)}
             >
               Video
@@ -762,7 +770,7 @@ export default function ProductDetailBySlug({
           )}
           <button
             type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+            className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
             onClick={() => scrollToWithOffset(warrantyRef.current)}
           >
             Warranty
@@ -770,18 +778,17 @@ export default function ProductDetailBySlug({
         </div>
         {/* Specification */}
         {hasSpecs && (
-          <div className="w-[50%]" ref={specRef} id="specification">
-            <h2 className="text-2xl font-semibold mb-4">Specification</h2>
-            <div className="border rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+          <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={specRef} id="specification">
+            <h2 className="text-2xl font-semibold text-slate-900">Specification</h2>
+            <table className="mt-4 w-full overflow-hidden rounded-2xl border border-slate-100 text-sm">
                 <tbody>
                   {(product?.specifications || []).map(
                     (row: any, idx: number) => (
-                      <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                        <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                      <tr key={idx} className="odd:bg-white even:bg-slate-50">
+                        <td className="w-1/3 border-b border-slate-100 p-3 font-medium text-slate-600">
                           {row.key}
                         </td>
-                        <td className="p-4 text-gray-800 border-b border-gray-100">
+                        <td className="border-b border-slate-100 p-3 text-slate-800">
                           {row.value}
                         </td>
                       </tr>
@@ -790,13 +797,12 @@ export default function ProductDetailBySlug({
                 </tbody>
               </table>
             </div>
-          </div>
         )}
 
         {/* Description */}
         {(hasDescription || hasDescriptionImage || hasVideo) && (
-          <div ref={descRef} id="description">
-            <h2 className="text-2xl font-semibold mb-4">Description</h2>
+          <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={descRef} id="description">
+            <h2 className="text-2xl font-semibold text-slate-900">Description</h2>
             <div className="space-y-6">
               {/* Description Image */}
               {hasDescriptionImage && (
@@ -805,26 +811,12 @@ export default function ProductDetailBySlug({
                   <img
                     src={descriptionImageUrl}
                     alt="Product description"
-                    className="w-full h-auto rounded-lg object-cover"
+                    className="h-auto w-xl mt-5 rounded-2xl object-cover shadow"
                   />
                 </div>
               )}
 
-              {/* Video */}
-              {hasVideo && (
-                <div className="w-full" ref={videoRef} id="video">
-                  <div className="relative w-[50%] h-[400px] bg-gray-200 rounded-lg overflow-hidden">
-                    <iframe
-                      className="absolute top-0 left-0 w-full h-full"
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      title="Product video"
-                    />
-                  </div>
-                </div>
-              )}
+              
 
               {/* Description Text */}
               {hasDescription && (
@@ -853,19 +845,39 @@ export default function ProductDetailBySlug({
                   />
                 </div>
               )}
+
+              {/* Video */}
+              {hasVideo && (
+                <div className="w-xl" ref={videoRef} id="video">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100">
+                    <iframe
+                      className="absolute top-0 left-0 w-full h-full"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      title="Product video"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Warranty */}
-        <div ref={warrantyRef} id="warranty">
-          <h2 className="text-2xl font-semibold mb-4">Warranty</h2>
-          <div className="text-gray-700 bg-white border rounded-xl p-4">
-            1 Year Official Warranty Support. Terms may vary by brand and
-            region.
-          </div>
+        <div
+          ref={warrantyRef}
+          id="warranty"
+          className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
+        >
+          <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
+          <p className="mt-3 text-sm text-slate-600">
+            1-year official warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
+          </p>
         </div>
       </div>
+      </main>
     </div>
   );
 }

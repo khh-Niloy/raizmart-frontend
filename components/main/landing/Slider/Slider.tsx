@@ -47,7 +47,7 @@ export default function Slider() {
 
   if (isLoading) {
     return (
-      <div className="relative w-full h-[600px] bg-gray-200 rounded-lg animate-pulse">
+      <div className="relative w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] bg-gray-200 rounded-2xl animate-pulse">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-gray-500">Loading slider...</div>
         </div>
@@ -57,7 +57,7 @@ export default function Slider() {
 
   if (error || activeSliders.length === 0) {
     return (
-      <div className="relative w-full h-[600px] bg-gray-100 rounded-lg flex items-center justify-center">
+      <div className="relative w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] bg-gray-100 rounded-2xl flex items-center justify-center">
         <div className="text-gray-500">
           {error ? `Error: ${error}` : 'No active slider images available'}
         </div>
@@ -88,7 +88,7 @@ export default function Slider() {
   }
 
   return (
-    <div className="relative w-full h-[480px] rounded-lg overflow-hidden group">
+    <div className="relative w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] rounded-2xl overflow-hidden group">
       {/* Main Slider Image */}
       <div className="relative w-full h-full">
         <img

@@ -2,7 +2,6 @@
 
 import React from "react";
 import { useGetOthersImagesQuery } from "@/app/redux/features/other-images/other-images.api";
-import { ExternalLink } from "lucide-react";
 
 export default function OtherImages() {
   const { data, isLoading, error } = useGetOthersImagesQuery(undefined);
@@ -22,38 +21,50 @@ export default function OtherImages() {
   // console.log('All other images:', othersImages);
   // console.log('Active other images:', activeOthersImages);
 
+  const SLOTS = 2;
+
+  const renderGridWrapper = (children: React.ReactNode, count = SLOTS) => (
+    <div
+      className="grid gap-4 sm:gap-5 h-full"
+      style={{
+        gridTemplateRows: `repeat(${count}, minmax(0, 1fr))`,
+      }}
+    >
+      {children}
+    </div>
+  );
+
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-[232px] bg-gray-200 rounded-lg animate-pulse"
-          />
-        ))}
-      </div>
+    return renderGridWrapper(
+      Array.from({ length: SLOTS }).map((_, i) => (
+        <div
+          key={i}
+          className="relative aspect-[16/9] w-full rounded-2xl bg-gray-200 animate-pulse"
+        />
+      )),
+      SLOTS
     );
   }
 
   if (error || activeOthersImages.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="h-[232px] bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-gray-500">
-            {error ? `Error: ${error}` : "No active other images available"}
+    return renderGridWrapper(
+      Array.from({ length: SLOTS }).map((_, i) => (
+        <div
+          key={i}
+          className="relative aspect-[16/9] w-full rounded-2xl bg-gray-100 flex items-center justify-center text-center px-4"
+        >
+          <div className="text-gray-500 text-sm">
+            {error ? `Error: ${error}` : "Additional content coming soon"}
           </div>
         </div>
-        <div className="h-[232px] bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-gray-500">
-            {error ? `Error: ${error}` : "No active other images available"}
-          </div>
-        </div>
-      </div>
+      )),
+      SLOTS
     );
   }
 
   // Take only the first 2 images
   const displayImages = activeOthersImages.slice(0, 2);
+  const slotCount = Math.max(displayImages.length, SLOTS);
 
   // console.log("Display images:", displayImages);
   displayImages.forEach(
@@ -66,32 +77,20 @@ export default function OtherImages() {
     }
   );
 
-  return (
-    <div className="space-y-4">
+  return renderGridWrapper(
+    <>
       {displayImages.map(
         (
           image: { imageUrl: string; redirectUrl: string; _id: string },
           index: number
         ) => (
-          <div
-            key={image._id}
-            className="relative h-[232px] rounded-lg overflow-hidden"
-          >
+          <div key={image._id} className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden">
             <img
               src={image.imageUrl}
               alt={`Other image ${index + 1}`}
               className="w-full h-full object-cover"
-              onError={(e) => {
+              onError={() => {
                 console.error("❌ Other image failed to load:", image.imageUrl);
-              }}
-              onLoad={() => {
-                // console.log(
-                //   "✅ Other image loaded successfully:",
-                //   image.imageUrl
-                // );
-              }}
-              onLoadStart={() => {
-                console.log("🔄 Starting to load other image:", image.imageUrl);
               }}
             />
 
@@ -109,11 +108,16 @@ export default function OtherImages() {
       )}
 
       {/* Fill empty slots if less than 2 images */}
-      {displayImages.length < 2 && (
-        <div className="h-[232px] bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-gray-500">Additional content coming soon</div>
-        </div>
-      )}
-    </div>
+      {displayImages.length < slotCount &&
+        Array.from({ length: slotCount - displayImages.length }).map((_, i) => (
+          <div
+            key={`placeholder-${i}`}
+            className="relative aspect-[16/9] w-full rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500 text-sm"
+          >
+            Additional content coming soon
+          </div>
+        ))}
+    </>,
+    slotCount
   );
 }

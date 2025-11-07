@@ -7,20 +7,20 @@ import { Facebook, Instagram, Linkedin, Phone, Mail, MapPin } from "lucide-react
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Three-column layout */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10">
           {/* Left: Logo + Contact + Socials */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
+          <div className="lg:col-span-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
               <Link href="/" className="flex items-center group cursor-pointer">
                 <span suppressHydrationWarning>
                   <Image src="/logo.png" alt="RaizMart" width={110} height={110} />
                 </span>
               </Link>
-              <div className="hidden sm:block">
-                <p className="text-sm text-gray-600">Your trusted marketplace for quality products</p>
-              </div>
+              <p className="text-sm text-gray-600 max-w-xs">
+                Your trusted marketplace for quality products across Bangladesh.
+              </p>
             </div>
             <h3 className="text-gray-900 font-semibold mb-3">Contact</h3>
             <div className="space-y-4">
@@ -53,9 +53,9 @@ export default function Footer() {
           </div>
 
           {/* Middle: Locations */}
-          <div>
-            <h3 className="text-gray-900 font-semibold mb-3">Location</h3>
-            <div className="space-y-4">
+          <div className="lg:col-span-4">
+            <h3 className="text-gray-900 font-semibold mb-3">Stores</h3>
+            <div className="space-y-4 text-sm">
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-[#02C1BE] mt-0.5" />
                 <div>
@@ -88,9 +88,9 @@ export default function Footer() {
           </div>
 
           {/* Right: Navigation */}
-          <div>
+          <div className="lg:col-span-3">
             <h3 className="text-gray-900 font-semibold mb-3">Navigation</h3>
-            <nav className="grid grid-cols-1 gap-3 text-sm">
+            <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-sm">
               <Link href="/about" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">About</Link>
               <Link href="/contact" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">Contact</Link>
               <Link href="/privacy-policy" className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer">Privacy</Link>
@@ -100,10 +100,10 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="text-xs text-gray-500">© {new Date().getFullYear()} RaizMart. All rights reserved.</p>
-          <div className="text-xs text-gray-500">
-            <span className="mr-2">Support:</span>
+        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-gray-500">
+          <p className="text-xs sm:text-sm">© {new Date().getFullYear()} RaizMart. All rights reserved.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span>Support:</span>
             <Link href="mailto:support@raizmart.com" className="text-gray-600 hover:text-[#02C1BE] cursor-pointer">support@raizmart.com</Link>
           </div>
         </div>
