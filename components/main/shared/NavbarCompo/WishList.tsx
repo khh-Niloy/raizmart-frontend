@@ -90,93 +90,101 @@ export default function WishList() {
                   return (
                     <div
                       key={`${it.productId}-${it.sku || ""}`}
-                      className="group relative flex items-center gap-6 rounded-3xl border border-white/70 bg-white p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.5)] transition hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)] "
+                      className="group relative flex items-center gap-3 sm:gap-4 rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm transition hover:shadow-md"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <div className="flex-1 min-w-0 flex flex-col gap-4">
-                      <img
-                        src={it.image || "/next.svg"}
-                        alt={it.name}
-                        className="h-20 w-20 flex-shrink-0 rounded-xl border object-contain shadow-inner"
-                      />
-                        <div className="space-y-3">
-                          <p className="text-base font-semibold text-slate-900 truncate">
-                            {it.name}
-                          </p>
-                          {typeof it.price === "number" && (
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              {it.discountedPrice &&
-                              it.basePrice &&
-                              it.discountedPrice < it.basePrice ? (
-                                <>
-                                  <span className="text-lg font-semibold text-emerald-600">
-                                    ৳ {it.discountedPrice.toFixed(2)}
-                                  </span>
-                                  <span className="text-sm text-slate-400 line-through">
-                                    ৳ {it.basePrice.toFixed(2)}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-lg font-semibold text-slate-700">
-                                  ৳ {it.price.toFixed(2)}
+                      {/* Product Image */}
+                      <div className="flex-shrink-0">
+                        <img
+                          src={it.image || "/next.svg"}
+                          alt={it.name}
+                          className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-gray-200 object-contain bg-gray-50"
+                        />
+                      </div>
+
+                      {/* Product Information */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5 sm:gap-2">
+                        <p className="text-sm sm:text-base font-bold text-slate-900 line-clamp-2">
+                          {it.name}
+                        </p>
+                        {typeof it.price === "number" && (
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            {it.discountedPrice &&
+                            it.basePrice &&
+                            it.discountedPrice < it.basePrice ? (
+                              <>
+                                <span className="text-base sm:text-lg font-bold text-emerald-600">
+                                  ৳ {it.discountedPrice.toFixed(2)}
                                 </span>
+                                <span className="text-xs sm:text-sm text-gray-400 line-through">
+                                  ৳ {it.basePrice.toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-base sm:text-lg font-bold text-slate-700">
+                                ৳ {it.price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {it.selectedOptions &&
+                          Object.keys(it.selectedOptions || {}).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                              {Object.entries(it.selectedOptions).map(
+                                ([optionKey, optionValue]) => (
+                                  <span
+                                    key={optionKey}
+                                    className="rounded-full bg-gray-100 px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs text-gray-600"
+                                  >
+                                    {optionKey}: {String(optionValue)}
+                                  </span>
+                                )
                               )}
                             </div>
                           )}
-                          {it.selectedOptions &&
-                            Object.keys(it.selectedOptions || {}).length >
-                              0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {Object.entries(it.selectedOptions).map(
-                                  ([optionKey, optionValue]) => (
-                                    <span
-                                      key={optionKey}
-                                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
-                                    >
-                                      {optionKey}: {String(optionValue)}
-                                    </span>
-                                  )
-                                )}
-                              </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition shadow-[0_18px_40px_-30px_rgba(5,150,145,0.7)] ${
-                              inCart || !canAddToCart
-                                ? "bg-gray-200 text-gray-500 shadow-none"
-                                : "bg-[#02C1BE] text-white hover:bg-[#01b1ae]"
-                            }`}
-                            onClick={() => {
-                              if (inCart || !canAddToCart) return;
-                              if (!requireAuth()) {
-                                setIsOpen(false);
-                                return;
-                              }
-                              addItem({ ...matcher, quantity: 1 });
-                            }}
-                            disabled={inCart || !canAddToCart}
-                            title={
-                              !canAddToCart
-                                ? "Price is TBA - Cannot add to cart"
-                                : undefined
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3">
+                        <button
+                          className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition ${
+                            inCart || !canAddToCart
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-[#02C1BE] text-white hover:bg-[#01b1ae]"
+                          }`}
+                          onClick={() => {
+                            if (inCart || !canAddToCart) return;
+                            if (!requireAuth()) {
+                              setIsOpen(false);
+                              return;
                             }
-                          >
-                            <ShoppingCart className="h-4 w-4" />
+                            addItem({ ...matcher, quantity: 1 });
+                          }}
+                          disabled={inCart || !canAddToCart}
+                          title={
+                            !canAddToCart
+                              ? "Price is TBA - Cannot add to cart"
+                              : undefined
+                          }
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">
                             {inCart
-                              ? "Already in Cart"
+                              ? "In Cart"
                               : !canAddToCart
-                              ? "Price TBA"
-                              : "Move to Cart"}
-                          </button>
-                          <button
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition hover:border-[#02C1BE]/20 hover:text-[#02C1BE]"
-                            onClick={() => remove(it)}
-                            aria-label="Remove from wishlist"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                              ? "TBA"
+                              : "Add to Cart"}
+                          </span>
+                          <span className="sm:hidden">
+                            {inCart ? "Cart" : !canAddToCart ? "TBA" : "Add"}
+                          </span>
+                        </button>
+                        <button
+                          className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 hover:text-red-600"
+                          onClick={() => remove(it)}
+                          aria-label="Remove from wishlist"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
                       </div>
                     </div>
                   );

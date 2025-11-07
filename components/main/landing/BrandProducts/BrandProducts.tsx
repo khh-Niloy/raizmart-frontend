@@ -133,13 +133,31 @@ export default function BrandProducts() {
                 "/next.svg";
               const variant = (product?.variants || [])[0];
 
+              // Calculate discount information
+              // finalPrice is the base/original price, discountedPrice is the discounted price
+              const basePrice = variant?.finalPrice || product?.price || 0;
+              const discountedPrice = variant?.discountedPrice || product?.discountedPrice || 0;
+              const hasDiscount = basePrice > 0 && discountedPrice > 0 && discountedPrice < basePrice;
+              const finalPrice = hasDiscount ? discountedPrice : basePrice;
+              const discountPercentage = hasDiscount
+                ? Math.round(((basePrice - discountedPrice) / basePrice) * 100)
+                : 0;
+
               return (
                 <Link
                   key={product._id}
                   href={`/product/${product.slug}`}
                   className="block"
                 >
-                  <div className="h-full rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)]">
+                  <div className="h-full rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)] relative">
+                    {/* Discount Badge */}
+                    {hasDiscount && discountPercentage > 0 && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className="bg-red-500 text-white border-transparent font-bold text-xs px-2 py-1">
+                          -{discountPercentage}%
+                        </Badge>
+                      </div>
+                    )}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={primaryImage}
@@ -156,8 +174,23 @@ export default function BrandProducts() {
                     <div className="mt-3 font-medium text-gray-900 line-clamp-2 min-h-[44px]">
                       {product.name}
                     </div>
-                    <div className="mt-2 text-lg font-semibold text-[#111827]">
-                      {variant?.finalPrice ? `৳ ${variant.finalPrice}` : ""}
+                    <div className="mt-2 flex flex-col gap-1">
+                      {hasDiscount ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-emerald-600">
+                              ৳ {finalPrice.toLocaleString()}
+                            </span>
+                            <span className="text-sm text-gray-400 line-through">
+                              ৳ {basePrice.toLocaleString()}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-lg font-semibold text-[#111827]">
+                          {finalPrice > 0 ? `৳ ${finalPrice.toLocaleString()}` : ""}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>

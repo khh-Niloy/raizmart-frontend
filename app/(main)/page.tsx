@@ -1,7 +1,7 @@
 import OtherImages from "@/components/main/landing/OtherImages/OtherImages";
 import Slider from "@/components/main/landing/Slider/Slider";
 import React from "react";
-import WhyChooseUs from "./landing/components/WhyChooseUs/WhyChooseUs";
+import WhyChooseUs from "@/components/main/landing/whyChooseUs/WhyChooseUs";
 import FeaturedProducts from "@/components/main/landing/FeaturedProducts/FeaturedProducts";
 import BrandProducts from "@/components/main/landing/BrandProducts/BrandProducts";
 import { Button } from "@/components/ui/button";
