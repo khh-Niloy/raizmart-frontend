@@ -42,15 +42,12 @@ export default function WishList() {
           )}
         </div>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-3xl overflow-hidden rounded-[30px] border border-white/40 bg-white/60 p-0 backdrop-blur-xl">
+      <DialogContent className="w-[90%] md:w-full max-w-3xl overflow-hidden rounded-[30px] border border-white/40 bg-white/60 p-0 backdrop-blur-xl">
         <div className="flex flex-col gap-6 rounded-[28px] bg-gradient-to-br from-white via-white to-[#ecfffd] p-6 sm:p-8 shadow-[0_40px_120px_-70px_rgba(5,150,145,0.55)]">
-          <header className="flex items-center justify-between">
+          <header className="flex items-center justify-start gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#02C1BE]/10 text-[#02C1BE]">
-                <Heart className="h-5 w-5" />
-              </div>
-              <h2 className="text-3xl font-bold text-slate-900">
-                Wishlist Overview
+              <h2 className="text-lg font-bold text-slate-900">
+                Wishlist
               </h2>
             </div>
             {items.length > 0 && (
@@ -93,15 +90,15 @@ export default function WishList() {
                   return (
                     <div
                       key={`${it.productId}-${it.sku || ""}`}
-                      className="group relative flex items-center gap-6 rounded-3xl border border-white/70 bg-white p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.5)] transition hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)]"
+                      className="group relative flex items-center gap-6 rounded-3xl border border-white/70 bg-white p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.5)] transition hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)] "
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-4">
                       <img
                         src={it.image || "/next.svg"}
                         alt={it.name}
                         className="h-20 w-20 flex-shrink-0 rounded-xl border object-contain shadow-inner"
                       />
-                      <div className="flex-1 min-w-0 flex flex-col gap-4">
                         <div className="space-y-3">
                           <p className="text-base font-semibold text-slate-900 truncate">
                             {it.name}

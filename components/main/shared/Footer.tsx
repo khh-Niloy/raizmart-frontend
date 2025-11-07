@@ -7,7 +7,7 @@ import { Facebook, Instagram, Linkedin, Phone, Mail, MapPin } from "lucide-react
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100">
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Three-column layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10">
           {/* Left: Logo + Contact + Socials */}

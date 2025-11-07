@@ -14,10 +14,10 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-[#e6fbf9] via-white/60 to-transparent pointer-events-none" />
         <div className="relative flex flex-col gap-16 pb-16">
           {/* Hero Section */}
-          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 pt-8 lg:pt-12">
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 md:pt-8 mt-20 md:mt-0 lg:pt-12">
             <section className="rounded-3xl border border-white/80 bg-white/95 shadow-[0_50px_120px_-60px_rgba(5,150,145,0.55)] backdrop-blur-sm transition">
               <div className="flex flex-col gap-10 p-6 sm:p-8 lg:p-12">
-                <div className="flex justify-between items-start">
+                <div className="flex md:flex-row flex-col gap-10 md:gap-0 justify-between items-start">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#02C1BE]">
                       Your trusted marketplace
@@ -46,7 +46,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="">
-                    <h1 className="text-3xl sm:text-4xl text-right lg:text-5xl font-bold text-slate-900 leading-tight">
+                    <h1 className="text-3xl sm:text-4xl md:text-right text-left lg:text-5xl font-bold text-slate-900 leading-tight">
                       Discover premium tech and lifestyle essentials
                     </h1>
                   </div>

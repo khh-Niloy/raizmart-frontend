@@ -211,13 +211,16 @@ export default function OrdersPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-full max-w-4xl overflow-hidden rounded-[30px] border border-white/40 bg-white/70 p-0 backdrop-blur-xl">
-          <div className="rounded-[28px] bg-gradient-to-br from-white via-white to-[#ecfffd] p-6 sm:p-8">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-slate-900">Order Details</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-[90%] md:w-full max-w-4xl max-h-[calc(100vh-4rem)] sm:max-h-[85vh] overflow-hidden rounded-[30px] border border-white/40 bg-white/70 p-0 backdrop-blur-xl">
+          <div className="flex flex-col h-full max-h-[calc(100vh-4rem)] sm:max-h-[85vh] overflow-hidden rounded-[28px] bg-gradient-to-br from-white via-white to-[#ecfffd]">
+            <div className="flex-shrink-0 p-4 sm:p-6 pb-3 border-b border-gray-100">
+              <DialogHeader>
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900">Order Details</DialogTitle>
+              </DialogHeader>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-8">
           {selectedOrder ? (
-            <div className="mt-6 space-y-6">
+            <div className="space-y-4 sm:space-y-6 py-4 pb-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-slate-600">
                   <span className="text-slate-400">Order:</span> {selectedOrder.order_slug || selectedOrder.slug || selectedOrder._id || selectedOrder.id}
@@ -249,7 +252,7 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              <div className="max-h-72 overflow-auto rounded-2xl border border-white/60 bg-white">
+              <div className="max-h-48 sm:max-h-72 overflow-auto rounded-2xl border border-white/60 bg-white">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -323,6 +326,7 @@ export default function OrdersPage() {
           ) : (
             <div className="text-sm text-gray-500">No order selected.</div>
           )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
