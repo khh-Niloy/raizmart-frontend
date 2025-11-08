@@ -231,7 +231,7 @@ export default function Navbar() {
               </div>
 
               {/* Additional Navigation Links */}
-              <div className="hidden xl:flex items-center space-x-6 ml-6">
+              <div className="hidden lg:flex items-center space-x-6 ml-6">
                 {navbarLinks.map((link) => {
                   // Special handling for Orders link
                   if (link.href === "/profile/orders") {

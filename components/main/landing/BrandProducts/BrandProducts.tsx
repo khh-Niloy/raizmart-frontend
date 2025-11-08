@@ -30,7 +30,9 @@ export default function BrandProducts() {
       { skip: !active }
     ) as any;
 
-  const items: any[] = productsResp?.items || productsResp?.data?.items || [];
+  const allItems: any[] = productsResp?.items || productsResp?.data?.items || [];
+  // Filter to show only active products
+  const items = allItems.filter((product: any) => product.status === "active");
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const scrollBy = (delta: number) =>

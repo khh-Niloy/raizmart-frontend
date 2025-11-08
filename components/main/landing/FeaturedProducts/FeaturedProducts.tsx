@@ -11,7 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeaturedProducts() {
   const { data, isLoading, isError } = useGetFeaturedProductsQuery(undefined);
-  const items: any[] = Array.isArray((data as any)) ? (data as any) : (data?.items || data?.data || []);
+  const allItems: any[] = Array.isArray((data as any)) ? (data as any) : (data?.items || data?.data || []);
+  // Filter to show only active products
+  const items = allItems.filter((product: any) => product.status === "active");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 

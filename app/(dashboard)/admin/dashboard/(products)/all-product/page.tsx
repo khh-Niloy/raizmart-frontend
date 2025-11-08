@@ -1,24 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import { useGetProductsQuery, useToggleFeaturedMutation } from "@/app/redux/features/product/product.api";
+import {
+  useGetProductsQuery,
+  useToggleFeaturedMutation,
+  useUpdateProductMutation,
+} from "@/app/redux/features/product/product.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  Star, 
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Star,
   StarOff,
   Filter,
   MoreHorizontal,
   Package,
   Tag,
-  Calendar
+  Calendar,
+  XCircle,
+  CheckCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -83,51 +89,97 @@ interface Product {
 
 export default function AllProductPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [featuredFilter, setFeaturedFilter] = useState<"all" | "featured" | "not-featured">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
+  const [featuredFilter, setFeaturedFilter] = useState<
+    "all" | "featured" | "not-featured"
+  >("all");
 
-  const { data: products = [], isLoading, error } = useGetProductsQuery(undefined);
-  const [toggleFeatured, { isLoading: isTogglingFeatured }] = useToggleFeaturedMutation();
+  const {
+    data: products = [],
+    isLoading,
+    error,
+  } = useGetProductsQuery(undefined);
+  const [toggleFeatured, { isLoading: isTogglingFeatured }] =
+    useToggleFeaturedMutation();
+  const [updateProduct, { isLoading: isUpdatingStatus }] =
+    useUpdateProductMutation();
 
   // Filter products based on search and filters
   const filteredProducts = products.filter((product: Product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        product.category?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        product.brand?.brandName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
-    const matchesFeatured = featuredFilter === "all" || 
-                           (featuredFilter === "featured" && product.isFeatured) ||
-                           (featuredFilter === "not-featured" && !product.isFeatured);
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand?.brandName.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" || product.status === statusFilter;
+    const matchesFeatured =
+      featuredFilter === "all" ||
+      (featuredFilter === "featured" && product.isFeatured) ||
+      (featuredFilter === "not-featured" && !product.isFeatured);
 
     return matchesSearch && matchesStatus && matchesFeatured;
   });
 
-  const handleToggleFeatured = async (productId: string, currentStatus: boolean) => {
+  const handleToggleFeatured = async (
+    productId: string,
+    currentStatus: boolean
+  ) => {
     try {
-      await toggleFeatured({ id: productId, isFeatured: !currentStatus }).unwrap();
-      toast.success(`Product ${!currentStatus ? 'added to' : 'removed from'} featured`);
+      await toggleFeatured({
+        id: productId,
+        isFeatured: !currentStatus,
+      }).unwrap();
+      toast.success(
+        `Product ${!currentStatus ? "added to" : "removed from"} featured`
+      );
     } catch (error) {
       toast.error("Failed to update featured status");
     }
   };
 
-  const getMinPrice = (variants: Product['variants']) => {
-    if (!variants || variants.length === 0) return 0;
-    return Math.min(...variants.map(v => v.finalPrice));
+  const handleDeleteProduct = async (
+    productId: string,
+    currentStatus: "active" | "inactive"
+  ) => {
+    try {
+      // Toggle status: if active, make inactive; if inactive, make active
+      const newStatus = currentStatus === "active" ? "inactive" : "active";
+      
+      // Create FormData with status field
+      const formData = new FormData();
+      formData.append("status", newStatus);
+      
+      await updateProduct({
+        id: productId,
+        formData,
+      }).unwrap();
+      toast.success(
+        `Product status changed to ${newStatus}`
+      );
+    } catch (error) {
+      toast.error("Failed to update product status");
+    }
   };
 
-  const getMaxPrice = (variants: Product['variants']) => {
+  const getMinPrice = (variants: Product["variants"]) => {
     if (!variants || variants.length === 0) return 0;
-    return Math.max(...variants.map(v => v.finalPrice));
+    return Math.min(...variants.map((v) => v.finalPrice));
   };
 
-  const getTotalStock = (variants: Product['variants']) => {
+  const getMaxPrice = (variants: Product["variants"]) => {
+    if (!variants || variants.length === 0) return 0;
+    return Math.max(...variants.map((v) => v.finalPrice));
+  };
+
+  const getTotalStock = (variants: Product["variants"]) => {
     if (!variants || variants.length === 0) return 0;
     return variants.reduce((total, variant) => total + variant.stock, 0);
   };
 
-  const getVariantCount = (variants: Product['variants']) => {
+  const getVariantCount = (variants: Product["variants"]) => {
     return variants?.length || 0;
   };
 
@@ -161,8 +213,12 @@ export default function AllProductPage() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Products</h1>
-            <p className="text-gray-600">Failed to load products. Please try again.</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Error Loading Products
+            </h1>
+            <p className="text-gray-600">
+              Failed to load products. Please try again.
+            </p>
           </div>
         </div>
       </div>
@@ -178,10 +234,14 @@ export default function AllProductPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Products</h1>
               <p className="text-gray-600 mt-1">
-                Manage your product inventory ({filteredProducts.length} products)
+                Manage your product inventory ({filteredProducts.length}{" "}
+                products)
               </p>
             </div>
-            <Link href="/admin/dashboard/add-product" className="cursor-pointer">
+            <Link
+              href="/admin/dashboard/add-product"
+              className="cursor-pointer"
+            >
               <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                 <Plus className="h-4 w-4" />
                 Add Product
@@ -223,7 +283,9 @@ export default function AllProductPage() {
                     Active
                   </Button>
                   <Button
-                    variant={statusFilter === "inactive" ? "default" : "outline"}
+                    variant={
+                      statusFilter === "inactive" ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setStatusFilter("inactive")}
                   >
@@ -241,14 +303,18 @@ export default function AllProductPage() {
                     All Products
                   </Button>
                   <Button
-                    variant={featuredFilter === "featured" ? "default" : "outline"}
+                    variant={
+                      featuredFilter === "featured" ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setFeaturedFilter("featured")}
                   >
                     Featured
                   </Button>
                   <Button
-                    variant={featuredFilter === "not-featured" ? "default" : "outline"}
+                    variant={
+                      featuredFilter === "not-featured" ? "default" : "outline"
+                    }
                     size="sm"
                     onClick={() => setFeaturedFilter("not-featured")}
                   >
@@ -264,13 +330,20 @@ export default function AllProductPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Found</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No Products Found
+                </h3>
                 <p className="text-gray-600 mb-6">
-                  {searchTerm || statusFilter !== "all" || featuredFilter !== "all"
+                  {searchTerm ||
+                  statusFilter !== "all" ||
+                  featuredFilter !== "all"
                     ? "No products match your current filters."
                     : "Get started by adding your first product."}
                 </p>
-                <Link href="/admin/dashboard/add-product" className="cursor-pointer">
+                <Link
+                  href="/admin/dashboard/add-product"
+                  className="cursor-pointer"
+                >
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Product
@@ -281,7 +354,10 @@ export default function AllProductPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product: Product) => (
-                <Card key={product._id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={product._id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -289,11 +365,21 @@ export default function AllProductPage() {
                           {product.name}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge variant={product.status === "active" ? "default" : "secondary"}>
+                          <Badge
+                            className={
+                              product.status === "active"
+                                ? "bg-green-50 text-green-600 border-green-200"
+                                : "bg-red-50 text-red-600 border-red-200"
+                            }
+                            variant="outline"
+                          >
                             {product.status}
                           </Badge>
                           {product.isFeatured && (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                            <Badge
+                              variant="outline"
+                              className="text-yellow-600 border-yellow-600"
+                            >
                               <Star className="h-3 w-3 mr-1" />
                               Featured
                             </Badge>
@@ -307,18 +393,22 @@ export default function AllProductPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/admin/dashboard/edit-product/${product._id}`} className="cursor-pointer">
+                            <Link
+                              href={`/admin/dashboard/edit-product/${product._id}`}
+                              className="cursor-pointer"
+                            >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Product
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleToggleFeatured(product._id, product.isFeatured)}
+                            onClick={() =>
+                              handleToggleFeatured(
+                                product._id,
+                                product.isFeatured
+                              )
+                            }
                             disabled={isTogglingFeatured}
                           >
                             {product.isFeatured ? (
@@ -333,9 +423,28 @@ export default function AllProductPage() {
                               </>
                             )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Product
+                          <DropdownMenuItem
+                            className={
+                              product.status === "active"
+                                ? "text-red-600"
+                                : "text-green-600"
+                            }
+                            onClick={() =>
+                              handleDeleteProduct(product._id, product.status)
+                            }
+                            disabled={isUpdatingStatus}
+                          >
+                            {product.status === "active" ? (
+                              <>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Deactivate Product
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Activate Product
+                              </>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -367,19 +476,6 @@ export default function AllProductPage() {
                       )}
                     </div>
 
-                    {/* Price Range */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Price Range:</span>
-                        <span className="text-sm font-semibold text-green-600">
-                          ৳{getMinPrice(product.variants).toLocaleString()}
-                          {getMinPrice(product.variants) !== getMaxPrice(product.variants) && 
-                            ` - ৳${getMaxPrice(product.variants).toLocaleString()}`
-                          }
-                        </span>
-                      </div>
-                    </div>
-
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                       <div className="text-center">
@@ -400,7 +496,8 @@ export default function AllProductPage() {
                     <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t">
                       <Calendar className="h-3 w-3" />
                       <span>
-                        Created {new Date(product.createdAt).toLocaleDateString()}
+                        Created{" "}
+                        {new Date(product.createdAt).toLocaleDateString()}
                       </span>
                     </div>
                   </CardContent>
