@@ -63,15 +63,28 @@ export default function EditSubcategoryPage() {
     undefined
   );
 
+  interface Subcategory {
+    id?: string;
+    _id?: string;
+    name?: string;
+    isActive?: boolean;
+    image?: string;
+    category?: string | { _id?: string; id?: string };
+  }
+
+  interface Category {
+    id?: string;
+    _id?: string;
+  }
+
   // Load existing subcategory data
   useEffect(() => {
     if (subcategoriesResponse && categoriesResponse && subcategoryId) {
       // same...
-      const subcategories: any[] = (subcategoriesResponse?.data ??
-        subcategoriesResponse ??
-        []) as any[];
+      // Ensure data is an array (transformResponse already extracts data, so subcategoriesResponse should be the array)
+      const subcategories: Subcategory[] = Array.isArray(subcategoriesResponse) ? subcategoriesResponse : [];
       const currentSubcategory = subcategories.find(
-        (item: any) => (item.id ?? item._id) === subcategoryId
+        (item: Subcategory) => (item.id ?? item._id) === subcategoryId
       );
       if (currentSubcategory) {
         setCurrentImage(currentSubcategory?.image ?? undefined);
@@ -83,11 +96,9 @@ export default function EditSubcategoryPage() {
               )
             : String(currentSubcategory.category ?? "");
         // Check if catValue is in categories list
-        const catExists = (
-          categoriesResponse?.data ??
-          categoriesResponse ??
-          []
-        ).some((cat: any) => String(cat.id ?? cat._id) === catValue);
+        // Ensure data is an array (transformResponse already extracts data, so categoriesResponse should be the array)
+        const categories: Category[] = Array.isArray(categoriesResponse) ? categoriesResponse : [];
+        const catExists = categories.some((cat: Category) => String(cat.id ?? cat._id) === catValue);
         if (catExists) {
           reset({
             name: currentSubcategory.name ?? "",
@@ -112,12 +123,12 @@ export default function EditSubcategoryPage() {
       ) {
         formData.append("image", data.image[0]);
       }
-      const res = await updateSubcategory({
+      await updateSubcategory({
         id: subcategoryId,
         formData,
       }).unwrap();
       toast.success("Subcategory updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update subcategory. Please try again.");
     }
   };
@@ -220,10 +231,8 @@ export default function EditSubcategoryPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {(
-                        categoriesResponse?.data ??
-                        categoriesResponse ??
-                        []
-                      ).map((category: any) => (
+                        Array.isArray(categoriesResponse) ? categoriesResponse : []
+                      ).map((category: { id?: string; _id?: string; name?: string; categoryName?: string }) => (
                         <SelectItem
                           key={category.id ?? category._id}
                           value={(category.id ?? category._id) as string}

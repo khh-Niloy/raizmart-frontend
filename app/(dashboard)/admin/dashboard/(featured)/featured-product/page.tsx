@@ -9,13 +9,18 @@ import { Search, X, Star, Plus, Package } from "lucide-react";
 import { useGetProductsQuery, useToggleFeaturedMutation } from "@/app/redux/features/product/product.api";
 import { toast } from "sonner";
 
+interface CategoryRef {
+  name?: string;
+  [key: string]: unknown;
+}
+
 interface Product {
   _id: string;
   name: string;
   basePrice: number;
-  category: any;
-  subCategory: any;
-  brand?: any;
+  category?: CategoryRef;
+  subCategory?: CategoryRef;
+  brand?: CategoryRef;
   isFeatured?: boolean;
   status: string;
 }
@@ -28,6 +33,9 @@ export default function FeaturedProductPage() {
   const { data: allProducts, isLoading: productsLoading } = useGetProductsQuery(undefined);
   const [toggleFeatured, { isLoading: isToggling }] = useToggleFeaturedMutation();
 
+  // Ensure data is an array (transformResponse already extracts data, so allProducts should be the array)
+  const productsArray: Product[] = Array.isArray(allProducts) ? allProducts : [];
+
   // Search functionality
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -35,16 +43,16 @@ export default function FeaturedProductPage() {
       return;
     }
 
-    if (!allProducts) return;
+    if (productsArray.length === 0) return;
 
-    const filtered = allProducts.filter((product: Product) =>
+    const filtered = productsArray.filter((product: Product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.subCategory?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.brand?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setSearchResults(filtered);
-  }, [searchTerm, allProducts]);
+  }, [searchTerm, productsArray]);
 
   // Toggle featured status
   const handleToggleFeatured = async (product: Product) => {
@@ -64,7 +72,7 @@ export default function FeaturedProductPage() {
   };
 
   // Get featured products
-  const featuredProducts = allProducts?.filter((product: Product) => product.isFeatured) || [];
+  const featuredProducts = productsArray.filter((product: Product) => product.isFeatured);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -144,7 +152,7 @@ export default function FeaturedProductPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No products found matching "{searchTerm}"</p>
+                  <p className="text-gray-500 text-sm">No products found matching &quot;{searchTerm}&quot;</p>
                 )}
               </div>
             )}

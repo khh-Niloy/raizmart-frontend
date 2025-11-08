@@ -1,9 +1,43 @@
 import { baseApi } from "../../baseApi"
 
+interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+interface RegisterPayload {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+interface OTPPayload {
+  email: string;
+  otp: string;
+}
+
+interface UserInfo {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+}
+
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const authApi = baseApi.injectEndpoints({
     endpoints: (builder)=> ({
         login: builder.mutation({
-            query: (userInfo)=>({
+            query: (userInfo: LoginPayload)=>({
                 url: "/auth/login",
                 method: "POST",
                 data: userInfo
@@ -11,7 +45,7 @@ export const authApi = baseApi.injectEndpoints({
             invalidatesTags: ["USER"],
         }),
         register: builder.mutation({
-            query: (userInfo)=>({
+            query: (userInfo: RegisterPayload)=>({
                 url: "/user/register",
                 method: "POST",
                 data: userInfo
@@ -19,7 +53,7 @@ export const authApi = baseApi.injectEndpoints({
             invalidatesTags: ["USER"],
         }),
         changePassword: builder.mutation({
-            query: (payload)=>({
+            query: (payload: ChangePasswordPayload)=>({
                 url: "/auth/change-password",
                 method: "POST",
                 data: payload
@@ -27,14 +61,14 @@ export const authApi = baseApi.injectEndpoints({
             invalidatesTags: ["USER"],
         }),
         sendOTP: builder.mutation({
-            query: (email)=>({
+            query: (email: { email: string })=>({
                 url: "/otp/send",
                 method: "POST",
                 data: email
             })
         }),
         verifyOTP: builder.mutation({
-            query: (payload)=>({
+            query: (payload: OTPPayload)=>({
                 url: "/otp/verify",
                 method: "POST",
                 data: payload
@@ -45,8 +79,9 @@ export const authApi = baseApi.injectEndpoints({
                 url: "/user/me",
                 method: "GET",
             }),
-            transformResponse: (response: any)=> {
-                return response.data;
+            transformResponse: (response: unknown): UserInfo | undefined => {
+                const apiResponse = response as ApiResponse<UserInfo>;
+                return apiResponse.data;
             },
             providesTags: ["USER"]
         }),

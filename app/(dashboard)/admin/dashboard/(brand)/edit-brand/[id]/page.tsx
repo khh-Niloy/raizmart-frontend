@@ -42,9 +42,18 @@ export default function EditBrandPage() {
   const [currentImage, setCurrentImage] = React.useState<string | undefined>(undefined);
 
   // Load brand data when component mounts
+  interface Brand {
+    _id?: string;
+    id?: string;
+    name?: string;
+    image?: string;
+  }
+
   useEffect(() => {
     if (brandsResponse && brandId) {
-      const brand = brandsResponse.find((b: any) => b._id === brandId);
+      // Ensure data is an array (transformResponse already extracts data, so brandsResponse should be the array)
+      const brands: Brand[] = Array.isArray(brandsResponse) ? brandsResponse : [];
+      const brand = brands.find((b: Brand) => (b._id ?? b.id) === brandId);
       if (brand) {
         setCurrentImage(brand.image ?? undefined);
         reset({
@@ -61,9 +70,9 @@ export default function EditBrandPage() {
       if (data.image && data.image instanceof FileList && data.image.length > 0) {
         formData.append('image', data.image[0]);
       }
-      const res = await updateBrand({ id: brandId, formData }).unwrap();
+      await updateBrand({ id: brandId, formData }).unwrap();
       toast.success("Brand updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update brand. Please try again.");
     }
   };

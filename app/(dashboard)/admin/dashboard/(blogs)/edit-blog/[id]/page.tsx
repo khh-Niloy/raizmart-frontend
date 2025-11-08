@@ -95,9 +95,27 @@ export default function EditBlogPage() {
   // Load blog categories
   const { data: blogCategoriesResp, isFetching: isBlogCategoriesLoading } =
     useGetBlogCategoriesQuery(undefined);
-  const blogCategories: any[] = (blogCategoriesResp?.data ??
-    blogCategoriesResp ??
-    []) as any[];
+  interface BlogCategory {
+    id?: string;
+    _id?: string;
+    name?: string;
+    categoryName?: string;
+  }
+
+  interface BlogData {
+    image?: string;
+    tags?: string[] | string;
+    category?: string | { _id?: string; id?: string };
+    status?: string;
+    blogTitle?: string;
+    title?: string;
+    [key: string]: unknown;
+  }
+
+  const blogCategories: BlogCategory[] = React.useMemo(() => {
+    // Ensure data is an array (transformResponse already extracts data, so blogCategoriesResp should be the array)
+    return Array.isArray(blogCategoriesResp) ? blogCategoriesResp : [];
+  }, [blogCategoriesResp]);
 
   // Update blog mutation
   const [updateBlog, { isLoading: isUpdatingBlog }] = useUpdateBlogMutation();
@@ -105,7 +123,8 @@ export default function EditBlogPage() {
   // Load existing blog data - wait for both blog and categories to load
   useEffect(() => {
     if (blogResponse && !isBlogCategoriesLoading && !formInitialized.current) {
-      const blog: any = blogResponse?.data ?? blogResponse;
+      // transformResponse already extracts data, so blogResponse should be the blog object
+      const blog = blogResponse as BlogData;
 
       console.log("Raw blog data:", blog);
       console.log("Available categories:", blogCategories);
@@ -143,17 +162,25 @@ export default function EditBlogPage() {
         categoryId,
         status,
         blogCategory: blog.category,
-        availableCategoryIds: blogCategories.map((c: any) =>
+        availableCategoryIds: blogCategories.map((c: BlogCategory) =>
           String(c.id ?? c._id)
         ),
       });
+
+      // Handle blogContent - can be string or object (Tiptap JSON)
+      const blogContentValue = blog.blogContent || blog.content;
+      const blogContentString = typeof blogContentValue === 'string' 
+        ? blogContentValue 
+        : blogContentValue 
+          ? JSON.stringify(blogContentValue)
+          : "";
 
       const formData: BlogFormData = {
         blogTitle: blog.blogTitle || blog.title || "",
         category: categoryId,
         tags: tagsString,
         image: undefined, // File uploads need to be handled separately
-        blogContent: blog.blogContent || blog.content || "",
+        blogContent: blogContentString,
         status: status as "active" | "inactive" | "draft",
       };
 
@@ -265,11 +292,12 @@ export default function EditBlogPage() {
 
       toast.success("Blog updated successfully!");
       router.push("/admin/dashboard/all-blog");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating blog:", error);
+      const errorData = error as { data?: { message?: string }; message?: string };
       const errorMessage =
-        error?.data?.message ||
-        error?.message ||
+        errorData?.data?.message ||
+        errorData?.message ||
         "Failed to update blog. Please try again.";
       toast.error(errorMessage);
     }
@@ -327,7 +355,7 @@ export default function EditBlogPage() {
                   : undefined;
                 console.log("Category Controller render:", {
                   fieldValue,
-                  availableCategories: blogCategories.map((c: any) =>
+                  availableCategories: blogCategories.map((c: BlogCategory) =>
                     String(c.id ?? c._id)
                   ),
                 });
@@ -350,7 +378,7 @@ export default function EditBlogPage() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {blogCategories.map((c: any) => {
+                      {blogCategories.map((c: BlogCategory) => {
                         const id = (c.id ?? c._id) as string;
                         const name = (c.name ??
                           c.categoryName ??

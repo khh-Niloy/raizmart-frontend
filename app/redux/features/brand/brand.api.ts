@@ -1,10 +1,14 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const brandApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create Brand
     createBrand: builder.mutation({
-      query: (formData) => ({
+      query: (formData: FormData) => ({
         url: "/brands",
         method: "POST",
         data: formData,
@@ -21,13 +25,16 @@ export const brandApi = baseApi.injectEndpoints({
         url: "/brands",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["BRANDS"],
     }),
 
     // Update Brand
     updateBrand: builder.mutation({
-      query: ({ id, formData }) => ({
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
         url: `/brands/${id}`,
         method: "PATCH",
         data: formData,
@@ -44,7 +51,7 @@ export const brandApi = baseApi.injectEndpoints({
         url: `/brands/${encodeURIComponent(brand)}?page=${page}&limit=${limit}&sort=${sort}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response,
+      transformResponse: <T,>(response: unknown): T => response as T,
       providesTags: ["PRODUCTS", "BRANDS"],
     }),
   }),

@@ -3,7 +3,10 @@ import React from "react";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
+import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
+import { ProductDetailSkeleton, PageLoader } from "@/components/ui/loading";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
@@ -23,8 +26,58 @@ export default function ProductDetailBySlug({
   const { data, isLoading, isError } = useGetProductBySlugQuery(
     resolvedParams.slug
   );
-  const product = (data as any)?.data ?? null;
+  interface ProductData {
+    _id?: string;
+    name?: string;
+    slug?: string;
+    price?: number;
+    discountedPrice?: number;
+    discountPercentage?: number;
+    images?: string[];
+    video?: string;
+    video_url?: string;
+    descriptionImage?: string;
+    description_image?: string;
+    attributes?: Array<{
+      name: string;
+      type: string;
+      values: Array<{
+        label: string;
+        value: string;
+        attributeValue?: string;
+        colorCode?: string;
+        images?: string[];
+        isDefault?: boolean;
+      }>;
+    }>;
+    variants?: Array<{
+      sku: string;
+      finalPrice: number;
+      stock: number;
+      isActive: boolean;
+      attributeCombination: Array<{
+        attributeName: string;
+        attributeType: string;
+        attributeValue: string;
+        attributeLabel: string;
+      }>;
+    }>;
+    specifications?: Array<{
+      key: string;
+      value: string;
+    }>;
+    [key: string]: unknown;
+  }
+
+  interface ProductResponse {
+    data?: ProductData;
+  }
+
+  const product = ((data as ProductResponse)?.data ?? data ?? null) as ProductData | null;
   console.log(product);
+
+  // Sync cart and wishlist prices when product data changes
+  useSyncProductPrices(product?._id, product as unknown as ProductData);
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -57,7 +110,7 @@ export default function ProductDetailBySlug({
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];
       if (def)
-        acc[attr.name] = (def as any).attributeValue || def.value || def.label;
+        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
     });
     return acc;
   }, [attributes]);
@@ -70,7 +123,7 @@ export default function ProductDetailBySlug({
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];
       if (def)
-        acc[attr.name] = (def as any).attributeValue || def.value || def.label;
+        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
     });
     return acc;
   });
@@ -83,7 +136,7 @@ export default function ProductDetailBySlug({
         const def = attr.values.find((v) => v.isDefault) || attr.values[0];
         if (def)
           newSelections[attr.name] =
-            (def as any).attributeValue || def.value || def.label;
+            (def as { attributeValue?: string }).attributeValue || def.value || def.label;
       });
       setSelectedByName(newSelections);
     }
@@ -149,7 +202,7 @@ export default function ProductDetailBySlug({
 
   // Product-level images fallback when variant/color images are missing
   const productLevelImages: string[] = React.useMemo(
-    () => (Array.isArray((product as any)?.images) ? ((product as any)?.images as string[]) : []),
+    () => (Array.isArray(product?.images) ? (product.images as string[]) : []),
     [product?.images]
   );
 
@@ -210,12 +263,26 @@ export default function ProductDetailBySlug({
     }
   };
 
+  interface TipTapNode {
+    type: string;
+    content?: TipTapNode[];
+    text?: string;
+    marks?: Array<{
+      type: string;
+      attrs?: Record<string, string>;
+    }>;
+    attrs?: {
+      level?: number;
+      [key: string]: unknown;
+    };
+  }
+
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
-  const renderTiptapToHTML = (node: any): string => {
+  const renderTiptapToHTML = (node: TipTapNode | null | undefined): string => {
     if (!node) return "";
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const renderMarks = (text: string, marks?: any[]) => {
+    const renderMarks = (text: string, marks?: TipTapNode['marks']) => {
       if (!marks || !marks.length) return text;
       return marks.reduce((acc, m) => {
         if (m.type === "bold") return `<strong>${acc}</strong>`;
@@ -233,7 +300,7 @@ export default function ProductDetailBySlug({
       }, text);
     };
 
-    const renderChildren = (children: any[]) =>
+    const renderChildren = (children: TipTapNode[] | undefined) =>
       (children || []).map(renderTiptapToHTML).join("");
 
     switch (node.type) {
@@ -281,11 +348,11 @@ export default function ProductDetailBySlug({
 
   // Extract video and descriptionImage from product
   const videoUrl = React.useMemo(() => {
-    return (product as any)?.video || (product as any)?.video_url || "";
+    return product?.video || product?.video_url || "";
   }, [product]);
 
   const descriptionImageUrl = React.useMemo(() => {
-    return (product as any)?.descriptionImage || (product as any)?.description_image || "";
+    return product?.descriptionImage || product?.description_image || "";
   }, [product]);
 
   const videoId = React.useMemo(() => {
@@ -294,7 +361,7 @@ export default function ProductDetailBySlug({
 
   // Presence flags
   const hasSpecs = React.useMemo(
-    () => Array.isArray((product as any)?.specifications) && ((product as any)?.specifications?.length || 0) > 0,
+    () => Array.isArray(product?.specifications) && (product?.specifications?.length || 0) > 0,
     [product?.specifications]
   );
   const hasDescription = React.useMemo(() => {
@@ -305,11 +372,59 @@ export default function ProductDetailBySlug({
   const hasVideo = React.useMemo(() => !!videoId, [videoId]);
   const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
 
+  // Loading state
+  if (isLoading) {
+    return <ProductDetailSkeleton />;
+  }
+
+  // Error state
+  if (isError || !product) {
+    return (
+      <div className="container mx-auto px-4 py-20">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">Product Not Found</h1>
+          <p className="text-gray-600">
+            {isError ? "Failed to load product. Please try again." : "The product you're looking for doesn't exist."}
+          </p>
+          <Link
+            href="/"
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full px-16 mx-auto py-20 bg-white">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#f3fffe] via-white to-white">
+      <main className="mx-auto flex w-[90%] mx-auto flex-col gap-12 px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+        <header className="flex flex-col gap-3 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">Product</p>
+              <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">{product?.name}</h1>
+              <p className="text-sm text-slate-500">
+                Discover premium specs, live pricing, and flexible delivery options tailored for you.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+              {(product.brand as { name?: string }).name && (
+                <Link 
+                  href={`/brands/${(product.brand as { name?: string }).name}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/30 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+                >
+                  Brand: {(product.brand as { name?: string }).name}
+                </Link>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* Left: Gallery with vertical thumbnails on desktop */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="flex flex-col gap-5 rounded-3xl border border-white/70 bg-white/95 p-4 shadow-[0_25px_80px_-60px_rgba(5,150,145,0.4)]">
           {/* Local styles for slide animations */}
           <style jsx>{`
             @keyframes slideInRight {
@@ -327,7 +442,7 @@ export default function ProductDetailBySlug({
             }
           `}</style>
           <div
-            className="w-full h-[420px] md:h-[480px] border rounded-lg flex items-center justify-center overflow-hidden bg-white relative group"
+            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 sm:aspect-[4/5] lg:aspect-[5/6]"
             onMouseMove={handleZoomMove}
           >
             {activeImage ? (
@@ -336,7 +451,7 @@ export default function ProductDetailBySlug({
                 key={`${activeIndex}-${activeImage}`}
                 src={activeImage}
                 alt={product.name}
-                className={`max-h-full max-w-full object-contain slide-right-in transition-transform duration-300 ease-out group-hover:scale-[1.6]`}
+                className={`max-h-full max-w-full object-contain slide-right-in transition-transform duration-300 ease-out hover:scale-[1.5]`}
                 style={{ transformOrigin: `${zoomOrigin.x} ${zoomOrigin.y}` }}
               />
             ) : (
@@ -346,17 +461,17 @@ export default function ProductDetailBySlug({
 
           {/* Thumbnails below the main image (all screens) */}
           {galleryImages.length > 0 && (
-            <div className="flex flex-wrap gap-3 mt-1">
+            <div className="flex gap-3 overflow-x-auto pb-1">
               {galleryImages.map((src, idx) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={idx}
                   src={src}
                   alt={`thumb-${idx}`}
-                  className={`h-16 w-16 object-cover rounded-md border bg-white cursor-pointer ${
+                  className={`h-16 w-16 flex-shrink-0 cursor-pointer rounded-xl border bg-white object-cover transition ${
                     activeIndex === idx
-                      ? "ring-2 ring-teal-500"
-                      : "hover:shadow"
+                      ? "border-[#02C1BE] shadow-[0_10px_25px_-15px_rgba(5,150,145,0.6)]"
+                      : "hover:border-[#02C1BE]/40 hover:shadow-md"
                   }`}
                   onClick={() => goToIndex(idx)}
                 />
@@ -366,51 +481,103 @@ export default function ProductDetailBySlug({
         </div>
 
         {/* Right: Info & selectors */}
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            {product?.brand?.name && (
-              <Link
-                href={`/brands/${product?.brand?.name}`}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Brand: {product.brand.name}
-              </Link>
-            )}
-          </div>
-          <h1 className="text-2xl lg:text-3xl font-semibold mb-3 leading-tight flex items-center gap-3">
-            {product?.name}
-            {product?.isFreeDelivery && (
-              <span className="inline-flex">
-                <span className="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-medium px-2 py-0.5">
-                  Free Delivery
-                </span>
-              </span>
-            )}
-          </h1>
-
-          {selectedVariant && (
-            <div className="mb-6 flex items-center gap-4">
-              <div className="text-2xl font-bold tracking-tight text-gray-900">
-                ৳{selectedVariant.finalPrice}
-              </div>
-              <div className="text-lg">
-                <span className="font-semibold">Availability:</span>
-                <span className="ml-1">
-                  {product.status === "active" ? "In Stock" : "Unavailable"}
-                </span>
-              </div>
-              <span className="h-4 w-px bg-gray-200" />
-              {selectedVariant?.sku && (
-                <div className="text-lg">
-                  <span className="font-semibold">Code:</span>
-                  <span className="ml-1">{selectedVariant.sku}</span>
-                </div>
-              )}
-            </div>
+        <div className="flex flex-col gap-6 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
+          {product?.isFreeDelivery === true && (
+            <span className="inline-flex w-max items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+              Free Delivery
+            </span>
           )}
 
+          {(() => {
+            const formatPrice = (v: number | string | undefined) => `৳${Number(v).toLocaleString()}`;
+            const hasVariants = Array.isArray(variants) && variants.length > 0;
+            const sv = selectedVariant;
+            const variantFinal = hasVariants ? sv?.finalPrice : undefined;
+            const variantDiscPrice = hasVariants ? (sv as { discountedPrice?: number }).discountedPrice : undefined;
+            const variantDiscPct = hasVariants ? (sv as { discountPercentage?: number }).discountPercentage : undefined;
+
+            const productFinal = !hasVariants ? product?.price : undefined;
+            const productDiscPrice = !hasVariants ? product?.discountedPrice : undefined;
+            const productDiscPct = !hasVariants ? product?.discountPercentage : undefined;
+
+            const basePrice = hasVariants ? variantFinal : productFinal;
+            const discounted = hasVariants ? variantDiscPrice : productDiscPrice;
+            const pct = hasVariants ? variantDiscPct : productDiscPct;
+            const stockCount = hasVariants ? parseInt(String(sv?.stock ?? 0)) : parseInt(String(product?.stock ?? 0));
+            const inStock = Number.isFinite(stockCount) ? stockCount > 0 : false;
+
+            if (basePrice === undefined && discounted === undefined) return null;
+
+            const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+            const isTBA = basePrice && !isNumeric(basePrice) && String(basePrice).toUpperCase().trim() === 'TBA';
+            const showDiscount = isNumeric(discounted) && isNumeric(basePrice) && Number(discounted) < Number(basePrice);
+            const pctText = (() => {
+              if (pct !== undefined && pct !== null && typeof pct === 'number') return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
+              if (showDiscount) {
+                const p = Number(basePrice);
+                const d = Number(discounted);
+                if (p > 0) return `${Math.round((1 - d / p) * 100)}% OFF`;
+              }
+              return null;
+            })();
+            const savedAmount = showDiscount && isNumeric(basePrice) && isNumeric(discounted)
+              ? Math.max(0, Number(basePrice) - Number(discounted))
+              : undefined;
+
+            return (
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                {!inStock ? (
+                  <div className="text-2xl font-bold tracking-tight text-rose-600">
+                    {(!isNumeric(basePrice) && basePrice) ? basePrice : "Not available"}
+                  </div>
+                ) : showDiscount ? (
+                  <>
+                    <div className="text-2xl font-bold tracking-tight text-rose-600">
+                      {formatPrice(discounted)}
+                    </div>
+                    <div className="text-lg text-gray-500 line-through">
+                      {formatPrice(basePrice)}
+                    </div>
+                    {pctText && (
+                      <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600">
+                        {pctText}
+                      </span>
+                    )}
+                  {savedAmount !== undefined && (
+                    <span className="text-sm font-semibold text-emerald-600">
+                      You save {formatPrice(savedAmount)}
+                    </span>
+                  )}
+                  </>
+                ) : (
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">
+                    {isNumeric(basePrice) ? formatPrice(basePrice) : basePrice}
+                  </div>
+                )}
+
+                {!isTBA && (
+                  <>
+                    <div className="text-lg">
+                      <span className="font-semibold">Availability:</span>
+                      <span className="ml-1">
+                        {inStock ? "In Stock" : "Out of stock"}
+                      </span>
+                    </div>
+                    <span className="h-4 w-px bg-gray-200" />
+                  </>
+                )}
+                {sv?.sku && (
+                  <div className="text-lg">
+                    <span className="font-semibold">Code:</span>
+                    <span className="ml-1">{sv.sku}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Attribute selectors */}
-          <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
             {attributes.map((attr) => {
               const isColor =
                 attr.type?.toLowerCase?.() === "color" ||
@@ -487,30 +654,80 @@ export default function ProductDetailBySlug({
           {/** Cart state for this page */}
           {(() => {
             // Inline IIFE to keep local state near the buttons
-            const QuantityControls: React.FC = () => {
+              const QuantityControls: React.FC = () => {
               const [qty, setQty] = React.useState<number>(1);
               const { addItem, has } = useLocalCart();
               const { toggle, has: hasWish } = useLocalWishlist();
+                const { requireAuth: ensureAuth } = useAuthGate();
 
               const primaryImage =
                 (selectedColor?.images && selectedColor.images[0]) ||
                 (product?.images?.[0] as string | undefined);
+
+              // Calculate correct price with discount
+              const calculatePrice = React.useMemo(() => {
+                const hasVariants = Array.isArray(variants) && variants.length > 0;
+                const sv = selectedVariant;
+                
+                if (hasVariants && sv) {
+                  const variantFinal = sv?.finalPrice;
+                  const variantDiscPrice = (sv as { discountedPrice?: number }).discountedPrice;
+                  const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const isTBA = variantFinal && !isNumeric(variantFinal) && String(variantFinal).toUpperCase().trim() === 'TBA';
+                  
+                  if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
+                  
+                  const basePrice = typeof variantFinal === 'number' ? variantFinal : (isNumeric(variantFinal) ? parseFloat(String(variantFinal)) : undefined);
+                  const discounted = typeof variantDiscPrice === 'number' ? variantDiscPrice : (isNumeric(variantDiscPrice) ? parseFloat(String(variantDiscPrice)) : undefined);
+                  
+                  const finalPrice = (discounted && basePrice && discounted < basePrice) ? discounted : basePrice;
+                  return { 
+                    price: finalPrice, 
+                    basePrice: basePrice, 
+                    discountedPrice: (discounted && basePrice && discounted < basePrice) ? discounted : undefined,
+                    isTBA: false 
+                  };
+                } else {
+                  const productFinal = product?.price;
+                  const productDiscPrice = product?.discountedPrice;
+                  const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const isTBA = productFinal && !isNumeric(productFinal) && String(productFinal).toUpperCase().trim() === 'TBA';
+                  
+                  if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
+                  
+                  const basePrice = typeof productFinal === 'number' ? productFinal : (isNumeric(productFinal) ? parseFloat(String(productFinal)) : undefined);
+                  const discounted = typeof productDiscPrice === 'number' ? productDiscPrice : (isNumeric(productDiscPrice) ? parseFloat(String(productDiscPrice)) : undefined);
+                  
+                  const finalPrice = (discounted && basePrice && discounted < basePrice) ? discounted : basePrice;
+                  return { 
+                    price: finalPrice, 
+                    basePrice: basePrice, 
+                    discountedPrice: (discounted && basePrice && discounted < basePrice) ? discounted : undefined,
+                    isTBA: false 
+                  };
+                }
+              }, [selectedVariant, variants, product]);
 
               const matcher = {
                 productId: product?._id as string,
                 slug: product?.slug as string,
                 name: product?.name as string,
                 image: primaryImage,
-                price: selectedVariant?.finalPrice as number,
+                price: typeof calculatePrice.price === 'number' ? calculatePrice.price : 0,
+                basePrice: calculatePrice.basePrice,
+                discountedPrice: calculatePrice.discountedPrice,
                 sku: selectedVariant?.sku as string | undefined,
                 selectedOptions: selectedByName,
               };
 
-              const inCart = product && selectedVariant ? has(matcher as any) : false;
+              const inCart = product && selectedVariant ? has(matcher) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
+              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number';
+
               const onAddToCart = () => {
-                if (!product || !selectedVariant) return;
+                if (!product || !selectedVariant || !canAddToCart) return;
+                if (!ensureAuth()) return;
                 addItem({
                   ...matcher,
                   quantity: qty,
@@ -520,45 +737,50 @@ export default function ProductDetailBySlug({
               const onToggleWishlist = () => {
                 if (!product) return;
                 toggle({
-                  productId: product._id,
+                  productId: product._id as string,
                   slug: product.slug,
-                  name: product.name,
+                  name: product.name as string,
                   image: primaryImage,
-                  price: selectedVariant?.finalPrice,
+                  price: typeof calculatePrice.price === 'number' ? calculatePrice.price : undefined,
+                  basePrice: calculatePrice.basePrice,
+                  discountedPrice: calculatePrice.discountedPrice,
                   sku: selectedVariant?.sku,
                   selectedOptions: selectedByName,
                 });
               };
 
               return (
-                <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="inline-flex items-center border rounded-md overflow-hidden">
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-inner">
                     <button
-                      className="px-3 py-2 hover:bg-gray-50"
+                      className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
                     >
                       -
                     </button>
-                    <div className="px-4" aria-live="polite">{qty}</div>
+                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{qty}</div>
                     <button
-                      className="px-3 py-2 hover:bg-gray-50"
+                      className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => q + 1)}
                     >
                       +
                     </button>
                   </div>
-                  <button className="flex-1 sm:flex-none px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm transition-colors cursor-pointer">
-                    Shop Now
-                  </button>
+                  
                   <button
-                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inCart ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
-                    onClick={!inCart ? onAddToCart : undefined}
-                    disabled={inCart}
+                    className={`flex-1 sm:flex-none rounded-full border border-[#02C1BE]/30 px-5 py-3 text-sm font-semibold transition ${
+                      inCart || !canAddToCart 
+                        ? "cursor-not-allowed bg-slate-100 text-slate-400" 
+                        : "bg-[#02C1BE] text-white shadow-[0_20px_40px_-30px_rgba(5,150,145,0.6)] hover:bg-[#01b1ae]"
+                    }`}
+                    onClick={!inCart && canAddToCart ? onAddToCart : undefined}
+                    disabled={inCart || !canAddToCart}
+                    title={!canAddToCart ? "Price is TBA - Cannot add to cart" : undefined}
                   >
-                    {inCart ? "Added" : "Add To Cart"}
+                    {inCart ? "Added" : !canAddToCart ? "Price TBA" : "Add To Cart"}
                   </button>
                   <button
-                    className={`flex-1 sm:flex-none px-5 py-3 border rounded-md transition-colors ${inWishlist ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    className={`flex-1 sm:flex-none rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold transition ${inWishlist ? "cursor-not-allowed bg-slate-100 text-slate-400" : "hover:border-[#02C1BE]/40 hover:text-[#02C1BE]"}`}
                     onClick={!inWishlist ? onToggleWishlist : undefined}
                     disabled={inWishlist}
                   >
@@ -572,18 +794,18 @@ export default function ProductDetailBySlug({
           })()}
 
           {/* Small details */}
-          <div className="mt-6 text-sm text-gray-600">
-            <div>1 Year Official Warranty Support</div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
+            Enjoy 1-year official warranty support plus expert assistance from our customer care team.
           </div>
         </div>
       </div>
       {/* Product details sections */}
-      <div className="mt-20 space-y-10">
-        <div className="mt-8 flex flex-wrap gap-3">
+      <div className="space-y-10">
+        <div className="flex flex-wrap gap-3">
           {hasSpecs && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(specRef.current)}
             >
               Specification
@@ -592,7 +814,7 @@ export default function ProductDetailBySlug({
           {(hasDescription || hasDescriptionImage || hasVideo) && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(descRef.current)}
             >
               Description
@@ -601,7 +823,7 @@ export default function ProductDetailBySlug({
           {hasVideo && (
             <button
               type="button"
-              className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
               onClick={() => scrollToWithOffset(videoRef.current)}
             >
               Video
@@ -609,7 +831,7 @@ export default function ProductDetailBySlug({
           )}
           <button
             type="button"
-            className="px-4 py-2 rounded-md border bg-white hover:bg-gray-50"
+            className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
             onClick={() => scrollToWithOffset(warrantyRef.current)}
           >
             Warranty
@@ -617,18 +839,17 @@ export default function ProductDetailBySlug({
         </div>
         {/* Specification */}
         {hasSpecs && (
-          <div className="w-[50%]" ref={specRef} id="specification">
-            <h2 className="text-2xl font-semibold mb-4">Specification</h2>
-            <div className="border rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+          <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={specRef} id="specification">
+            <h2 className="text-2xl font-semibold text-slate-900">Specification</h2>
+            <table className="mt-4 w-full overflow-hidden rounded-2xl border border-slate-100 text-sm">
                 <tbody>
                   {(product?.specifications || []).map(
-                    (row: any, idx: number) => (
-                      <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                        <td className="w-1/3 p-4 font-medium text-gray-700 border-b border-gray-100">
+                    (row: { key?: string; value?: string }, idx: number) => (
+                      <tr key={idx} className="odd:bg-white even:bg-slate-50">
+                        <td className="w-1/3 border-b border-slate-100 p-3 font-medium text-slate-600">
                           {row.key}
                         </td>
-                        <td className="p-4 text-gray-800 border-b border-gray-100">
+                        <td className="border-b border-slate-100 p-3 text-slate-800">
                           {row.value}
                         </td>
                       </tr>
@@ -637,13 +858,12 @@ export default function ProductDetailBySlug({
                 </tbody>
               </table>
             </div>
-          </div>
         )}
 
         {/* Description */}
         {(hasDescription || hasDescriptionImage || hasVideo) && (
-          <div ref={descRef} id="description">
-            <h2 className="text-2xl font-semibold mb-4">Description</h2>
+          <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={descRef} id="description">
+            <h2 className="text-2xl font-semibold text-slate-900">Description</h2>
             <div className="space-y-6">
               {/* Description Image */}
               {hasDescriptionImage && (
@@ -652,26 +872,12 @@ export default function ProductDetailBySlug({
                   <img
                     src={descriptionImageUrl}
                     alt="Product description"
-                    className="w-full h-auto rounded-lg object-cover"
+                    className="h-auto w-xl mt-5 rounded-2xl object-cover shadow"
                   />
                 </div>
               )}
 
-              {/* Video */}
-              {hasVideo && (
-                <div className="w-full" ref={videoRef} id="video">
-                  <div className="relative w-[50%] h-[400px] bg-gray-200 rounded-lg overflow-hidden">
-                    <iframe
-                      className="absolute top-0 left-0 w-full h-full"
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      title="Product video"
-                    />
-                  </div>
-                </div>
-              )}
+              
 
               {/* Description Text */}
               {hasDescription && (
@@ -700,19 +906,39 @@ export default function ProductDetailBySlug({
                   />
                 </div>
               )}
+
+              {/* Video */}
+              {hasVideo && (
+                <div className="w-xl" ref={videoRef} id="video">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-100">
+                    <iframe
+                      className="absolute top-0 left-0 w-full h-full"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      title="Product video"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Warranty */}
-        <div ref={warrantyRef} id="warranty">
-          <h2 className="text-2xl font-semibold mb-4">Warranty</h2>
-          <div className="text-gray-700 bg-white border rounded-xl p-4">
-            1 Year Official Warranty Support. Terms may vary by brand and
-            region.
-          </div>
+        <div
+          ref={warrantyRef}
+          id="warranty"
+          className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
+        >
+          <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
+          <p className="mt-3 text-sm text-slate-600">
+            1-year official warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
+          </p>
         </div>
       </div>
+      </main>
     </div>
   );
 }

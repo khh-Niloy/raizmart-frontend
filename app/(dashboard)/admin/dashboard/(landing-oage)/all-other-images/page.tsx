@@ -61,7 +61,17 @@ export default function AllOtherImagesPage() {
     );
   }
 
-  const othersImages = data?.data || [];
+  interface OtherImage {
+    _id: string;
+    imageUrl: string;
+    redirectUrl?: string;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const othersImages: OtherImage[] = Array.isArray(data) ? data : [];
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
@@ -78,7 +88,7 @@ export default function AllOtherImagesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {othersImages.map((othersImage: any) => (
+          {othersImages.map((othersImage: OtherImage) => (
             <Card key={othersImage._id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -114,9 +124,11 @@ export default function AllOtherImagesPage() {
                 )}
 
                 {/* Created Date */}
-                <div className="text-xs text-gray-500">
-                  Created: {new Date(othersImage.createdAt).toLocaleDateString()}
-                </div>
+                {othersImage.createdAt && (
+                  <div className="text-xs text-gray-500">
+                    Created: {new Date(othersImage.createdAt).toLocaleDateString()}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex justify-end">

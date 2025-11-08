@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,14 +50,21 @@ export default function EditCategoryPage() {
     },
   });
 
+  interface Category {
+    id?: string;
+    _id?: string;
+    name?: string;
+    isActive?: boolean;
+    image?: string;
+  }
+
   // Load existing category data
   React.useEffect(() => {
     if (categoriesResponse && categoryId) {
-      const categories: any[] = (categoriesResponse?.data ??
-        categoriesResponse ??
-        []) as any[];
+      // Ensure data is an array (transformResponse already extracts data, so categoriesResponse should be the array)
+      const categories: Category[] = Array.isArray(categoriesResponse) ? categoriesResponse : [];
       const currentCategory = categories.find(
-        (item: any) => (item.id ?? item._id) === categoryId
+        (item: Category) => (item.id ?? item._id) === categoryId
       );
 
       if (currentCategory) {

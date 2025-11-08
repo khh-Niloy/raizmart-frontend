@@ -1,10 +1,14 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const categorySubcategoryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Categories
     createCategory: builder.mutation({
-      query: (formData) => ({
+      query: (formData: FormData) => ({
         url: "/categories",
         method: "POST",
         data: formData,
@@ -16,7 +20,7 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
     }),
 
     updateCategory: builder.mutation({
-      query: ({ id, formData }) => ({
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
         url: `/categories/${id}`,
         method: "PATCH",
         data: formData,
@@ -32,13 +36,16 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
         url: "/categories?populate=subcategories.subSubcategories",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T> 
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["CATEGORIES"],
     }),
 
     // Subcategories
     createSubcategory: builder.mutation({
-      query: (formData) => ({
+      query: (formData: FormData) => ({
         url: "/subcategories",
         method: "POST",
         data: formData,
@@ -50,7 +57,7 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
     }),
 
     updateSubcategory: builder.mutation({
-      query: ({ id, formData }) => ({
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
         url: `/subcategories/${id}`,
         method: "PATCH",
         data: formData,
@@ -66,13 +73,16 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
         url: "/subcategories?populate=subSubcategories",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["SUBCATEGORIES"],
     }),
 
     // Sub-Subcategories
     createSubSubcategory: builder.mutation({
-      query: (formData) => ({
+      query: (formData: FormData) => ({
         url: "/sub-subcategories",
         method: "POST",
         data: formData,
@@ -84,7 +94,7 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
     }),
 
     updateSubSubcategory: builder.mutation({
-      query: ({ id, formData }) => ({
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
         url: `/sub-subcategories/${id}`,
         method: "PATCH",
         data: formData,
@@ -100,12 +110,15 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
         url: "/sub-subcategories",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["SUB_SUBCATEGORIES"],
     }),
 
     deleteSubSubcategory: builder.mutation({
-      query: (id) => ({
+      query: (id: string) => ({
         url: `/sub-subcategories/${id}`,
         method: "DELETE",
       }),

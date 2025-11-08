@@ -21,12 +21,12 @@ const couponSchema = z
       .min(1, "Code is required")
       .transform((v) => v.toUpperCase()),
     discountType: z.enum(["PERCENT", "FIXED"], { message: "Discount type is required" }),
-    discountValue: z
-      .union([z.string(), z.number()])
-      .transform((val) => (typeof val === "string" ? Number(val) : val))
-      .refine((v) => !Number.isNaN(v) && v >= 0, {
+    discountValue: z.preprocess(
+      (val) => (typeof val === "string" ? Number(val) : val),
+      z.number().refine((v) => !Number.isNaN(v) && v >= 0, {
         message: "Discount value must be a non-negative number",
-      }),
+      })
+    ),
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     isActive: z.boolean().default(true),
@@ -55,10 +55,21 @@ const couponSchema = z
 
 type CouponFormData = z.infer<typeof couponSchema>;
 
+interface CouponFormInput {
+  code: string;
+  discountType: "PERCENT" | "FIXED";
+  discountValue: string | number;
+  startDate: string;
+  endDate: string;
+  isActive?: boolean;
+  description?: string;
+}
+
 export default function CreateCouponsPage() {
   const [createCoupon, { isLoading }] = useCreateCouponMutation();
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<CouponFormData>({
+  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<CouponFormInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(couponSchema) as any,
     defaultValues: {
       code: "",
@@ -71,7 +82,7 @@ export default function CreateCouponsPage() {
     }
   });
 
-  const onSubmit = async (data: CouponFormData) => {
+  const onSubmit = async (data: CouponFormInput) => {
     try {
       // Basic date validation
       const starts = new Date(data.startDate).getTime();
@@ -84,7 +95,7 @@ export default function CreateCouponsPage() {
       const payload = {
         code: data.code.trim(),
         discountType: data.discountType,
-        discountValue: data.discountValue,
+        discountValue: typeof data.discountValue === 'string' ? Number(data.discountValue) : data.discountValue,
         startDate: data.startDate,
         endDate: data.endDate,
         isActive: data.isActive,

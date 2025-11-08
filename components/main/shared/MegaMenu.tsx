@@ -28,7 +28,7 @@ interface Subcategory {
 interface SubSubcategory {
   _id: string;
   name: string;
-  subcategory: string;
+  subcategory: string | { _id: string };
   slug: string;
 }
 
@@ -44,8 +44,8 @@ export default function MegaMenu() {
   const { data: subSubcategories, isLoading: subSubcategoriesLoading } =
     useGetSubSubcategoriesQuery(undefined);
 
-  const categoriesList: Category[] = categories || [];
-  const subSubcategoriesList: SubSubcategory[] = subSubcategories || [];
+  const categoriesList: Category[] = Array.isArray(categories) ? categories : [];
+  const subSubcategoriesList: SubSubcategory[] = Array.isArray(subSubcategories) ? subSubcategories : [];
 
   const handleCategoryHover = (categoryId: string) => {
     setActiveCategory(categoryId);
@@ -58,14 +58,6 @@ export default function MegaMenu() {
       setHoverTimeout(null);
     }
     setActiveSubcategory(subcategoryId);
-  };
-
-  const handleSubcategoryMouseLeave = () => {
-    // Add a small delay before hiding to allow moving to sub-sub-categories
-    const timeout = setTimeout(() => {
-      setActiveSubcategory(null);
-    }, 150);
-    setHoverTimeout(timeout);
   };
 
   const handleMouseLeave = () => {
@@ -85,9 +77,9 @@ export default function MegaMenu() {
   if (categoriesLoading || subSubcategoriesLoading) {
     return (
       <div className="flex items-center space-x-8">
-        <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
-        <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
-        <div className="animate-pulse bg-gray-200 h-6 w-28 rounded"></div>
+        <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-6 w-20 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-6 w-28 bg-gray-200 rounded animate-pulse"></div>
       </div>
     );
   }
@@ -145,12 +137,13 @@ export default function MegaMenu() {
                       subSubcategoriesList.length > 0
                     ) {
                       subSubcategoriesForThisSub = subSubcategoriesList.filter(
-                        (subSub: any) => {
+                        (subSub: SubSubcategory) => {
                           if (typeof subSub.subcategory === "string") {
                             return subSub.subcategory === subcategory._id;
                           } else if (
                             subSub.subcategory &&
-                            typeof subSub.subcategory === "object"
+                            typeof subSub.subcategory === "object" &&
+                            "_id" in subSub.subcategory
                           ) {
                             return subSub.subcategory._id === subcategory._id;
                           }

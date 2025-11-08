@@ -2,32 +2,17 @@
 
 import * as React from "react";
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
   FileText,
-  Frame,
-  GalleryVerticalEnd,
-  Landmark,
   List,
-  Map,
-  PieChart,
-  Settings2,
-  ShoppingCart,
+  Package,
   SquareTerminal,
 } from "lucide-react";
 
 import { NavMain } from "@/components/dashboard/nav-main";
-import { NavProjects } from "@/components/dashboard/nav-projects";
-import { NavUser } from "@/components/dashboard/nav-user";
-import { TeamSwitcher } from "@/components/dashboard/team-switcher";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { Home, LayoutDashboard, Tag, Star, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon } from "lucide-react";
@@ -52,6 +37,18 @@ const data = {
         {
           title: "Stock",
           url: "/admin/dashboard/stock",
+        },
+      ],
+    },
+    {
+      title: "Order Management",
+      // url: "",
+      icon: Package,
+      isActive: true,
+      items: [
+        {
+          title: "All Orders",
+          url: "/admin/dashboard/all-orders",
         },
       ],
     },
@@ -197,10 +194,10 @@ const data = {
       title: "Featured Management",
       icon: Star,
       items: [
-        {
-          title: "Featured Category",
-          url: "/admin/dashboard/featured-category",
-        },
+        // {
+        //   title: "Featured Category",
+        //   url: "/admin/dashboard/featured-category",
+        // },
         {
           title: "Featured Product",
           url: "/admin/dashboard/featured-product",
@@ -245,7 +242,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <span>Home</span>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pb-20">
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>

@@ -25,7 +25,13 @@ import {
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 import { useCreateProductMutation } from "@/app/redux/features/product/product.api";
-import { Control, FieldErrors, UseFormRegister, UseFormWatch, UseFormSetValue } from "react-hook-form";
+import {
+  Control,
+  FieldErrors,
+  UseFormRegister,
+  UseFormWatch,
+  UseFormSetValue,
+} from "react-hook-form";
 import { toast } from "sonner";
 
 // Dynamically import Tiptap to avoid SSR issues
@@ -36,8 +42,7 @@ const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
   if (!url) return null;
-  const regExp =
-    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
 };
@@ -69,7 +74,9 @@ const attributeValueSchema = z.object({
 const attributeSchema = z.object({
   name: z.string().min(1, "Attribute name is required"),
   type: z.string().min(1, "Attribute type is required"),
-  values: z.array(attributeValueSchema).min(1, "At least one value is required"),
+  values: z
+    .array(attributeValueSchema)
+    .min(1, "At least one value is required"),
   isRequired: z.boolean().optional(),
   displayOrder: z.number().optional(),
 });
@@ -81,6 +88,9 @@ const manualVariantSchema = z.object({
   region: z.string().optional(),
   price: z.string().min(1, "Price is required"),
   stock: z.string().min(1, "Stock is required"),
+  discount: z.string().optional(),
+  // Discounted price (derived from price and discount percentage)
+  discountedPrice: z.string().optional(),
 });
 
 const specificationSchema = z.object({
@@ -109,13 +119,17 @@ const productSchema = z.object({
   // Optional simple pricing (no attributes/variants)
   simplePrice: z.string().optional(),
   simpleStock: z.string().optional(),
-  categoryAssignments: z.array(
-    z.object({
-      category: z.string().min(1, "Category is required"),
-      subCategory: z.string().min(1, "Sub Category is required"),
-      subSubCategory: z.string().optional(),
-    })
-  ).default([]),
+  // Optional simple discount percentage (applies to simplePrice)
+  simpleDiscount: z.string().optional(),
+  categoryAssignments: z
+    .array(
+      z.object({
+        category: z.string().min(1, "Category is required"),
+        subCategory: z.string().min(1, "Sub Category is required"),
+        subSubCategory: z.string().optional(),
+      })
+    )
+    .default([]),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -146,20 +160,21 @@ interface AttributeValueManagerProps {
 }
 
 interface VariantPreviewProps {
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
   basePrice: string;
 }
 
 interface VariantCreatorProps {
-  attributes: any[];
-  onAddVariant: (variant: any) => void;
+  attributes: ProductFormData['attributes'];
+  onAddVariant: (variant: ProductFormData['manualVariants'][number]) => void;
 }
 
 interface VariantListProps {
-  variants: any[];
-  onEditVariant: (index: number, variant: any) => void;
+  variants: ProductFormData['manualVariants'];
+  onEditVariant: (index: number, variant: ProductFormData['manualVariants'][number]) => void;
   onDeleteVariant: (index: number) => void;
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
+  setValue: UseFormSetValue<ProductFormData>;
 }
 
 export default function AddProductPage() {
@@ -173,6 +188,7 @@ export default function AddProductPage() {
     watch,
     setValue,
   } = useForm<ProductFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
@@ -180,7 +196,7 @@ export default function AddProductPage() {
       video: "",
       description: JSON.stringify({
         type: "doc",
-        content: []
+        content: [],
       }),
       brand: "",
       category: "",
@@ -193,6 +209,7 @@ export default function AddProductPage() {
       galleryImages: [],
       simplePrice: "",
       simpleStock: "",
+      simpleDiscount: "",
       categoryAssignments: [],
     },
   });
@@ -237,7 +254,7 @@ export default function AddProductPage() {
   const onSubmit = async (data: ProductFormData) => {
     try {
       console.log(data);
-      
+
       // Create FormData for multer backend
       const formData = new FormData();
 
@@ -269,16 +286,34 @@ export default function AddProductPage() {
       data.attributes.forEach((attribute, attrIndex) => {
         formData.append(`attributes[${attrIndex}][name]`, attribute.name);
         formData.append(`attributes[${attrIndex}][type]`, attribute.type);
-        formData.append(`attributes[${attrIndex}][isRequired]`, String(attribute.isRequired || true));
-        formData.append(`attributes[${attrIndex}][displayOrder]`, String(attribute.displayOrder || 0));
+        formData.append(
+          `attributes[${attrIndex}][isRequired]`,
+          String(attribute.isRequired || true)
+        );
+        formData.append(
+          `attributes[${attrIndex}][displayOrder]`,
+          String(attribute.displayOrder || 0)
+        );
 
         attribute.values.forEach((value, valueIndex) => {
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][label]`, value.label);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][value]`, value.value);
-          formData.append(`attributes[${attrIndex}][values][${valueIndex}][isDefault]`, String(value.isDefault || false));
-          
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][label]`,
+            value.label
+          );
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][value]`,
+            value.value
+          );
+          formData.append(
+            `attributes[${attrIndex}][values][${valueIndex}][isDefault]`,
+            String(value.isDefault || false)
+          );
+
           if (value.colorCode) {
-            formData.append(`attributes[${attrIndex}][values][${valueIndex}][colorCode]`, value.colorCode);
+            formData.append(
+              `attributes[${attrIndex}][values][${valueIndex}][colorCode]`,
+              value.colorCode
+            );
           }
 
           // Add images for color attributes
@@ -294,24 +329,73 @@ export default function AddProductPage() {
       });
 
       // Handle manual variants (optional)
-      const manualVariants = (data.manualVariants || []).map(variant => ({
-        attributeSelections: Object.entries(variant)
-          .filter(([key, value]) => key !== 'price' && key !== 'stock' && value)
-          .map(([key, value]) => ({
-            attributeType: key,
-            selectedValue: value
-          })),
-        price: parseInt(variant.price),
-        stock: parseInt(variant.stock)
-      }));
+      const manualVariants = (data.manualVariants || []).map((variant) => {
+        const priceStr = (variant.price ?? "").toString().trim();
+        const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+        const priceVal = isNumeric ? parseFloat(priceStr) : priceStr;
+        const discountPct = variant.discount ? parseFloat(variant.discount) : undefined;
+        
+        // Calculate discountedPrice: prefer explicit value, else calculate from price and discountPercentage
+        let discountedPrice: number | undefined = undefined;
+        if (variant.discountedPrice) {
+          const dpStr = variant.discountedPrice.toString().trim();
+          if (/^\d+(?:\.\d+)?$/.test(dpStr)) {
+            discountedPrice = parseFloat(dpStr);
+          }
+        }
+        // If no explicit discountedPrice but we have numeric price and discountPercentage, calculate it
+        if (discountedPrice === undefined && typeof priceVal === 'number' && discountPct !== undefined && !isNaN(discountPct) && discountPct >= 0 && discountPct <= 100) {
+          discountedPrice = priceVal * (1 - discountPct / 100);
+        }
+        
+        return {
+          attributeSelections: Object.entries(variant)
+            .filter(
+              ([key, value]) =>
+                key !== "price" &&
+                key !== "stock" &&
+                key !== "discount" &&
+                key !== "discountedPrice" &&
+                value
+            )
+            .map(([key, value]) => ({
+              attributeType: key,
+              selectedValue: value,
+            })),
+          price: priceVal,
+          stock: parseInt(variant.stock),
+          discountPercentage: discountPct,
+          discountedPrice: discountedPrice,
+        };
+      });
 
       if (manualVariants.length > 0) {
         formData.append("manualVariants", JSON.stringify(manualVariants));
       }
 
-      // Add simple price/stock if provided (no variants use-case)
+      // Add simple price/stock/discount if provided (no variants use-case)
       if (data.simplePrice) formData.append("price", data.simplePrice);
       if (data.simpleStock) formData.append("stock", data.simpleStock);
+      if (data.simpleDiscount) formData.append("discountPercentage", data.simpleDiscount);
+      // Also send discountedPrice if price is numeric and discount valid
+      (function () {
+        const priceStr = (data.simplePrice || "").toString().trim();
+        const discountStr = (data.simpleDiscount || "").toString().trim();
+        const isPriceNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+        const discountNum = parseFloat(discountStr);
+        if (
+          isPriceNumeric &&
+          !isNaN(discountNum) &&
+          discountNum >= 0 &&
+          discountNum <= 100
+        ) {
+          const priceNum = parseFloat(priceStr);
+          const dPrice = priceNum * (1 - discountNum / 100);
+          if (Number.isFinite(dPrice)) {
+            formData.append("discountedPrice", dPrice.toFixed(2));
+          }
+        }
+      })();
 
       // Append gallery images (if any)
       const galleryImages = (data.galleryImages as unknown as File[]) || [];
@@ -323,10 +407,20 @@ export default function AddProductPage() {
 
       // Add extra category routes
       const validAssignments = (data.categoryAssignments || [])
-        .filter((r: any) => r?.category && r?.subCategory)
-        .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+        .filter((r: ProductFormData['categoryAssignments'][number]) => r?.category && r?.subCategory)
+        .filter(
+          (r: ProductFormData['categoryAssignments'][number]) =>
+            !(
+              r.category === data.category &&
+              r.subCategory === data.subCategory &&
+              (r.subSubCategory || "") === (data.subSubCategory || "")
+            )
+        );
       if (validAssignments.length > 0) {
-        formData.append("categoryAssignments", JSON.stringify(validAssignments));
+        formData.append(
+          "categoryAssignments",
+          JSON.stringify(validAssignments)
+        );
       }
 
       console.log("FormData prepared for backend:", formData);
@@ -334,7 +428,7 @@ export default function AddProductPage() {
       // Send to API
       const result = await createProduct(formData).unwrap();
       console.log("Product created successfully:", result);
-      
+
       toast.success("Product created successfully!");
       // TODO: Redirect to product list or clear form
     } catch (error) {
@@ -353,16 +447,44 @@ export default function AddProductPage() {
   const { data: subSubcategoriesResp, isFetching: isSubSubcategoriesLoading } =
     useGetSubSubcategoriesQuery(undefined);
 
-  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[];
-  const categories: any[] = (categoriesResp?.data ??
-    categoriesResp ??
-    []) as any[];
-  const allSubcategories: any[] = (subcategoriesResp?.data ??
-    subcategoriesResp ??
-    []) as any[];
-  const allSubSubcategories: any[] = (subSubcategoriesResp?.data ??
-    subSubcategoriesResp ??
-    []) as any[];
+  interface Brand {
+    _id?: string;
+    id?: string;
+    brandName?: string;
+    name?: string;
+    [key: string]: unknown;
+  }
+
+  interface Category {
+    _id?: string;
+    id?: string;
+    name?: string;
+    [key: string]: unknown;
+  }
+
+  interface Subcategory {
+    _id?: string;
+    id?: string;
+    name?: string;
+    category?: string | { id?: string; _id?: string; [key: string]: unknown };
+    parentCategoryId?: string;
+    [key: string]: unknown;
+  }
+
+  interface SubSubcategory {
+    _id?: string;
+    id?: string;
+    name?: string;
+    subcategory?: string | { id?: string; _id?: string; [key: string]: unknown };
+    parentSubcategoryId?: string;
+    [key: string]: unknown;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so responses should be the arrays)
+  const brands: Brand[] = Array.isArray(brandsResp) ? brandsResp : [];
+  const categories: Category[] = Array.isArray(categoriesResp) ? categoriesResp : [];
+  const allSubcategories: Subcategory[] = Array.isArray(subcategoriesResp) ? subcategoriesResp : [];
+  const allSubSubcategories: SubSubcategory[] = Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [];
 
   // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");
@@ -370,7 +492,7 @@ export default function AddProductPage() {
 
   const filteredSubcategories = React.useMemo(() => {
     if (!selectedCategoryId) return [];
-    return allSubcategories.filter((sc: any) => {
+    return allSubcategories.filter((sc: Subcategory) => {
       if (typeof sc.category === "string")
         return sc.category === selectedCategoryId;
       if (sc.category && typeof sc.category === "object") {
@@ -384,7 +506,7 @@ export default function AddProductPage() {
 
   const filteredSubSubcategories = React.useMemo(() => {
     if (!selectedSubCategoryId) return [];
-    return allSubSubcategories.filter((ssc: any) => {
+    return allSubSubcategories.filter((ssc: SubSubcategory) => {
       if (typeof ssc.subcategory === "string")
         return ssc.subcategory === selectedSubCategoryId;
       if (ssc.subcategory && typeof ssc.subcategory === "object") {
@@ -432,10 +554,11 @@ export default function AddProductPage() {
                     className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                   {errors.name && (
-                    <p className="text-sm text-red-600">{errors.name.message}</p>
+                    <p className="text-sm text-red-600">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
-
 
                 {/* Brand Selection */}
                 <div className="space-y-2">
@@ -448,7 +571,7 @@ export default function AddProductPage() {
                     render={({ field }) => (
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         disabled={isBrandsLoading}
                       >
                         <SelectTrigger className="w-full">
@@ -461,7 +584,7 @@ export default function AddProductPage() {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {brands.map((brand: any) => {
+                          {brands.map((brand: Brand) => {
                             const id = (brand.id ?? brand._id) as string;
                             const name = (brand.brandName ??
                               brand.name ??
@@ -539,14 +662,19 @@ export default function AddProductPage() {
                     className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500">
-                    Enter a valid video URL (e.g., YouTube link) or leave empty to clear
+                    Enter a valid video URL (e.g., YouTube link) or leave empty
+                    to clear
                   </p>
                   {(() => {
                     const videoUrl = watch("video");
-                    const videoId = videoUrl ? getYouTubeVideoId(videoUrl) : null;
+                    const videoId = videoUrl
+                      ? getYouTubeVideoId(videoUrl)
+                      : null;
                     return videoId ? (
                       <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Video Preview:
+                        </p>
                         <div className="relative w-full pt-[56.25%] bg-gray-200 rounded-lg overflow-hidden">
                           <iframe
                             className="absolute top-0 left-0 w-full h-full"
@@ -575,7 +703,10 @@ export default function AddProductPage() {
                     name="description"
                     render={({ field }) => (
                       <TiptapEditor
-                        value={field.value || JSON.stringify({ type: "doc", content: [] })}
+                        value={
+                          field.value ||
+                          JSON.stringify({ type: "doc", content: [] })
+                        }
                         onChange={field.onChange}
                         placeholder="Enter product description"
                       />
@@ -604,7 +735,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={isCategoriesLoading}
                         >
                           <SelectTrigger className="w-full">
@@ -617,7 +748,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((c: any) => {
+                            {categories.map((c: Category) => {
                               const id = (c.id ?? c._id) as string;
                               const name = (c.name ??
                                 c.categoryName ??
@@ -649,7 +780,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={
                             !selectedCategoryId || isSubcategoriesLoading
                           }
@@ -668,7 +799,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubcategories.map((sc: any) => {
+                            {filteredSubcategories.map((sc: Subcategory) => {
                               const id = (sc.id ?? sc._id) as string;
                               const name = (sc.name ??
                                 sc.subCategoryName ??
@@ -700,7 +831,7 @@ export default function AddProductPage() {
                       render={({ field }) => (
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={
                             !selectedSubCategoryId || isSubSubcategoriesLoading
                           }
@@ -719,7 +850,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubSubcategories.map((ssc: any) => {
+                            {filteredSubSubcategories.map((ssc: SubSubcategory) => {
                               const id = (ssc.id ?? ssc._id) as string;
                               const name = (ssc.name ??
                                 ssc.subSubCategoryName ??
@@ -767,7 +898,11 @@ export default function AddProductPage() {
                 <Button
                   type="button"
                   onClick={() =>
-                    appendAssignment({ category: "", subCategory: "", subSubCategory: "" })
+                    appendAssignment({
+                      category: "",
+                      subCategory: "",
+                      subSubCategory: "",
+                    })
                   }
                   className="flex items-center gap-2"
                 >
@@ -777,39 +912,69 @@ export default function AddProductPage() {
               </div>
 
               {assignmentFields.length === 0 ? (
-                <p className="text-sm text-gray-500">Add additional category paths as needed.</p>
+                <p className="text-sm text-gray-500">
+                  Add additional category paths as needed.
+                </p>
               ) : (
                 <div className="space-y-6">
                   {assignmentFields.map((field, index) => {
-                    const selectedAssignCategoryId = watch(`categoryAssignments.${index}.category`);
-                    const selectedAssignSubCategoryId = watch(`categoryAssignments.${index}.subCategory`);
+                    const selectedAssignCategoryId = watch(
+                      `categoryAssignments.${index}.category`
+                    );
+                    const selectedAssignSubCategoryId = watch(
+                      `categoryAssignments.${index}.subCategory`
+                    );
 
-                    const filteredAssignSubcategories = !selectedAssignCategoryId
-                      ? ([] as any[])
-                      : allSubcategories.filter((sc: any) => {
-                          if (typeof sc.category === "string") return sc.category === selectedAssignCategoryId;
-                          if (sc.category && typeof sc.category === "object") {
-                            const id = (sc.category.id ?? sc.category._id) as string;
-                            return id === selectedAssignCategoryId;
-                          }
-                          return sc.parentCategoryId === selectedAssignCategoryId;
-                        });
+                    const filteredAssignSubcategories =
+                      !selectedAssignCategoryId
+                        ? ([] as Subcategory[])
+                        : allSubcategories.filter((sc: Subcategory) => {
+                            if (typeof sc.category === "string")
+                              return sc.category === selectedAssignCategoryId;
+                            if (
+                              sc.category &&
+                              typeof sc.category === "object"
+                            ) {
+                              const id = (sc.category.id ??
+                                sc.category._id) as string;
+                              return id === selectedAssignCategoryId;
+                            }
+                            return (
+                              sc.parentCategoryId === selectedAssignCategoryId
+                            );
+                          });
 
-                    const filteredAssignSubSubcategories = !selectedAssignSubCategoryId
-                      ? ([] as any[])
-                      : allSubSubcategories.filter((ssc: any) => {
-                          if (typeof ssc.subcategory === "string") return ssc.subcategory === selectedAssignSubCategoryId;
-                          if (ssc.subcategory && typeof ssc.subcategory === "object") {
-                            const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
-                            return id === selectedAssignSubCategoryId;
-                          }
-                          return ssc.parentSubcategoryId === selectedAssignSubCategoryId;
-                        });
+                    const filteredAssignSubSubcategories =
+                      !selectedAssignSubCategoryId
+                        ? ([] as SubSubcategory[])
+                        : allSubSubcategories.filter((ssc: SubSubcategory) => {
+                            if (typeof ssc.subcategory === "string")
+                              return (
+                                ssc.subcategory === selectedAssignSubCategoryId
+                              );
+                            if (
+                              ssc.subcategory &&
+                              typeof ssc.subcategory === "object"
+                            ) {
+                              const id = (ssc.subcategory.id ??
+                                ssc.subcategory._id) as string;
+                              return id === selectedAssignSubCategoryId;
+                            }
+                            return (
+                              ssc.parentSubcategoryId ===
+                              selectedAssignSubCategoryId
+                            );
+                          });
 
                     return (
-                      <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                      <div
+                        key={field.id}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-gray-900">Route {index + 1}</h3>
+                          <h3 className="font-semibold text-gray-900">
+                            Route {index + 1}
+                          </h3>
                           <Button
                             type="button"
                             variant="outline"
@@ -823,27 +988,45 @@ export default function AddProductPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Category</Label>
+                            <Label className="text-sm font-medium text-gray-700">
+                              Category
+                            </Label>
                             <Controller
                               control={control}
-                              name={`categoryAssignments.${index}.category` as const}
+                              name={
+                                `categoryAssignments.${index}.category` as const
+                              }
                               render={({ field }) => (
                                 <Select
                                   onValueChange={(val) => {
                                     field.onChange(val);
-                                    setValue(`categoryAssignments.${index}.subCategory`, "");
-                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                    setValue(
+                                      `categoryAssignments.${index}.subCategory`,
+                                      ""
+                                    );
+                                    setValue(
+                                      `categoryAssignments.${index}.subSubCategory`,
+                                      ""
+                                    );
                                   }}
-                                  defaultValue={field.value}
+                                  value={field.value}
                                   disabled={isCategoriesLoading}
                                 >
                                   <SelectTrigger className="w-full">
-                                    <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
+                                    <SelectValue
+                                      placeholder={
+                                        isCategoriesLoading
+                                          ? "Loading categories..."
+                                          : "Select a category"
+                                      }
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {categories.map((c: any) => {
+                                    {categories.map((c: Category) => {
                                       const id = (c.id ?? c._id) as string;
-                                      const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
+                                      const name = (c.name ??
+                                        c.categoryName ??
+                                        "Unnamed") as string;
                                       return (
                                         <SelectItem key={id} value={id}>
                                           {name}
@@ -857,34 +1040,56 @@ export default function AddProductPage() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Sub Category</Label>
+                            <Label className="text-sm font-medium text-gray-700">
+                              Sub Category
+                            </Label>
                             <Controller
                               control={control}
-                              name={`categoryAssignments.${index}.subCategory` as const}
+                              name={
+                                `categoryAssignments.${index}.subCategory` as const
+                              }
                               render={({ field }) => (
                                 <Select
                                   onValueChange={(val) => {
                                     field.onChange(val);
-                                    setValue(`categoryAssignments.${index}.subSubCategory`, "");
+                                    setValue(
+                                      `categoryAssignments.${index}.subSubCategory`,
+                                      ""
+                                    );
                                   }}
-                                  defaultValue={field.value}
-                                  disabled={!selectedAssignCategoryId || isSubcategoriesLoading}
+                                  value={field.value}
+                                  disabled={
+                                    !selectedAssignCategoryId ||
+                                    isSubcategoriesLoading
+                                  }
                                 >
                                   <SelectTrigger className="w-full">
                                     <SelectValue
-                                      placeholder={!selectedAssignCategoryId ? "Select a category first" : isSubcategoriesLoading ? "Loading sub categories..." : filteredAssignSubcategories.length ? "Select a sub category" : "No sub categories"}
+                                      placeholder={
+                                        !selectedAssignCategoryId
+                                          ? "Select a category first"
+                                          : isSubcategoriesLoading
+                                          ? "Loading sub categories..."
+                                          : filteredAssignSubcategories.length
+                                          ? "Select a sub category"
+                                          : "No sub categories"
+                                      }
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {filteredAssignSubcategories.map((sc: any) => {
-                                      const id = (sc.id ?? sc._id) as string;
-                                      const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string;
-                                      return (
-                                        <SelectItem key={id} value={id}>
-                                          {name}
-                                        </SelectItem>
-                                      );
-                                    })}
+                                    {filteredAssignSubcategories.map(
+                                      (sc: Subcategory) => {
+                                        const id = (sc.id ?? sc._id) as string;
+                                        const name = (sc.name ??
+                                          sc.subCategoryName ??
+                                          "Unnamed") as string;
+                                        return (
+                                          <SelectItem key={id} value={id}>
+                                            {name}
+                                          </SelectItem>
+                                        );
+                                      }
+                                    )}
                                   </SelectContent>
                                 </Select>
                               )}
@@ -892,31 +1097,58 @@ export default function AddProductPage() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium text-gray-700">Sub Sub Category (optional)</Label>
+                            <Label className="text-sm font-medium text-gray-700">
+                              Sub Sub Category (optional)
+                            </Label>
                             <Controller
                               control={control}
-                              name={`categoryAssignments.${index}.subSubCategory` as const}
+                              name={
+                                `categoryAssignments.${index}.subSubCategory` as const
+                              }
                               render={({ field }) => (
                                 <Select
                                   onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                  disabled={!selectedAssignSubCategoryId || isSubSubcategoriesLoading}
+                                  value={field.value}
+                                  disabled={
+                                    !selectedAssignSubCategoryId ||
+                                    isSubSubcategoriesLoading
+                                  }
                                 >
                                   <SelectTrigger className="w-full">
                                     <SelectValue
-                                      placeholder={!selectedAssignSubCategoryId ? "Select a sub category first" : isSubSubcategoriesLoading ? "Loading sub sub categories..." : filteredAssignSubSubcategories.length ? "Select a sub sub category" : "No sub sub categories"}
+                                      placeholder={
+                                        !selectedAssignSubCategoryId
+                                          ? "Select a sub category first"
+                                          : isSubSubcategoriesLoading
+                                          ? "Loading sub sub categories..."
+                                          : filteredAssignSubSubcategories.length
+                                          ? "Select a sub sub category"
+                                          : "No sub sub categories"
+                                      }
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {filteredAssignSubSubcategories.map((ssc: any) => {
-                                      const id = (ssc.id ?? ssc._id) as string;
-                                      const name = (ssc.name ?? ssc.subSubCategoryName ?? "Unnamed") as string;
-                                      return (
-                                        <SelectItem key={id} value={id}>
-                                          {name}
-                                        </SelectItem>
-                                      );
-                                    })}
+                                    {filteredAssignSubSubcategories.map(
+                                      (ssc) => {
+                                        interface SubSubCategory {
+                                          id?: string;
+                                          _id?: string;
+                                          name?: string;
+                                          subSubCategoryName?: string;
+                                        }
+                                        const sscTyped = ssc as SubSubCategory;
+                                        const id = (sscTyped.id ??
+                                          sscTyped._id) as string;
+                                        const name = (sscTyped.name ??
+                                          sscTyped.subSubCategoryName ??
+                                          "Unnamed") as string;
+                                        return (
+                                          <SelectItem key={id} value={id}>
+                                            {name}
+                                          </SelectItem>
+                                        );
+                                      }
+                                    )}
                                   </SelectContent>
                                 </Select>
                               )}
@@ -983,94 +1215,207 @@ export default function AddProductPage() {
               onEditVariant={updateManualVariant}
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
+              setValue={setValue}
             />
 
             {/* Gallery Images */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Gallery Images</h2>
-              <Button
-                type="button"
-                className="flex items-center gap-2"
-                onClick={() => {
-                  const input = document.getElementById("gallery-images-input") as HTMLInputElement;
-                  input?.click();
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Add Images
-              </Button>
-            </div>
+            {(() => {
+              const hasAttributes = (watch("attributes") || []).length > 0;
+              const hasManualVariants =
+                (watch("manualVariants") || []).length > 0;
+              const noVariants = !hasAttributes && !hasManualVariants;
+              return (
+                <div
+                  className={`bg-white rounded-lg border p-6 ${
+                    noVariants
+                      ? "border-blue-200 ring-1 ring-blue-300/60 bg-blue-50/40"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Gallery Images
+                    </h2>
+                    {noVariants && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-800"
+                      >
+                        for no variants
+                      </Badge>
+                    )}
+                    <Button
+                      type="button"
+                      className="flex items-center gap-2"
+                      onClick={() => {
+                        const input = document.getElementById(
+                          "gallery-images-input"
+                        ) as HTMLInputElement;
+                        input?.click();
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Images
+                    </Button>
+                  </div>
 
-            <input
-              id="gallery-images-input"
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                const current = (watch("galleryImages") as unknown as File[]) || [];
-                setValue("galleryImages", [...current, ...files] as any);
-              }}
-            />
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {(watch("galleryImages") as unknown as File[] | undefined)?.map((file, idx) => (
-                <div key={idx} className="relative group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Gallery image ${idx + 1}`}
-                    className="w-full h-28 object-cover rounded border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
-                    onClick={() => {
-                      const current = (watch("galleryImages") as unknown as File[]) || [];
-                      const updated = current.filter((_, i) => i !== idx);
-                      setValue("galleryImages", updated as any);
+                  <input
+                    id="gallery-images-input"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      const current =
+                        (watch("galleryImages") as unknown as File[]) || [];
+                      setValue("galleryImages", [...current, ...files] as File[]);
                     }}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
+                  />
 
-          {/* Simple Pricing (no attributes/variants) */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Price</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  {...register("simplePrice")}
-                  placeholder="Enter price"
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Stock</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  {...register("simpleStock")}
-                  placeholder="Enter stock"
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
-          </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {(
+                      watch("galleryImages") as unknown as File[] | undefined
+                    )?.map((file, idx) => (
+                      <div key={idx} className="relative group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Gallery image ${idx + 1}`}
+                          className="w-full h-28 object-cover rounded border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => {
+                            const current =
+                              (watch("galleryImages") as unknown as File[]) ||
+                              [];
+                            const updated = current.filter((_, i) => i !== idx);
+                            setValue("galleryImages", updated as File[]);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Simple Pricing (no attributes/variants) */}
+            {(() => {
+              const hasAttributes = (watch("attributes") || []).length > 0;
+              const hasManualVariants =
+                (watch("manualVariants") || []).length > 0;
+              const noVariants = !hasAttributes && !hasManualVariants;
+              return (
+                <div
+                  className={`bg-white rounded-lg border p-6 ${
+                    noVariants
+                      ? "border-blue-200 ring-1 ring-blue-300/60 bg-blue-50/40"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Simple Pricing
+                    </h2>
+                    {noVariants && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-800"
+                      >
+                        for no variants
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Price
+                      </Label>
+                      <Input
+                        type="text"
+                        {...register("simplePrice")}
+                        placeholder="Enter price (e.g., 10000 or TBA)"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Stock
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        {...register("simpleStock")}
+                        placeholder="Enter stock"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Discount (%)
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        {...register("simpleDiscount")}
+                        placeholder="Enter discount percentage"
+                        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500">
+                        0 to 100. Leave empty if none.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Discounted Price
+                      </Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        value={(function () {
+                          const priceStr = (watch("simplePrice") || "")
+                            .toString()
+                            .trim();
+                          const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                          const discStr = watch("simpleDiscount") || "";
+                          const discount = parseFloat(discStr);
+                          if (
+                            !isNumeric ||
+                            isNaN(discount) ||
+                            discount < 0 ||
+                            discount > 100
+                          )
+                            return "";
+                          const price = parseFloat(priceStr);
+                          const calc = price * (1 - discount / 100);
+                          return Number.isFinite(calc) ? calc.toFixed(2) : "";
+                        })()}
+                        placeholder="Auto-calculated"
+                        className="w-full border-gray-300 bg-gray-100 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Auto-calculated when price is numeric.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Use this when you don&apos;t need attributes/variants.
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Specifications Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1164,17 +1509,21 @@ export default function AddProductPage() {
 }
 
 // Attribute Manager Component
-function AttributeManager({ 
-  attrIndex, 
-  control, 
-  register, 
-  watch, 
-  setValue, 
-  errors, 
-  onRemove, 
-  canRemove 
+function AttributeManager({
+  attrIndex,
+  control,
+  register,
+  watch,
+  setValue,
+  errors,
+  onRemove,
+  canRemove,
 }: AttributeManagerProps) {
-  const { fields: valueFields, append: appendValue, remove: removeValue } = useFieldArray({
+  const {
+    fields: valueFields,
+    append: appendValue,
+    remove: removeValue,
+  } = useFieldArray({
     control,
     name: `attributes.${attrIndex}.values`,
   });
@@ -1185,9 +1534,7 @@ function AttributeManager({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">
-            Attribute {attrIndex + 1}
-          </CardTitle>
+          <CardTitle className="text-lg">Attribute {attrIndex + 1}</CardTitle>
           {canRemove && (
             <Button
               type="button"
@@ -1215,31 +1562,36 @@ function AttributeManager({
               </p>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <Label>Attribute Type *</Label>
             <Controller
               control={control}
               name={`attributes.${attrIndex}.type`}
               render={({ field }) => (
-                <Select 
+                <Select
                   onValueChange={(value) => {
                     field.onChange(value);
                     // Auto-update attribute name when type changes
-                    const selectedType = TECH_ATTRIBUTE_TYPES.find(type => type.value === value);
+                    const selectedType = TECH_ATTRIBUTE_TYPES.find(
+                      (type) => type.value === value
+                    );
                     if (selectedType) {
-                      setValue(`attributes.${attrIndex}.name`, selectedType.label);
+                      setValue(
+                        `attributes.${attrIndex}.name`,
+                        selectedType.label
+                      );
                     }
-                  }} 
-                  defaultValue={field.value}
+                  }}
+                  value={field.value}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select attribute type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TECH_ATTRIBUTE_TYPES
-                      .filter((type) => type.value && type.value.trim() !== "")
-                      .map((type) => (
+                    {TECH_ATTRIBUTE_TYPES.filter(
+                      (type) => type.value && type.value.trim() !== ""
+                    ).map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -1305,24 +1657,24 @@ const convertLabelToValue = (label: string): string => {
   return label
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9\s-]/g, "") // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
 };
 
 // Attribute Value Manager Component
-function AttributeValueManager({ 
-  attrIndex, 
-  valueIndex, 
-  attributeType, 
+function AttributeValueManager({
+  attrIndex,
+  valueIndex,
+  attributeType,
   control,
-  register, 
-  watch, 
-  setValue, 
-  errors, 
-  onRemove, 
-  canRemove 
+  register,
+  watch,
+  setValue,
+  errors,
+  onRemove,
+  canRemove,
 }: AttributeValueManagerProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-4">
@@ -1355,7 +1707,10 @@ function AttributeValueManager({
                   const labelValue = e.target.value;
                   field.onChange(e);
                   const convertedValue = convertLabelToValue(labelValue);
-                  setValue(`attributes.${attrIndex}.values.${valueIndex}.value`, convertedValue);
+                  setValue(
+                    `attributes.${attrIndex}.values.${valueIndex}.value`,
+                    convertedValue
+                  );
                 }}
               />
             )}
@@ -1391,13 +1746,18 @@ function AttributeValueManager({
             <Label>Color Code</Label>
             <div className="flex gap-2">
               <Input
-                {...register(`attributes.${attrIndex}.values.${valueIndex}.colorCode`)}
+                {...register(
+                  `attributes.${attrIndex}.values.${valueIndex}.colorCode`
+                )}
                 placeholder="#000000"
               />
               <div
                 className="w-10 h-10 border border-gray-300 rounded"
                 style={{
-                  backgroundColor: watch(`attributes.${attrIndex}.values.${valueIndex}.colorCode`) || "#ffffff",
+                  backgroundColor:
+                    watch(
+                      `attributes.${attrIndex}.values.${valueIndex}.colorCode`
+                    ) || "#ffffff",
                 }}
               />
             </div>
@@ -1430,41 +1790,50 @@ function AttributeValueManager({
               className="hidden"
               onChange={(e) => {
                 const files = Array.from(e.target.files || []);
-                const currentImages = watch(`attributes.${attrIndex}.values.${valueIndex}.images`) || [];
-                setValue(`attributes.${attrIndex}.values.${valueIndex}.images`, [
-                  ...currentImages,
-                  ...files,
-                ]);
+                const currentImages =
+                  watch(
+                    `attributes.${attrIndex}.values.${valueIndex}.images`
+                  ) || [];
+                setValue(
+                  `attributes.${attrIndex}.values.${valueIndex}.images`,
+                  [...currentImages, ...files]
+                );
               }}
             />
 
             <div className="grid grid-cols-4 gap-2">
-              {watch(`attributes.${attrIndex}.values.${valueIndex}.images`)?.map(
-                (file: File, imageIndex: number) => (
-                  <div key={imageIndex} className="relative group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}
-                      className="w-full h-16 object-cover rounded border"
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const currentImages = watch(`attributes.${attrIndex}.values.${valueIndex}.images`) || [];
-                        const updatedImages = currentImages.filter(
-                          (_: File, i: number) => i !== imageIndex
-                        );
-                        setValue(`attributes.${attrIndex}.values.${valueIndex}.images`, updatedImages);
-                      }}
-                      variant="destructive"
-                      size="sm"
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )
-              )}
+              {watch(
+                `attributes.${attrIndex}.values.${valueIndex}.images`
+              )?.map((file: File, imageIndex: number) => (
+                <div key={imageIndex} className="relative group">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}
+                    className="w-full h-16 object-cover rounded border"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const currentImages =
+                        watch(
+                          `attributes.${attrIndex}.values.${valueIndex}.images`
+                        ) || [];
+                      const updatedImages = currentImages.filter(
+                        (_: File, i: number) => i !== imageIndex
+                      );
+                      setValue(
+                        `attributes.${attrIndex}.values.${valueIndex}.images`,
+                        updatedImages
+                      );
+                    }}
+                    variant="destructive"
+                    size="sm"
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         </>
@@ -1475,9 +1844,27 @@ function AttributeValueManager({
 
 // Variant Creator Component
 function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
-  const [selections, setSelections] = React.useState<{[key: string]: string}>({});
+  const [selections, setSelections] = React.useState<{ [key: string]: string }>(
+    {}
+  );
   const [price, setPrice] = React.useState("");
   const [stock, setStock] = React.useState("");
+  const [discount, setDiscount] = React.useState("");
+
+  // Calculate discounted price
+  const calculateDiscountedPrice = () => {
+    if (!price) return null;
+    // allow 0% discount; treat empty string as no discount
+    const priceNum = parseFloat(price);
+    const hasDiscountInput = discount !== "" && discount !== null && discount !== undefined;
+    const discountNum = hasDiscountInput ? parseFloat(discount) : NaN;
+    if (isNaN(priceNum)) return null;
+    if (!hasDiscountInput) return null; // show blank when discount not provided
+    if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
+    return priceNum * (1 - discountNum / 100);
+  };
+
+  const discountedPrice = calculateDiscountedPrice();
 
   const handleAddVariant = () => {
     if (!price || !stock) {
@@ -1485,10 +1872,22 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       return;
     }
 
+    const priceNum = parseFloat(price);
+    const discountNum = discount ? parseFloat(discount) : NaN;
+    const dPrice =
+      !isNaN(priceNum) &&
+      !isNaN(discountNum) &&
+      discountNum >= 0 &&
+      discountNum <= 100
+        ? (priceNum * (1 - discountNum / 100)).toFixed(2)
+        : undefined;
+
     const variant = {
       ...selections,
       price: price,
-      stock: stock
+      stock: stock,
+      discount: discount || undefined,
+      discountedPrice: dPrice,
     };
 
     onAddVariant(variant);
@@ -1496,12 +1895,31 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
     setSelections({});
     setPrice("");
     setStock("");
+    setDiscount("");
   };
 
+  interface AttributeValue {
+    label: string;
+    value: string;
+    colorCode?: string;
+    images?: File[];
+    isDefault?: boolean;
+  }
+
+  interface Attribute {
+    name: string;
+    type: string;
+    values: AttributeValue[];
+    isRequired?: boolean;
+    displayOrder?: number;
+  }
+
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr: Attribute) => attr.type === attrType);
     if (attribute) {
-      const attrValue = attribute.values.find((val: any) => val.value === value);
+      const attrValue = attribute.values.find(
+        (val: AttributeValue) => val.value === value
+      );
       return attrValue ? attrValue.label : value;
     }
     return value;
@@ -1512,17 +1930,19 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       <CardHeader>
         <CardTitle>Create New Variant</CardTitle>
         <p className="text-sm text-gray-600">
-          Select attributes from your attribute pool to create a specific variant
+          Select attributes from your attribute pool to create a specific
+          variant
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {attributes
-            .filter((attribute: any) => attribute.name && attribute.type)
-            .map((attribute: any, index: number) => {
-              const validValues = attribute.values?.filter((value: any) => 
-                value.value && value.value.trim() !== ""
-              ) || [];
+            .filter((attribute: Attribute) => attribute.name && attribute.type)
+            .map((attribute: Attribute, index: number) => {
+              const validValues =
+                attribute.values?.filter(
+                  (value: AttributeValue) => value.value && value.value.trim() !== ""
+                ) || [];
 
               return (
                 <div key={index} className="space-y-2">
@@ -1530,25 +1950,25 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                   <Select
                     value={selections[attribute.type] || ""}
                     onValueChange={(value) => {
-                      setSelections(prev => ({
+                      setSelections((prev) => ({
                         ...prev,
-                        [attribute.type]: value
+                        [attribute.type]: value,
                       }));
                     }}
                     disabled={validValues.length === 0}
                   >
                     <SelectTrigger>
-                      <SelectValue 
+                      <SelectValue
                         placeholder={
-                          validValues.length === 0 
-                            ? `No ${attribute.name} values added` 
+                          validValues.length === 0
+                            ? `No ${attribute.name} values added`
                             : `Select ${attribute.name}`
-                        } 
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       {validValues.length > 0 ? (
-                        validValues.map((value: any, valueIndex: number) => (
+                        validValues.map((value: AttributeValue, valueIndex: number) => (
                           <SelectItem key={valueIndex} value={value.value}>
                             {value.label}
                           </SelectItem>
@@ -1569,11 +1989,10 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           <div className="space-y-2">
             <Label>Price *</Label>
             <Input
-              type="number"
+              type="text"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter variant price"
-              min="0"
+              placeholder="Enter variant price (e.g., 10000 or TBA)"
             />
           </div>
           <div className="space-y-2">
@@ -1588,7 +2007,46 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
           </div>
         </div>
 
-        {Object.keys(selections).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Discount (%)</Label>
+            <Input
+              type="number"
+              value={discount}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (
+                  value === "" ||
+                  (parseFloat(value) >= 0 && parseFloat(value) <= 100)
+                ) {
+                  setDiscount(value);
+                }
+              }}
+              placeholder="Enter discount percentage"
+              min="0"
+              max="100"
+              step="0.01"
+            />
+            <p className="text-xs text-gray-500">
+              Enter a percentage between 0 and 100
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Discounted Price</Label>
+            <Input
+              type="number"
+              value={discountedPrice !== null ? discountedPrice.toFixed(2) : ""}
+              placeholder="Auto-calculated"
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500">
+              Calculated automatically from price and discount
+            </p>
+          </div>
+        </div>
+
+        {(Object.keys(selections).length > 0 || price || stock) && (
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm font-medium text-blue-800 mb-2">Preview:</p>
             <div className="flex flex-wrap gap-1">
@@ -1597,17 +2055,32 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                   {attrType}: {getAttributeLabel(attrType, value)}
                 </Badge>
               ))}
+              <Badge variant="outline">Stock: {stock || "0"}</Badge>
               <Badge variant="outline">
-                Stock: {stock || "0"}
+                {(() => {
+                  const isNumeric = /^\d+(?:\.\d+)?$/.test(price);
+                  if (!price) return "Price: 0";
+                  return isNumeric
+                    ? `Price: ৳${parseFloat(price).toLocaleString()}`
+                    : `Price: ${price}`;
+                })()}
               </Badge>
-              <Badge variant="outline">
-                Price: ৳{price ? parseInt(price).toLocaleString() : "0"}
-              </Badge>
+              {discount && (
+                <Badge variant="outline">Discount: {discount}%</Badge>
+              )}
+              {discountedPrice !== null && (
+                <Badge
+                  variant="outline"
+                  className="bg-green-100 text-green-800"
+                >
+                  Discounted Price: ৳{discountedPrice.toFixed(2)}
+                </Badge>
+              )}
             </div>
           </div>
         )}
 
-        <Button onClick={handleAddVariant} className="w-full">
+        <Button type="button" onClick={handleAddVariant} className="w-full">
           <Plus className="h-4 w-4 mr-2" />
           Add Variant
         </Button>
@@ -1617,18 +2090,54 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
 }
 
 // Variant List Component
-function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: VariantListProps) {
+function VariantList({
+  variants,
+  onEditVariant,
+  onDeleteVariant,
+  attributes,
+  setValue,
+}: VariantListProps) {
+  interface Attribute {
+    type: string;
+    name: string;
+    values: Array<{
+      label: string;
+      value: string;
+    }>;
+  }
+
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr: Attribute) => attr.type === attrType);
     if (attribute) {
-      const attrValue = attribute.values.find((val: any) => val.value === value);
+      const attrValue = attribute.values.find((val: Attribute['values'][number]) => val.value === value);
       return attrValue ? attrValue.label : value;
     }
     return value;
   };
 
-  const calculateVariantPrice = (variant: any) => {
-    return parseFloat(variant.price || "0");
+  interface Variant {
+    price?: number | string;
+    discount?: string;
+    [key: string]: unknown;
+  }
+
+  const calculateVariantPrice = (variant: Variant) => {
+    const priceVal = variant.price;
+    if (typeof priceVal === "number") return priceVal;
+    const priceStr = (priceVal ?? "").toString();
+    const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+    return isNumeric ? parseFloat(priceStr) : priceStr;
+  };
+
+  const calculateDiscountedPrice = (variant: Variant) => {
+    const priceVal = calculateVariantPrice(variant);
+    if (typeof priceVal !== "number") return null;
+    const priceNum = priceVal;
+    const hasDiscountInput = variant.discount !== "" && variant.discount !== null && variant.discount !== undefined;
+    if (!hasDiscountInput) return null;
+    const discountNum = parseFloat(variant.discount || "0");
+    if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
+    return priceNum * (1 - discountNum / 100);
   };
 
   if (variants.length === 0) {
@@ -1658,42 +2167,131 @@ function VariantList({ variants, onEditVariant, onDeleteVariant, attributes }: V
     <Card>
       <CardHeader>
         <CardTitle>Created Variants ({variants.length})</CardTitle>
-        <p className="text-sm text-gray-600">
-          These are the exact variants that will be created for your product
-        </p>
+        <p className="text-sm text-gray-600">These are the exact variants that will be created for your product</p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {variants.map((variant: any, index: number) => (
-            <div key={variant.id} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex-1">
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {Object.entries(variant).map(([key, value]) => {
-                    if (key !== 'customPrice' && key !== 'stock' && key !== 'id' && value) {
-                      return (
-                        <Badge key={key} variant="secondary">
-                          {key}: {getAttributeLabel(key, value as string)}
-                        </Badge>
-                      );
-                    }
-                    return null;
-                  })}
+        <div className="space-y-4">
+          {variants.map((variant: Variant & { id?: string; stock?: string; customPrice?: unknown }, index: number) => (
+            <div key={variant.id} className="p-4 border rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {Object.entries(variant).map(([key, value]) => {
+                      if (
+                        key !== 'customPrice' &&
+                        key !== 'stock' &&
+                        key !== 'id' &&
+                        key !== 'price' &&
+                        key !== 'discount' &&
+                        value
+                      ) {
+                        return (
+                          <Badge key={key} variant="secondary">
+                            {key}: {getAttributeLabel(key, value as string)}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                 </div>
-                <div className="flex gap-4 text-sm text-gray-600">
-                  <span>Stock: {variant.stock}</span>
-                  <span>Price: ৳{calculateVariantPrice(variant).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => onDeleteVariant(index)}
-                >
+                <Button type="button" variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDeleteVariant(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600 items-center">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Price</Label>
+                  <Input
+                    type="text"
+                    value={variant.price ?? ''}
+                    onChange={(e) => {
+                      const newPrice = e.target.value;
+                      setValue(`manualVariants.${index}.price`, newPrice, { shouldDirty: true, shouldValidate: false });
+                      // Recalculate discountedPrice if discount exists
+                      const priceStr = newPrice.trim();
+                      const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                      const currentDiscount = variant.discount ?? '';
+                      if (isNumeric && currentDiscount !== '') {
+                        const priceNum = parseFloat(priceStr);
+                        const discountNum = parseFloat(currentDiscount);
+                        if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+                          const calc = priceNum * (1 - discountNum / 100);
+                          if (Number.isFinite(calc)) {
+                            setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2), { shouldDirty: true, shouldValidate: false });
+                          }
+                        }
+                      } else {
+                        setValue(`manualVariants.${index}.discountedPrice`, '', { shouldDirty: true, shouldValidate: false });
+                      }
+                    }}
+                    placeholder="e.g., 10000 or TBA"
+                    className="w-32"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Stock</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={variant.stock ?? ''}
+                    onChange={(e) => {
+                      setValue(`manualVariants.${index}.stock`, e.target.value, { shouldDirty: true, shouldValidate: false });
+                    }}
+                    className="w-28"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Discount (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={variant.discount ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '' || (parseFloat(v) >= 0 && parseFloat(v) <= 100)) {
+                        setValue(`manualVariants.${index}.discount`, v, { shouldDirty: true, shouldValidate: false });
+                        // Calculate and update discountedPrice when discount changes
+                        const priceStr = (variant.price ?? '').toString().trim();
+                        const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
+                        if (isNumeric && v !== '') {
+                          const priceNum = parseFloat(priceStr);
+                          const discountNum = parseFloat(v);
+                          if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+                            const calc = priceNum * (1 - discountNum / 100);
+                            if (Number.isFinite(calc)) {
+                              setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2), { shouldDirty: true, shouldValidate: false });
+                            }
+                          }
+                        } else {
+                          setValue(`manualVariants.${index}.discountedPrice`, '', { shouldDirty: true, shouldValidate: false });
+                        }
+                      }
+                    }}
+                    className="w-28"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Discounted Price</Label>
+                  <Input
+                    type="text"
+                    readOnly
+                    value={(function(){
+                      const calc = calculateDiscountedPrice(variant);
+                      if (calc !== null) return calc.toFixed(2);
+                      const dp = variant.discountedPrice;
+                      if (dp === undefined || dp === null || dp === '') return '';
+                      const n = parseFloat(typeof dp === 'string' ? dp : String(dp || '0'));
+                      return Number.isFinite(n) ? n.toFixed(2) : '';
+                    })()}
+                    placeholder="Auto-calculated or saved"
+                    className="w-32 bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
               </div>
             </div>
           ))}

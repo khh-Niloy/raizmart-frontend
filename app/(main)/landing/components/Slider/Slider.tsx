@@ -17,7 +17,14 @@ export default function Slider() {
   const sliders = data?.data || [];
   
   // Filter only active sliders
-  const activeSliders = sliders.filter((slider: any) => slider.status === 'active');
+  interface Slider {
+    _id: string;
+    imageUrl: string;
+    status?: string;
+    [key: string]: unknown;
+  }
+
+  const activeSliders = (sliders as Slider[]).filter((slider: Slider) => slider.status === 'active');
   
   // console.log('All sliders:', sliders);
   // console.log('Active sliders:', activeSliders);
@@ -108,7 +115,7 @@ export default function Slider() {
         />
         
         {/* Clickable overlay if redirect URL exists */}
-        {currentSlider.redirectUrl && (
+        {typeof currentSlider.redirectUrl === "string" && currentSlider.redirectUrl !== "" && (
           <a 
             href={currentSlider.redirectUrl} 
             target="_blank" 
@@ -144,7 +151,7 @@ export default function Slider() {
       {/* Dots Indicator */}
       {activeSliders.length > 1 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {activeSliders.map((_: any, index: number) => (
+          {activeSliders.map((_: Slider, index: number) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}

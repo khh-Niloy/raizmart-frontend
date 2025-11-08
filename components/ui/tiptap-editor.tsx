@@ -11,9 +11,6 @@ import {
   List, 
   ListOrdered, 
   Quote, 
-  Heading1, 
-  Heading2, 
-  Heading3,
   Undo,
   Redo
 } from 'lucide-react';

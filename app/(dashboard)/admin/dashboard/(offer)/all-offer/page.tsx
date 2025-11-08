@@ -5,36 +5,49 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ExternalLink, Image as ImageIcon, Trash2, Edit } from "lucide-react";
+import { ExternalLink, Image as ImageIcon, Edit } from "lucide-react";
 import {
   useGetAllOffersQuery,
-  useDeleteOfferMutation,
+  useUpdateOfferMutation,
 } from "@/app/redux/features/offer/offer.api";
 import { toast } from "sonner";
+import CountdownTimer from "@/components/ui/countdown-timer";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
+interface Offer {
+  _id: string;
+  imageUrl?: string;
+  urlLink?: string;
+  status: string;
+  endAt?: string;
+  createdAt?: string;
+}
 
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
-  const offers = (data?.data as any[]) || [];
-  const [deleteOffer, { isLoading: isDeleting }] = useDeleteOfferMutation();
-  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const allOffers: Offer[] = (data?.data as Offer[]) || [];
+  const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
+  // Filter offers based on selected status
+  const offers = React.useMemo(() => {
+    if (statusFilter === "all") return allOffers;
+    return allOffers.filter((offer: Offer) => offer.status === statusFilter);
+  }, [allOffers, statusFilter]);
+
+  const handleStatusToggle = async (offerId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
     try {
-      await deleteOffer(deleteId).unwrap();
-      toast.success("Offer deleted successfully");
-      setDeleteId(null);
-    } catch (e: any) {
+      await updateOffer({
+        id: offerId,
+        status: newStatus as "active" | "inactive",
+      }).unwrap();
+      toast.success(`Offer status changed to ${newStatus}`);
+    } catch (e: unknown) {
+      const errorData = e as { data?: { message?: string }; message?: string };
       const errorMessage =
-        e?.data?.message || e?.message || "Failed to delete offer";
+        errorData?.data?.message || errorData?.message || "Failed to update offer status";
       toast.error(errorMessage);
     }
   };
@@ -84,6 +97,34 @@ export default function AllOfferPage() {
         <p className="text-gray-600">Manage offer images and links</p>
       </div>
 
+      {/* Status Filter Buttons */}
+      <div className="mb-6 flex items-center gap-3">
+        <Button
+          variant={statusFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("all")}
+          className={statusFilter === "all" ? "bg-black text-white hover:bg-black/90" : ""}
+        >
+          All Status
+        </Button>
+        <Button
+          variant={statusFilter === "active" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("active")}
+          className={statusFilter === "active" ? "bg-black text-white hover:bg-black/90" : ""}
+        >
+          Active
+        </Button>
+        <Button
+          variant={statusFilter === "inactive" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("inactive")}
+          className={statusFilter === "inactive" ? "bg-black text-white hover:bg-black/90" : ""}
+        >
+          Inactive
+        </Button>
+      </div>
+
       {offers.length === 0 ? (
         <div className="text-center py-12">
           <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -92,7 +133,7 @@ export default function AllOfferPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {offers.map((offer: any) => (
+          {offers.map((offer: Offer) => (
             <Card key={offer._id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -103,9 +144,31 @@ export default function AllOfferPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor={`status-${offer._id}`} className="text-sm font-medium cursor-pointer">
+                      Status
+                    </Label>
+                    <Switch
+                      id={`status-${offer._id}`}
+                      checked={offer.status === "active"}
+                      onCheckedChange={() => handleStatusToggle(offer._id, offer.status)}
+                      disabled={isUpdating}
+                    />
+                    <span className="text-sm text-gray-600">
+                      {offer.status === "active" ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
                 <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
                   <img src={offer.imageUrl} alt="Offer preview" className="w-full h-full object-cover" />
                 </div>
+
+                {offer.endAt && (
+                  <div className="flex justify-center">
+                    <CountdownTimer endAt={offer.endAt} darkLabels />
+                  </div>
+                )}
 
                 {offer.urlLink && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -139,16 +202,6 @@ export default function AllOfferPage() {
                       Edit
                     </Button>
                   </Link>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteId(offer._id)}
-                    disabled={isDeleting}
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -156,33 +209,6 @@ export default function AllOfferPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Offer</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this offer? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteId(null)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

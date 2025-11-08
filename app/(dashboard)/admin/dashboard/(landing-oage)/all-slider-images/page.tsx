@@ -61,7 +61,17 @@ export default function AllSliderImagesPage() {
     );
   }
 
-  const sliders = data?.data || [];
+  interface Slider {
+    _id: string;
+    imageUrl: string;
+    redirectUrl?: string;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const sliders: Slider[] = Array.isArray(data) ? data : [];
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
@@ -78,7 +88,7 @@ export default function AllSliderImagesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sliders.map((slider: any) => (
+          {sliders.map((slider: Slider) => (
             <Card key={slider._id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -114,9 +124,11 @@ export default function AllSliderImagesPage() {
                 )}
 
                 {/* Created Date */}
-                <div className="text-xs text-gray-500">
-                  Created: {new Date(slider.createdAt).toLocaleDateString()}
-                </div>
+                {slider.createdAt && (
+                  <div className="text-xs text-gray-500">
+                    Created: {new Date(slider.createdAt).toLocaleDateString()}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex justify-end">

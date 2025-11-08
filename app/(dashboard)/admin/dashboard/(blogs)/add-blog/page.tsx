@@ -45,7 +45,17 @@ export default function AddBlogPage() {
 
   // Load blog categories
   const { data: blogCategoriesResp, isFetching: isBlogCategoriesLoading } = useGetBlogCategoriesQuery(undefined);
-  const blogCategories: any[] = (blogCategoriesResp?.data ?? blogCategoriesResp ?? []) as any[];
+  interface BlogCategory {
+    id?: string;
+    _id?: string;
+    name?: string;
+    categoryName?: string;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so blogCategoriesResp should be the array)
+  const blogCategories: BlogCategory[] = Array.isArray(blogCategoriesResp) 
+    ? blogCategoriesResp 
+    : [];
 
   // Create blog mutation
   const [createBlog, { isLoading: isCreatingBlog }] = useCreateBlogMutation();
@@ -131,7 +141,7 @@ export default function AddBlogPage() {
                 <SelectValue placeholder={isBlogCategoriesLoading ? 'Loading categories...' : 'Select a category'} />
               </SelectTrigger>
               <SelectContent>
-                {blogCategories.map((c: any) => {
+                {blogCategories.map((c: BlogCategory) => {
                   const id = (c.id ?? c._id) as string;
                   const name = (c.name ?? c.categoryName ?? 'Unnamed') as string;
                   return (

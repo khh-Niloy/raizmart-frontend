@@ -6,10 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 
+interface Brand {
+  id?: string;
+  _id?: string;
+  brandName?: string;
+  name?: string;
+  image?: string;
+}
+
 export default function AllBrandPage() {
   const { data, isFetching } = useGetBrandsQuery(undefined);
   console.log("Brands data:", data);
-  const brands: any[] = (data?.data ?? data ?? []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const brands: Brand[] = Array.isArray(data) ? data : [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -27,7 +36,7 @@ export default function AllBrandPage() {
               <div className="text-gray-600">No brands found.</div>
             ) : (
               <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                {brands.map((brand: any) => (
+                {brands.map((brand: Brand) => (
                   <li key={brand.id ?? brand._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 flex-1">

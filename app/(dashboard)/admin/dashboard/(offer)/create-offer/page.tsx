@@ -45,7 +45,7 @@ export default function CreateOfferPage() {
   const { fields, append, remove } = useFieldArray({ control, name: "offers" });
 
   const handleImageChange = (index: number, file: File | undefined) => {
-    setValue(`offers.${index}.image`, file as any);
+    setValue(`offers.${index}.image`, file as File | undefined);
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -74,7 +74,7 @@ export default function CreateOfferPage() {
       const endAts = (data.offers || []).map((o) => o.endAt || "");
       await createOffers({ images, urlLinks, endAts }).unwrap();
       toast.success("Offers created successfully");
-    } catch (e) {
+    } catch {
       toast.error("Failed to create offers");
     }
   };
@@ -140,7 +140,7 @@ export default function CreateOfferPage() {
                   </div>
                   )}
                   {errors.offers?.[index]?.image && (
-                    <p className="text-sm text-red-600">{errors.offers[index]?.image?.message as any}</p>
+                    <p className="text-sm text-red-600">{String(errors.offers[index]?.image?.message || '')}</p>
                   )}
                 </div>
 
@@ -153,7 +153,7 @@ export default function CreateOfferPage() {
                     {...register(`offers.${index}.url`)}
                   />
                   {errors.offers?.[index]?.url && (
-                    <p className="text-sm text-red-600">{errors.offers[index]?.url?.message as any}</p>
+                    <p className="text-sm text-red-600">{String(errors.offers[index]?.url?.message || '')}</p>
                   )}
                 </div>
 
@@ -165,7 +165,7 @@ export default function CreateOfferPage() {
                     {...register(`offers.${index}.endAt`)}
                   />
                   {errors.offers?.[index]?.endAt && (
-                    <p className="text-sm text-red-600">{errors.offers[index]?.endAt?.message as any}</p>
+                    <p className="text-sm text-red-600">{String(errors.offers[index]?.endAt?.message || '')}</p>
                   )}
                 </div>
               </div>

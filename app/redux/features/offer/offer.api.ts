@@ -83,7 +83,7 @@ export const offerApi = baseApi.injectEndpoints({
                 ? new Date(endAt).toISOString()
                 : endAt; // Already ISO format
               formData.append("endAt", dateValue);
-            } catch (e) {
+            } catch {
               // If parsing fails, send as-is (backend will handle validation)
               formData.append("endAt", endAt);
             }
