@@ -9,11 +9,24 @@ import Link from "next/link";
 import { useGetSubSubcategoriesQuery, useDeleteSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
 
+interface SubSubCategory {
+  id?: string;
+  _id?: string;
+  name?: string;
+  isActive?: boolean;
+  image?: string;
+  subcategory?: string | { name?: string };
+  category?: string | { name?: string };
+  slug?: string;
+  createdAt?: string;
+}
+
 export default function AllSubSubCategoryPage() {
   const { data: subSubCategoriesResponse, isFetching } = useGetSubSubcategoriesQuery(undefined);
   console.log(subSubCategoriesResponse);
   const [deleteSubSubcategory, { isLoading: isDeleting }] = useDeleteSubSubcategoryMutation();
-  const subSubCategories: any[] = (subSubCategoriesResponse?.data ?? subSubCategoriesResponse ?? []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so subSubCategoriesResponse should be the array)
+  const subSubCategories: SubSubCategory[] = Array.isArray(subSubCategoriesResponse) ? subSubCategoriesResponse : [];
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this sub-sub-category?")) {
@@ -79,7 +92,12 @@ export default function AllSubSubCategoryPage() {
                             variant="outline" 
                             size="sm" 
                             className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDelete(subSubCategory.id ?? subSubCategory._id)}
+                            onClick={() => {
+                              const categoryId = subSubCategory.id ?? subSubCategory._id;
+                              if (categoryId) {
+                                handleDelete(categoryId);
+                              }
+                            }}
                             disabled={isDeleting}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
@@ -99,11 +117,19 @@ export default function AllSubSubCategoryPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         <div>
                           <span className="font-medium">Parent Sub-Category:</span>
-                          <p className="text-gray-900">{subSubCategory.subcategory?.name ?? subSubCategory.subcategory ?? "N/A"}</p>
+                          <p className="text-gray-900">
+                            {typeof subSubCategory.subcategory === 'string' 
+                              ? subSubCategory.subcategory 
+                              : subSubCategory.subcategory?.name ?? "N/A"}
+                          </p>
                         </div>
                         <div>
                           <span className="font-medium">Root Category:</span>
-                          <p className="text-gray-900">{subSubCategory.category?.name ?? subSubCategory.category ?? "N/A"}</p>
+                          <p className="text-gray-900">
+                            {typeof subSubCategory.category === 'string' 
+                              ? subSubCategory.category 
+                              : subSubCategory.category?.name ?? "N/A"}
+                          </p>
                         </div>
                         <div>
                           <span className="font-medium">Created:</span>
@@ -113,7 +139,13 @@ export default function AllSubSubCategoryPage() {
                       <div className="mt-3">
                         <span className="font-medium text-sm text-gray-600">Path:</span>
                         <p className="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded mt-1">
-                          {(subSubCategory.category?.name ?? subSubCategory.category ?? "category").toLowerCase()}/{(subSubCategory.subcategory?.name ?? subSubCategory.subcategory ?? "subcategory").toLowerCase()}/{subSubCategory.slug ?? subSubCategory.name?.toLowerCase().replace(/\s+/g, '-') ?? "sub-sub-category"}
+                          {(typeof subSubCategory.category === 'string' 
+                            ? subSubCategory.category 
+                            : subSubCategory.category?.name ?? "category").toLowerCase()}/
+                          {(typeof subSubCategory.subcategory === 'string' 
+                            ? subSubCategory.subcategory 
+                            : subSubCategory.subcategory?.name ?? "subcategory").toLowerCase()}/
+                          {subSubCategory.slug ?? subSubCategory.name?.toLowerCase().replace(/\s+/g, '-') ?? "sub-sub-category"}
                         </p>
                       </div>
                     </CardContent>

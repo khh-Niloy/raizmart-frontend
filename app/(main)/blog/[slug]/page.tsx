@@ -7,7 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, Clock, Tag as TagIcon, BookOpen, ArrowRight } from "lucide-react";
 
 // Helper to parse and render Tiptap content
-const renderTiptapContent = (content: any) => {
+interface TipTapNode {
+  type: string;
+  content?: TipTapNode[];
+  text?: string;
+  attrs?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+const renderTiptapContent = (content: unknown) => {
   if (!content) return null;
 
   // If content is a string, try to parse it as JSON
@@ -34,7 +42,7 @@ const renderTiptapContent = (content: any) => {
   return <div dangerouslySetInnerHTML={{ __html: String(content) }} />;
 };
 
-const renderTiptapNodes = (nodes: any[]): React.ReactElement[] => {
+const renderTiptapNodes = (nodes: TipTapNode[]): React.ReactElement[] => {
   return nodes.map((node, index) => {
     switch (node.type) {
       case "paragraph":
@@ -44,7 +52,8 @@ const renderTiptapNodes = (nodes: any[]): React.ReactElement[] => {
           </p>
         );
       case "heading":
-        const level = node.attrs?.level || 1;
+        const levelValue = node.attrs?.level;
+        const level = typeof levelValue === 'number' ? levelValue : 1;
         const HeadingTag = `h${Math.min(Math.max(level, 1), 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
         const HeadingComponent = HeadingTag;
         return (
@@ -115,19 +124,43 @@ export default function BlogDetailPage({
 
   // Get all blogs first to find the one matching the slug
   const { data: allBlogsResp, isLoading: isLoadingBlogs } = useGetBlogsQuery(undefined);
-  const allBlogs: any[] = (allBlogsResp?.data ?? allBlogsResp ?? []) as any[];
+  interface Blog {
+    _id?: string;
+    id?: string;
+    slug?: string;
+    blogTitle?: string;
+    title?: string;
+    status?: string;
+    category?: {
+      _id?: string;
+      id?: string;
+      name?: string;
+    } | string;
+    categoryName?: string;
+    image?: string;
+    thumbnail?: string;
+    tags?: string[];
+    blogContent?: unknown;
+    content?: unknown;
+    createdAt?: string;
+    updatedAt?: string;
+    [key: string]: unknown;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so allBlogsResp should be the array)
+  const allBlogs: Blog[] = Array.isArray(allBlogsResp) ? allBlogsResp : [];
 
   // Find the blog ID from the slug
   const blogFromSlug = React.useMemo(() => {
     if (!allBlogs || allBlogs.length === 0) return null;
     
     // Try to find by slug first
-    let foundBlog = allBlogs.find((b: any) => b.slug === slug);
+    let foundBlog = allBlogs.find((b: Blog) => b.slug === slug);
     
     // If not found by slug, try to match by ID (in case slug is actually an ID)
     if (!foundBlog) {
       foundBlog = allBlogs.find(
-        (b: any) => (b.id ?? b._id) === slug || String(b.id ?? b._id) === slug
+        (b: Blog) => (b.id ?? b._id) === slug || String(b.id ?? b._id) === slug
       );
     }
     
@@ -209,7 +242,7 @@ export default function BlogDetailPage({
 
   // Extract blog data from the response
   // Backend returns: { success: true, message: "...", data: blog }
-  const blog: any = blogResponse?.data ?? blogResponse;
+  const blog = (blogResponse?.data ?? blogResponse) as Blog;
 
   // Don't show if blog is not active
   if (blog.status && blog.status !== "active") {
@@ -233,8 +266,12 @@ export default function BlogDetailPage({
   }
 
   const title = blog.blogTitle || blog.title || "Untitled";
-  const category = blog.category?.name || blog.categoryName || "Uncategorized";
-  const categoryId = blog.category?._id || blog.category?.id || blog.category;
+  const category = (typeof blog.category === 'object' && blog.category !== null)
+    ? (blog.category.name || blog.categoryName || "Uncategorized")
+    : (blog.categoryName || "Uncategorized");
+  const categoryId = typeof blog.category === 'object' && blog.category !== null
+    ? (blog.category._id || blog.category.id)
+    : (typeof blog.category === 'string' ? blog.category : undefined);
   const image = blog.image || blog.thumbnail;
   const tags = Array.isArray(blog.tags) ? blog.tags : [];
   const content = blog.blogContent || blog.content;
@@ -256,11 +293,14 @@ export default function BlogDetailPage({
   // Get related blogs (same category, excluding current)
   const relatedBlogs = allBlogs
     .filter(
-      (b: any) =>
-        (b.id ?? b._id) !== (blog.id ?? blog._id) &&
-        (b.status === "active" || !b.status) &&
-        ((b.category?._id || b.category?.id || b.category) === categoryId ||
-          b.category === categoryId)
+      (b: Blog) => {
+        const bCategoryId = typeof b.category === 'object' && b.category !== null
+          ? (b.category._id || b.category.id)
+          : (typeof b.category === 'string' ? b.category : undefined);
+        return (b.id ?? b._id) !== (blog.id ?? blog._id) &&
+          (b.status === "active" || !b.status) &&
+          (bCategoryId === categoryId);
+      }
     )
     .slice(0, 3);
 
@@ -367,12 +407,14 @@ export default function BlogDetailPage({
                 <p className="text-slate-600 mt-2">Discover more articles you might like</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {relatedBlogs.map((relatedBlog: any) => {
+                {relatedBlogs.map((relatedBlog: Blog) => {
                   const relatedId = relatedBlog.id ?? relatedBlog._id;
                   const relatedSlug = relatedBlog.slug || relatedId;
                   const relatedTitle = relatedBlog.blogTitle || relatedBlog.title || "Untitled";
                   const relatedImage = relatedBlog.image || relatedBlog.thumbnail;
-                  const relatedCategory = relatedBlog.category?.name || relatedBlog.categoryName || "Uncategorized";
+                  const relatedCategory = (typeof relatedBlog.category === 'object' && relatedBlog.category !== null)
+                    ? (relatedBlog.category.name || relatedBlog.categoryName || "Uncategorized")
+                    : (relatedBlog.categoryName || "Uncategorized");
 
                   return (
                     <Link

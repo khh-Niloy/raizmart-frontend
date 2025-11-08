@@ -65,11 +65,11 @@ export function useLocalWishlist() {
       if ((e as StorageEvent).key && (e as StorageEvent).key !== KEY) return;
       setState(read());
     };
-    window.addEventListener("storage", onChange as any);
-    window.addEventListener("wishlist:changed", onChange as any);
+    window.addEventListener("storage", onChange);
+    window.addEventListener("wishlist:changed", onChange);
     return () => {
-      window.removeEventListener("storage", onChange as any);
-      window.removeEventListener("wishlist:changed", onChange as any);
+      window.removeEventListener("storage", onChange);
+      window.removeEventListener("wishlist:changed", onChange);
     };
   }, []);
 

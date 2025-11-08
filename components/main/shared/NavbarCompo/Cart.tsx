@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function Cart() {
-  const { items, subTotal, totalQuantity, clear, updateQuantity, removeItem } =
+  const { items, totalQuantity, clear, updateQuantity, removeItem } =
     useLocalCart();
   const router = useRouter();
   const [isOpen, setIsOpen] = React.useState(false);
@@ -54,11 +54,11 @@ export default function Cart() {
   React.useEffect(() => {
     const onCloseAll = () => setIsOpen(false);
     if (typeof window !== "undefined") {
-      window.addEventListener("dialog:closeAll", onCloseAll as any);
+      window.addEventListener("dialog:closeAll", onCloseAll);
     }
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("dialog:closeAll", onCloseAll as any);
+        window.removeEventListener("dialog:closeAll", onCloseAll);
       }
     };
   }, []);
@@ -112,7 +112,7 @@ export default function Cart() {
                     <ShoppingCart className="h-8 w-8 text-[#02C1BE]" />
                     <p className="max-w-sm">
                       Your cart is empty. Browse our latest arrivals and tap
-                      "Add to Cart" to bring them here.
+                      &quot;Add to Cart&quot; to bring them here.
                     </p>
                   </div>
                 ) : (

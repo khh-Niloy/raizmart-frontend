@@ -54,12 +54,27 @@ export default function EditSubSubCategoryPage() {
 
   const [currentImage, setCurrentImage] = React.useState<string | undefined>(undefined);
 
+  interface SubSubCategory {
+    id?: string;
+    _id?: string;
+    name?: string;
+    isActive?: boolean;
+    image?: string;
+    subcategory?: string | { _id?: string; id?: string };
+  }
+
+  interface Subcategory {
+    id?: string;
+    _id?: string;
+  }
+
   // Load existing sub-sub-category data
   useEffect(() => {
     if (subSubCategoriesResponse && subSubCategoryId && subcategoriesResponse) {
-      const subSubCategories = (subSubCategoriesResponse?.data ?? subSubCategoriesResponse ?? []) as any[];
+      // Ensure data is an array (transformResponse already extracts data, so subSubCategoriesResponse should be the array)
+      const subSubCategories: SubSubCategory[] = Array.isArray(subSubCategoriesResponse) ? subSubCategoriesResponse : [];
       const currentSubSubCategory = subSubCategories.find(
-        (item: any) => (item.id ?? item._id) === subSubCategoryId
+        (item: SubSubCategory) => (item.id ?? item._id) === subSubCategoryId
       );
       if (currentSubSubCategory) {
         setCurrentImage(currentSubSubCategory?.image ?? undefined);
@@ -67,8 +82,10 @@ export default function EditSubSubCategoryPage() {
           typeof currentSubSubCategory.subcategory === "object"
             ? String(currentSubSubCategory.subcategory._id ?? currentSubSubCategory.subcategory.id)
             : String(currentSubSubCategory.subcategory ?? "");
-        const subExists = (subcategoriesResponse?.data ?? subcategoriesResponse ?? [])
-          .some((sc: any) => String(sc.id ?? sc._id) === subVal);
+        // Ensure data is an array (transformResponse already extracts data, so subcategoriesResponse should be the array)
+        const subcategories: Subcategory[] = Array.isArray(subcategoriesResponse) ? subcategoriesResponse : [];
+        const subExists = subcategories
+          .some((sc: Subcategory) => String(sc.id ?? sc._id) === subVal);
         if (subExists) {
           reset({
             name: currentSubSubCategory.name ?? "",
@@ -91,7 +108,7 @@ export default function EditSubSubCategoryPage() {
       }
       await updateSubSubcategory({ id: subSubCategoryId, formData }).unwrap();
       toast.success("Sub-sub-category updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update sub-sub-category. Please try again.");
     }
   };
@@ -163,7 +180,7 @@ export default function EditSubSubCategoryPage() {
                       <SelectValue placeholder={isSubcategoriesLoading ? "Loading sub-categories..." : "Select a parent sub-category"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(subcategoriesResponse?.data ?? subcategoriesResponse ?? []).map((subcategory: any) => (
+                      {(Array.isArray(subcategoriesResponse) ? subcategoriesResponse : []).map((subcategory: { id?: string; _id?: string; name?: string; subcategoryName?: string }) => (
                         <SelectItem key={subcategory.id ?? subcategory._id} value={(subcategory.id ?? subcategory._id) as string}>
                           {subcategory.name ?? subcategory.subcategoryName ?? "Unnamed"}
                         </SelectItem>

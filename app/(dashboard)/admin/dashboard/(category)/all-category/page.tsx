@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Edit } from "lucide-react";
 
+interface Category {
+  id?: string;
+  _id?: string;
+  name?: string;
+  categoryName?: string;
+  image?: string;
+}
+
 export default function AllCategoryPage() {
   const { data, isFetching } = useGetCategoriesQuery(undefined);
-  const categories: any[] = (data?.data ?? data ?? []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const categories: Category[] = Array.isArray(data) ? data : [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -28,7 +37,7 @@ export default function AllCategoryPage() {
               <div className="text-gray-600">No categories found.</div>
             ) : (
               <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                {categories.map((cat: any) => (
+                {categories.map((cat: Category) => (
                   <li key={cat.id ?? cat._id} className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-2">

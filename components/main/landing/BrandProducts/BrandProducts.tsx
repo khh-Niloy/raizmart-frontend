@@ -11,10 +11,51 @@ import {
   useGetBrandProductsQuery,
 } from "@/app/redux/features/brand/brand.api";
 
+interface Brand {
+  _id: string;
+  name?: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
+interface Product {
+  _id: string;
+  name: string;
+  slug: string;
+  status: string;
+  price?: number;
+  discountedPrice?: number;
+  images?: string[];
+  isFreeDelivery?: boolean;
+  attributes?: Array<{
+    type?: string;
+    name?: string;
+    values?: Array<{
+      images?: string[];
+    }>;
+  }>;
+  variants?: Array<{
+    finalPrice?: number;
+    discountedPrice?: number;
+    discountPercentage?: number;
+  }>;
+  [key: string]: unknown;
+}
+
+interface ProductsResponse {
+  items?: Product[];
+  data?: {
+    items?: Product[];
+  };
+}
+
 export default function BrandProducts() {
   const { data: brandsData, isLoading: brandsLoading } =
     useGetBrandsQuery(undefined);
-  const brands: any[] = (brandsData as any) || [];
+
+  const brands: Brand[] = React.useMemo(() => {
+    return (brandsData || []) as Brand[];
+  }, [brandsData]);
 
   const [active, setActive] = React.useState<string | null>(null);
 
@@ -28,11 +69,14 @@ export default function BrandProducts() {
     useGetBrandProductsQuery(
       { brand: active || "", page: 1, limit: 12, sort: "newest" },
       { skip: !active }
-    ) as any;
+    );
 
-  const allItems: any[] = productsResp?.items || productsResp?.data?.items || [];
+  const response = productsResp as ProductsResponse | undefined;
+  const allItems: Product[] = response?.items || response?.data?.items || [];
   // Filter to show only active products
-  const items = allItems.filter((product: any) => product.status === "active");
+  const items = allItems.filter(
+    (product: Product) => product.status === "active"
+  );
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const scrollBy = (delta: number) =>
@@ -91,7 +135,7 @@ export default function BrandProducts() {
               No brands available at the moment.
             </div>
           )}
-          {brands?.map((b: any) => {
+          {brands?.map((b: Brand) => {
             const label = b?.name || b?.title || String(b?._id);
             const selected = active === label;
             return (
@@ -123,32 +167,57 @@ export default function BrandProducts() {
           </div>
         ) : items?.length ? (
           <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((product: any) => {
-              const colorAttr = (product?.attributes || []).find(
-                (a: any) =>
-                  a?.type?.toLowerCase?.() === "color" ||
-                  a?.name?.toLowerCase?.() === "color"
-              );
-              const primaryImage =
-                colorAttr?.values?.[0]?.images?.[0] ||
-                product?.images?.[0] ||
-                "/next.svg";
-              const variant = (product?.variants || [])[0];
+            {items.map((product: Product) => {
+              const colorAttr = Array.isArray(product?.attributes)
+                ? product.attributes.find(
+                    (a) =>
+                      (typeof a?.type === "string" &&
+                        a.type.toLowerCase() === "color") ||
+                      (typeof a?.name === "string" &&
+                        a.name.toLowerCase() === "color")
+                  )
+                : undefined;
 
-              // Calculate discount information
-              // finalPrice is the base/original price, discountedPrice is the discounted price
-              const basePrice = variant?.finalPrice || product?.price || 0;
-              const discountedPrice = variant?.discountedPrice || product?.discountedPrice || 0;
-              const hasDiscount = basePrice > 0 && discountedPrice > 0 && discountedPrice < basePrice;
+              const primaryImage =
+                colorAttr?.values?.[0]?.images?.[0] &&
+                typeof colorAttr?.values?.[0]?.images?.[0] === "string"
+                  ? colorAttr.values[0].images[0]
+                  : Array.isArray(product?.images) &&
+                    typeof product.images[0] === "string"
+                  ? product.images[0]
+                  : "/next.svg";
+
+              const variant = Array.isArray(product?.variants)
+                ? product.variants[0]
+                : undefined;
+
+              // Prefer numbers, fallback to 0
+              const getNumber = (val: unknown): number =>
+                typeof val === "number" && !isNaN(val) ? val : 0;
+
+              const basePrice =
+                getNumber(variant?.finalPrice) || getNumber(product?.price);
+              const discountedPrice =
+                getNumber(variant?.discountedPrice) ||
+                getNumber(product?.discountedPrice);
+
+              const hasDiscount =
+                basePrice > 0 &&
+                discountedPrice > 0 &&
+                discountedPrice < basePrice;
+
               const finalPrice = hasDiscount ? discountedPrice : basePrice;
-              const discountPercentage = hasDiscount
-                ? Math.round(((basePrice - discountedPrice) / basePrice) * 100)
-                : 0;
+              const discountPercentage =
+                hasDiscount && basePrice > 0
+                  ? Math.round(
+                      ((basePrice - discountedPrice) / basePrice) * 100
+                    )
+                  : 0;
 
               return (
                 <Link
-                  key={product._id}
-                  href={`/product/${product.slug}`}
+                  key={String(product._id)}
+                  href={`/product/${product.slug ?? ""}`}
                   className="block"
                 >
                   <div className="h-full rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)] relative">
@@ -160,12 +229,18 @@ export default function BrandProducts() {
                         </Badge>
                       </div>
                     )}
+
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={primaryImage}
-                      alt={product.name}
+                      src={
+                        typeof primaryImage === "string"
+                          ? primaryImage
+                          : "/next.svg"
+                      }
+                      alt={String(product.name)}
                       className="w-full h-48 object-contain"
                     />
+
                     {product?.isFreeDelivery && (
                       <div className="mt-2">
                         <Badge className="bg-emerald-600 text-white border-transparent">
@@ -174,7 +249,7 @@ export default function BrandProducts() {
                       </div>
                     )}
                     <div className="mt-3 font-medium text-gray-900 line-clamp-2 min-h-[44px]">
-                      {product.name}
+                      {String(product.name)}
                     </div>
                     <div className="mt-2 flex flex-col gap-1">
                       {hasDiscount ? (
@@ -190,7 +265,9 @@ export default function BrandProducts() {
                         </>
                       ) : (
                         <div className="text-lg font-semibold text-[#111827]">
-                          {finalPrice > 0 ? `৳ ${finalPrice.toLocaleString()}` : ""}
+                          {finalPrice > 0
+                            ? `৳ ${finalPrice.toLocaleString()}`
+                            : ""}
                         </div>
                       )}
                     </div>

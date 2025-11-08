@@ -1,10 +1,14 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create Product
     createProduct: builder.mutation({
-      query: (formData) => ({
+      query: (formData: FormData) => ({
         url: "/products",
         method: "POST",
         data: formData,
@@ -21,7 +25,10 @@ export const productApi = baseApi.injectEndpoints({
         url: "/products",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },  
       providesTags: ["PRODUCTS"],
     }),
 
@@ -31,7 +38,10 @@ export const productApi = baseApi.injectEndpoints({
         url: "/products/featured",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["PRODUCTS"],
     }),
 
@@ -41,13 +51,16 @@ export const productApi = baseApi.injectEndpoints({
         url: `/products/${id}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["PRODUCTS"],
     }),
 
     // Update Product
     updateProduct: builder.mutation({
-      query: ({ id, formData }) => ({
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
         url: `/products/${id}`,
         method: "PATCH",
         data: formData,
@@ -60,7 +73,7 @@ export const productApi = baseApi.injectEndpoints({
 
     // Toggle Free Delivery Status
     toggleFreeDelivery: builder.mutation({
-      query: ({ id, isFreeDelivery }) => ({
+      query: ({ id, isFreeDelivery }: { id: string; isFreeDelivery: boolean }) => ({
         url: `/products/${id}/free-delivery`,
         method: "PATCH",
         data: { isFreeDelivery },
@@ -70,7 +83,7 @@ export const productApi = baseApi.injectEndpoints({
 
     // Toggle Featured Status
     toggleFeatured: builder.mutation({
-      query: ({ id, isFeatured }) => ({
+      query: ({ id, isFeatured }: { id: string; isFeatured: boolean }) => ({
         url: `/products/${id}/featured`,
         method: "PATCH",
         data: { isFeatured },
@@ -100,7 +113,7 @@ export const productApi = baseApi.injectEndpoints({
         };
       },
       // backend already returns the full envelope we need
-      transformResponse: (response: any) => response,
+      transformResponse: <T,>(response: unknown): T => response as T,
       providesTags: ["PRODUCTS"],
     }),
 
@@ -110,7 +123,7 @@ export const productApi = baseApi.injectEndpoints({
         url: `/products/by-slug?slug=${encodeURIComponent(slug)}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response,
+      transformResponse: <T,>(response: unknown): T => response as T,
       providesTags: ["PRODUCTS"],
     }),
 
@@ -120,7 +133,10 @@ export const productApi = baseApi.injectEndpoints({
         url: "/products/stock",
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
       providesTags: ["PRODUCTS"],
     }),
   }),

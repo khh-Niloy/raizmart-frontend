@@ -43,10 +43,14 @@ export default function EditBlogCategoryPage() {
     defaultValues: { name: "" },
   });
 
+  interface CategoryData {
+    name?: string;
+  }
+
   // Load existing category data
   useEffect(() => {
     if (categoryResponse) {
-      const category: any = categoryResponse?.data ?? categoryResponse;
+      const category: CategoryData = categoryResponse?.data ?? categoryResponse;
       const formData = {
         name: category?.name ?? "",
       };
@@ -62,7 +66,7 @@ export default function EditBlogCategoryPage() {
 
     try {
       // Only send fields that have values
-      const payload: any = {};
+      const payload: Record<string, string> = {};
       if (data.name && data.name.trim() !== "") {
         payload.name = data.name.trim();
       }
@@ -77,10 +81,11 @@ export default function EditBlogCategoryPage() {
       console.log(res);
       toast.success("Blog category updated successfully!");
       router.push("/admin/dashboard/all-blog-category");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
+      const errorData = e as { data?: { message?: string }; message?: string };
       const errorMessage =
-        e?.data?.message || e?.message || "Failed to update blog category. Please try again.";
+        errorData?.data?.message || errorData?.message || "Failed to update blog category. Please try again.";
       toast.error(errorMessage);
     }
   };

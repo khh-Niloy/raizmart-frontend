@@ -71,11 +71,11 @@ export function useLocalCart() {
       if ((e as StorageEvent).key && (e as StorageEvent).key !== CART_KEY) return;
       setCart(readCart());
     };
-    window.addEventListener("storage", onChange as any);
-    window.addEventListener("cart:changed", onChange as any);
+    window.addEventListener("storage", onChange);
+    window.addEventListener("cart:changed", onChange);
     return () => {
-      window.removeEventListener("storage", onChange as any);
-      window.removeEventListener("cart:changed", onChange as any);
+      window.removeEventListener("storage", onChange);
+      window.removeEventListener("cart:changed", onChange);
     };
   }, []);
 

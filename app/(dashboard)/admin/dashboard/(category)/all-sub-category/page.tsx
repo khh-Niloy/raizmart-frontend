@@ -7,14 +7,34 @@ import Link from "next/link";
 import { Edit } from "lucide-react";
 
 export default function AllSubCategoryPage() {
+  interface Subcategory {
+    id?: string;
+    _id?: string;
+    name?: string;
+    subCategoryName?: string;
+    image?: string;
+    category?: string | { _id?: string; id?: string; name?: string; categoryName?: string };
+  }
+
+  interface Category {
+    id?: string;
+    _id?: string;
+    name?: string;
+    categoryName?: string;
+  }
+
   const { data, isFetching } = useGetSubcategoriesQuery(undefined);
   const { data: categoriesData, isFetching: isCatsLoading } = useGetCategoriesQuery(undefined);
-  const subcategories: any[] = (data?.data ?? data ?? []) as any[];
-  const categories: any[] = (categoriesData?.data ?? categoriesData ?? []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const subcategories: Subcategory[] = Array.isArray(data) ? data : [];
+  const categories: Category[] = React.useMemo(() => {
+    const cats: Category[] = Array.isArray(categoriesData) ? categoriesData : [];
+    return cats;
+  }, [categoriesData]);
 
   const idToCategoryName = React.useMemo(() => {
     const map = new Map<string, string>();
-    categories.forEach((c: any) => {
+    categories.forEach((c: Category) => {
       const id = (c.id ?? c._id) as string;
       const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
       if (id) map.set(id, name);
@@ -38,7 +58,7 @@ export default function AllSubCategoryPage() {
               <div className="text-gray-600">No sub-categories found.</div>
             ) : (
               <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                {subcategories.map((sc: any) => {
+                {subcategories.map((sc: Subcategory) => {
                   const subName = sc?.name ?? sc?.subCategoryName ?? "Unnamed";
                   // category may be an id (string) or a populated object
                   let parentName: string | undefined;

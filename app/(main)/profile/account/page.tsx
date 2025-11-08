@@ -35,8 +35,9 @@ export default function AccountPage() {
       setCurrentPassword("");
       setNewPassword("");
       setOpen(false);
-    } catch (error: any) {
-      const message = error?.data?.message || "Failed to update password";
+    } catch (error: unknown) {
+      const errorData = error as { data?: { message?: string }; message?: string };
+      const message = errorData?.data?.message || errorData?.message || "Failed to update password";
       toast.error(message);
     }
   };

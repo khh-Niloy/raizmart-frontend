@@ -52,7 +52,7 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
     );
   }
 
-  if (isError || !data?.success) {
+  if (isError || !data) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14">
@@ -65,16 +65,66 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
     );
   }
 
-  const { items, meta, context } = data as any;
-  const allItems: any[] = items || [];
-  // Filter to show only active products
-  const filteredItems = allItems.filter((product: any) => product.status === "active");
+  interface Product {
+    _id: string;
+    name: string;
+    slug: string;
+    status: string;
+    price?: number;
+    discountedPrice?: number;
+    discountPercentage?: number;
+    images?: string[];
+    isFreeDelivery?: boolean;
+    attributes?: Array<{
+      type?: string;
+      name?: string;
+      values?: Array<{
+        images?: string[];
+      }>;
+    }>;
+    variants?: Array<{
+      finalPrice?: number;
+      discountedPrice?: number;
+      discountPercentage?: number;
+      discount?: number;
+      sku?: string;
+    }>;
+    [key: string]: unknown;
+  }
 
-  const ProductCard: React.FC<{ product: any }> = ({ product }) => {
+  interface CategoryContext {
+    category?: {
+      name?: string;
+    };
+    subcategory?: {
+      name?: string;
+    };
+  }
+
+  interface ProductsResponse {
+    items?: Product[];
+    meta?: {
+      page?: number;
+      pages?: number;
+      total?: number;
+    };
+    context?: CategoryContext;
+  }
+
+  const response = data as ProductsResponse | Product[];
+  const { items, meta, context } = Array.isArray(response) 
+    ? { items: response, meta: undefined, context: undefined }
+    : { items: response?.items, meta: response?.meta, context: response?.context };
+  const allItems: Product[] = items || [];
+  // Filter to show only active products
+  const filteredItems = allItems.filter((product: Product) => product.status === "active");
+
+  const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     const { addItem, has } = useLocalCart();
     const { requireAuth } = useAuthGate();
+    type AttributeType = NonNullable<Product['attributes']>[number];
     const colorAttr = (product?.attributes || []).find(
-      (a: any) => a.type?.toLowerCase?.() === "color" || a.name?.toLowerCase?.() === "color"
+      (a: AttributeType) => a.type?.toLowerCase?.() === "color" || a.name?.toLowerCase?.() === "color"
     );
     const primaryImage =
       colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";
@@ -86,25 +136,25 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
     const variantDiscPrice = hasVariants ? variant?.discountedPrice : undefined;
     const variantDiscPct = hasVariants ? (variant?.discountPercentage ?? variant?.discount) : undefined;
     
-    const productFinal = !hasVariants ? (product as any)?.price : undefined;
-    const productDiscPrice = !hasVariants ? (product as any)?.discountedPrice : undefined;
-    const productDiscPct = !hasVariants ? (product as any)?.discountPercentage : undefined;
+    const productFinal = !hasVariants ? product?.price : undefined;
+    const productDiscPrice = !hasVariants ? product?.discountedPrice : undefined;
+    const productDiscPct = !hasVariants ? product?.discountPercentage : undefined;
     
     const basePrice = hasVariants ? variantFinal : productFinal;
     const discounted = hasVariants ? variantDiscPrice : productDiscPrice;
     const pct = hasVariants ? variantDiscPct : productDiscPct;
     
-    const formatPrice = (v: any) => {
+    const formatPrice = (v: unknown) => {
       if (v === undefined || v === null) return "";
       const isNumeric = typeof v === 'number' || (!!v && /^\d+(?:\.\d+)?$/.test(String(v)));
       if (!isNumeric) return String(v);
       return `৳${Number(v).toLocaleString()}`;
     };
     
-    const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+    const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
     const showDiscount = isNumeric(discounted) && isNumeric(basePrice) && Number(discounted) < Number(basePrice);
     const pctText = (() => {
-      if (pct !== undefined && pct !== null && pct !== '') return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
+      if (pct !== undefined && pct !== null && pct > 0) return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
       if (showDiscount) {
         const p = Number(basePrice);
         const d = Number(discounted);
@@ -124,9 +174,9 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
       basePrice: isNumeric(basePrice) ? Number(basePrice) : undefined,
       discountedPrice: showDiscount && discounted ? Number(discounted) : undefined,
       sku: variant?.sku as string | undefined,
-      selectedOptions: undefined as any,
+      selectedOptions: undefined,
     };
-    const inCart = has(matcher as any);
+    const inCart = has(matcher);
     
     return (
       <div className="h-full rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)] relative group">
@@ -262,23 +312,23 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
         {filteredItems.length > 0 ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
-              {filteredItems.map((product: any) => (
+              {filteredItems.map((product: Product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
             </div>
 
             {/* Pagination */}
-            {meta && meta.pages > 1 && (
+            {meta && meta.pages && meta.pages > 1 && meta.page && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white shadow-sm px-4 sm:px-8 py-4 sm:py-6">
                 <div className="text-sm text-gray-600">
-                  Showing page {meta.page} of {meta.pages} ({meta.total} products)
+                  Showing page {meta.page} of {meta.pages} ({meta.total || 0} products)
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateParams({ page: Math.max(1, meta.page - 1) })}
-                    disabled={meta.page <= 1}
+                    onClick={() => updateParams({ page: Math.max(1, (meta.page || 1) - 1) })}
+                    disabled={(meta.page || 1) <= 1}
                     className="rounded-full"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
@@ -287,19 +337,19 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, meta.pages) }, (_, i) => {
                       let pageNum;
-                      if (meta.pages <= 5) {
+                      if (meta.pages! <= 5) {
                         pageNum = i + 1;
-                      } else if (meta.page <= 3) {
+                      } else if ((meta.page || 1) <= 3) {
                         pageNum = i + 1;
-                      } else if (meta.page >= meta.pages - 2) {
-                        pageNum = meta.pages - 4 + i;
+                      } else if ((meta.page || 1) >= meta.pages! - 2) {
+                        pageNum = meta.pages! - 4 + i;
                       } else {
-                        pageNum = meta.page - 2 + i;
+                        pageNum = (meta.page || 1) - 2 + i;
                       }
                       return (
                         <Button
                           key={pageNum}
-                          variant={meta.page === pageNum ? "default" : "outline"}
+                          variant={(meta.page || 1) === pageNum ? "default" : "outline"}
                           size="sm"
                           onClick={() => updateParams({ page: pageNum })}
                           className="rounded-full w-10 h-10 p-0"
@@ -312,8 +362,8 @@ export default function SubcategoryListing({ params }: { params: Promise<{ categ
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => updateParams({ page: Math.min(meta.pages, meta.page + 1) })}
-                    disabled={meta.page >= meta.pages}
+                    onClick={() => updateParams({ page: Math.min(meta.pages!, (meta.page || 1) + 1) })}
+                    disabled={(meta.page || 1) >= meta.pages!}
                     className="rounded-full"
                   >
                     Next

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useGetCouponByIdQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
 
@@ -67,11 +66,24 @@ export default function EditCouponPage() {
   const params = useParams();
   const router = useRouter();
   const id = (params?.id as string) || "";
+  interface CouponData {
+    code?: string;
+    discountType?: string;
+    type?: string;
+    discountValue?: number;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+    description?: string;
+  }
+
   const { data, isFetching } = useGetCouponByIdQuery(id, { skip: !id });
-  const coupon: any = (data?.data ?? data) as any;
+  // transformResponse already extracts data, so data should be the CouponResponse
+  const coupon = data as CouponData | undefined;
   const [updateCoupon, { isLoading }] = useUpdateCouponMutation();
 
   const { register, handleSubmit, control, formState: { errors }, setValue } = useForm<CouponFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(couponSchema) as any,
     defaultValues: {
       code: undefined,
@@ -101,7 +113,8 @@ export default function EditCouponPage() {
 
       if (coupon.code) setValue("code", coupon.code);
       if (coupon.discountType || coupon.type) {
-        setValue("discountType", (coupon.discountType ?? coupon.type ?? "PERCENT").toString().toUpperCase() as any);
+        const discountType = (coupon.discountType ?? coupon.type ?? "PERCENT").toString().toUpperCase();
+        setValue("discountType", discountType as "PERCENT" | "FIXED");
       }
       if (coupon.discountValue !== undefined) {
         setValue("discountValue", Number(coupon.discountValue));
@@ -124,7 +137,7 @@ export default function EditCouponPage() {
       }
 
       // Build payload with only provided fields
-      const payload: any = {};
+      const payload: Record<string, unknown> = {};
 
       if (data.code !== undefined && data.code !== "") {
         payload.code = data.code.trim();
@@ -132,8 +145,12 @@ export default function EditCouponPage() {
       if (data.discountType !== undefined) {
         payload.discountType = data.discountType;
       }
-      if (data.discountValue !== undefined && data.discountValue !== "") {
-        payload.discountValue = Number(data.discountValue);
+      if (data.discountValue !== undefined && data.discountValue !== null) {
+        if (typeof data.discountValue === 'string' && data.discountValue !== "") {
+          payload.discountValue = Number(data.discountValue);
+        } else if (typeof data.discountValue === 'number') {
+          payload.discountValue = data.discountValue;
+        }
       }
       if (data.startDate !== undefined && data.startDate !== "") {
         payload.startDate = data.startDate;
@@ -150,8 +167,8 @@ export default function EditCouponPage() {
 
       // Validate date range if both dates are provided
       if (payload.startDate && payload.endDate) {
-        const starts = new Date(payload.startDate).getTime();
-        const ends = new Date(payload.endDate).getTime();
+        const starts = new Date(payload.startDate as string).getTime();
+        const ends = new Date(payload.endDate as string).getTime();
         if (Number.isFinite(starts) && Number.isFinite(ends) && ends < starts) {
           toast.error("End date must be after start date");
           return;
@@ -167,8 +184,9 @@ export default function EditCouponPage() {
       await updateCoupon({ id, data: payload }).unwrap();
       toast.success("Coupon updated successfully");
       router.push("/admin/dashboard/all-coupons");
-    } catch (e: any) {
-      const errorMessage = e?.data?.message || e?.message || "Failed to update coupon";
+    } catch (e: unknown) {
+      const errorData = e as { data?: { message?: string }; message?: string };
+      const errorMessage = errorData?.data?.message || errorData?.message || "Failed to update coupon";
       toast.error(errorMessage);
       console.error(e);
     }

@@ -2,7 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { useGetAllOffersQuery, useUpdateOfferMutation } from "@/app/redux/features/offer/offer.api";
+import {
+  useGetAllOffersQuery,
+  useUpdateOfferMutation,
+} from "@/app/redux/features/offer/offer.api";
 import { Image as ImageIcon, Tag, Clock, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -27,12 +30,20 @@ function CountdownTimer({ endAt }: CountdownTimerProps) {
       const difference = endDate - now;
 
       if (difference <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
+        setTimeLeft({
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          expired: true,
+        });
         return;
       }
 
       const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const hours = Math.floor(
+        (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
@@ -56,9 +67,13 @@ function CountdownTimer({ endAt }: CountdownTimerProps) {
   const TimeBox = ({ value, label }: { value: number; label: string }) => (
     <div className="flex flex-col items-center">
       <div className="bg-gradient-to-br from-[#02C1BE] to-[#01b1ae] rounded-lg px-3 py-2 min-w-[48px] sm:min-w-[56px] text-center shadow-md border border-[#02C1BE]/30">
-        <span className="text-white text-base sm:text-xl font-extrabold">{String(value).padStart(2, "0")}</span>
+        <span className="text-white text-base sm:text-xl font-extrabold">
+          {String(value).padStart(2, "0")}
+        </span>
       </div>
-      <span className="text-slate-600 text-[10px] sm:text-xs mt-1.5 font-bold uppercase tracking-wider">{label}</span>
+      <span className="text-slate-600 text-[10px] sm:text-xs mt-1.5 font-bold uppercase tracking-wider">
+        {label}
+      </span>
     </div>
   );
 
@@ -72,10 +87,20 @@ function CountdownTimer({ endAt }: CountdownTimerProps) {
   );
 }
 
+interface Offer {
+  _id: string;
+  imageUrl?: string;
+  urlLink?: string;
+  endAt?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export default function OffersPage() {
   const { data, isLoading, isError } = useGetAllOffersQuery(undefined);
   const [updateOffer] = useUpdateOfferMutation();
-  const offers = (data?.data as any[]) || [];
+  const offers = (data?.data || []) as Offer[];
 
   // Helper function to check if offer is expired
   const isOfferExpired = (endAt: string | undefined): boolean => {
@@ -90,7 +115,7 @@ export default function OffersPage() {
     if (!offers || offers.length === 0) return;
 
     const updateExpiredOffers = async () => {
-      const expiredOffers = offers.filter((offer: any) => {
+      const expiredOffers = offers.filter((offer: Offer) => {
         // Only update offers that are currently active but expired
         return offer.status === "active" && isOfferExpired(offer.endAt);
       });
@@ -132,7 +157,10 @@ export default function OffersPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="rounded-3xl border border-gray-200 overflow-hidden bg-white">
+                <div
+                  key={i}
+                  className="rounded-3xl border border-gray-200 overflow-hidden bg-white"
+                >
                   <Skeleton className="h-64 w-full" />
                   <div className="p-4 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
@@ -154,7 +182,9 @@ export default function OffersPage() {
           <div className="absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-[#e6fbf9] via-white/60 to-transparent pointer-events-none" />
           <div className="relative max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 pt-8 lg:pt-12 pb-16">
             <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-              <p className="text-red-600 font-semibold">Failed to load offers. Please try again later.</p>
+              <p className="text-red-600 font-semibold">
+                Failed to load offers. Please try again later.
+              </p>
             </div>
           </div>
         </div>
@@ -163,7 +193,7 @@ export default function OffersPage() {
   }
 
   // Filter to show only active offers that are not expired
-  const activeOffers = offers.filter((offer: any) => {
+  const activeOffers = offers.filter((offer: Offer) => {
     // Must have status "active"
     if (offer.status !== "active") return false;
     // Must not be expired
@@ -182,13 +212,16 @@ export default function OffersPage() {
               <div className="text-center max-w-3xl mx-auto">
                 <div className="inline-flex items-center gap-2 rounded-full bg-[#02C1BE]/10 px-4 py-2 mb-4">
                   <Tag className="h-4 w-4 text-[#02C1BE]" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">Special Offers</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+                    Special Offers
+                  </span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">
                   Exclusive Deals & Promotions
                 </h1>
                 <p className="text-base sm:text-lg text-slate-600">
-                  Discover limited-time offers, flash sales, and special discounts on premium products. Don't miss out!
+                  Discover limited-time offers, flash sales, and special
+                  discounts on premium products. Don&apos;t miss out!
                 </p>
               </div>
             </section>
@@ -199,37 +232,45 @@ export default function OffersPage() {
             {activeOffers.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-[#02C1BE]/30 bg-[#f7fffe] p-12 text-center">
                 <Tag className="h-12 w-12 text-[#02C1BE] mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">No offers available</h3>
-                <p className="text-slate-600">Check back soon for exciting deals and promotions!</p>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  No offers available
+                </h3>
+                <p className="text-slate-600">
+                  Check back soon for exciting deals and promotions!
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeOffers.map((offer: any) => {
+                {activeOffers.map((offer: Offer) => {
                   const expired = isOfferExpired(offer.endAt);
-                  
+
                   return (
                     <div
                       key={offer._id}
                       className={`group relative flex flex-col rounded-3xl border border-white/70 bg-white/95 overflow-hidden shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] transition ${
-                        expired ? "opacity-75" : "hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)]"
+                        expired
+                          ? "opacity-75"
+                          : "hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)]"
                       }`}
                     >
                       {/* Image Container */}
                       <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
                         <img
                           src={offer.imageUrl}
-                          alt={offer.title || "Special offer"}
+                          alt={offer.imageUrl ?? "Special offer"}
                           className={`w-full h-full object-cover transition-transform duration-500 ${
                             expired ? "" : "group-hover:scale-110"
                           }`}
                         />
-                        
+
                         {/* Expired Badge - Overlay on Image (only if expired) */}
                         {offer.endAt && expired && (
                           <div className="absolute top-4 left-4 right-4 z-10">
                             <div className="inline-flex items-center gap-2 rounded-full bg-red-500/95 backdrop-blur-sm px-4 py-2 shadow-lg border border-red-400">
                               <Clock className="h-4 w-4 text-white" />
-                              <span className="text-sm font-bold text-white">Expired</span>
+                              <span className="text-sm font-bold text-white">
+                                Expired
+                              </span>
                             </div>
                           </div>
                         )}
@@ -237,20 +278,15 @@ export default function OffersPage() {
 
                       {/* Content Section */}
                       <div className="flex flex-col flex-1 p-6">
-                        {offer.title && (
-                          <h3 className="text-xl font-bold text-slate-900 mb-2 line-clamp-1">{offer.title}</h3>
-                        )}
-                        {offer.description && (
-                          <p className="text-sm text-slate-600 mb-5 line-clamp-2 leading-relaxed">{offer.description}</p>
-                        )}
-
                         {/* Countdown Timer - Above Button (only if not expired) */}
                         {offer.endAt && !expired && (
                           <div className="mb-4">
                             <div className="rounded-2xl bg-white/95 backdrop-blur-sm p-3 shadow-lg border border-gray-200">
                               <div className="flex items-center gap-2 mb-2.5">
                                 <Clock className="h-3.5 w-3.5 text-[#02C1BE]" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Ends in</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                  Ends in
+                                </span>
                               </div>
                               <CountdownTimer endAt={offer.endAt} />
                             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,17 @@ interface FeaturedItem {
   path: string;
 }
 
+interface CategoryItem {
+  _id?: string;
+  id?: string;
+  name?: string;
+  description?: string;
+  image?: string;
+  slug?: string;
+  category?: string | { _id?: string; id?: string };
+  subcategory?: string | { _id?: string; id?: string };
+}
+
 export default function FeaturedCategoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Category[]>([]);
@@ -37,8 +49,14 @@ export default function FeaturedCategoryPage() {
   
   // Fetch featured items
   const { data: featuredItems, isLoading: featuredLoading } = useGetFeaturedItemsQuery(undefined);
-  const [createFeaturedItem, { isLoading: isCreating }] = useCreateFeaturedItemMutation();
+  const [createFeaturedItem] = useCreateFeaturedItemMutation();
   const [deleteFeaturedItem, { isLoading: isDeleting }] = useDeleteFeaturedItemMutation();
+
+  // Ensure data is arrays
+  const categoriesArray: CategoryItem[] = Array.isArray(allCategories) ? allCategories : [];
+  const subcategoriesArray: CategoryItem[] = Array.isArray(allSubcategories) ? allSubcategories : [];
+  const subSubcategoriesArray: CategoryItem[] = Array.isArray(allSubSubcategories) ? allSubSubcategories : [];
+  const featuredItemsArray: FeaturedItem[] = Array.isArray(featuredItems) ? featuredItems : [];
 
   // Search functionality
   useEffect(() => {
@@ -47,61 +65,67 @@ export default function FeaturedCategoryPage() {
       return;
     }
 
-    if (!allCategories && !allSubcategories && !allSubSubcategories) return;
+    if (categoriesArray.length === 0 && subcategoriesArray.length === 0 && subSubcategoriesArray.length === 0) return;
 
     const searchResults: Category[] = [];
 
     // Search in categories
-    if (allCategories) {
-      allCategories.forEach((category: any) => {
-        if (category.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+    categoriesArray.forEach((category: CategoryItem) => {
+      if (category.name?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        const id = category._id || category.id;
+        const name = category.name;
+        if (id && name) {
           searchResults.push({
-            id: category._id || category.id,
-            name: category.name,
+            id,
+            name,
             type: 'category',
             description: category.description,
             image: category.image
           });
         }
-      });
-    }
+      }
+    });
 
     // Search in subcategories
-    if (allSubcategories) {
-      allSubcategories.forEach((subcategory: any) => {
-        if (subcategory.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-          // Find parent category name
-          const parentCategory = allCategories?.find((cat: any) => 
-            cat._id === subcategory.category || cat.id === subcategory.category
-          );
-          
+    subcategoriesArray.forEach((subcategory: CategoryItem) => {
+      if (subcategory.name?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        // Find parent category name
+        const parentCategory = categoriesArray.find((cat: CategoryItem) => 
+          (cat._id ?? cat.id) === (typeof subcategory.category === 'string' ? subcategory.category : subcategory.category?._id ?? subcategory.category?.id)
+        );
+        
+        const id = subcategory._id || subcategory.id;
+        const name = subcategory.name;
+        if (id && name) {
           searchResults.push({
-            id: subcategory._id || subcategory.id,
-            name: subcategory.name,
+            id,
+            name,
             type: 'subcategory',
             parentCategory: parentCategory?.name || 'Unknown Category',
             description: subcategory.description,
             image: subcategory.image
           });
         }
-      });
-    }
+      }
+    });
 
     // Search in sub-subcategories
-    if (allSubSubcategories) {
-      allSubSubcategories.forEach((subSubcategory: any) => {
-        if (subSubcategory.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-          // Find parent subcategory and category names
-          const parentSubcategory = allSubcategories?.find((sub: any) => 
-            sub._id === subSubcategory.subcategory || sub.id === subSubcategory.subcategory
-          );
-          const parentCategory = allCategories?.find((cat: any) => 
-            cat._id === parentSubcategory?.category || cat.id === parentSubcategory?.category
-          );
-          
+    subSubcategoriesArray.forEach((subSubcategory: CategoryItem) => {
+      if (subSubcategory.name?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        // Find parent subcategory and category names
+        const parentSubcategory = subcategoriesArray.find((sub: CategoryItem) => 
+          (sub._id ?? sub.id) === (typeof subSubcategory.subcategory === 'string' ? subSubcategory.subcategory : subSubcategory.subcategory?._id ?? subSubcategory.subcategory?.id)
+        );
+        const parentCategory = categoriesArray.find((cat: CategoryItem) => 
+          (cat._id ?? cat.id) === (typeof parentSubcategory?.category === 'string' ? parentSubcategory.category : parentSubcategory?.category?._id ?? parentSubcategory?.category?.id)
+        );
+        
+        const id = subSubcategory._id || subSubcategory.id;
+        const name = subSubcategory.name;
+        if (id && name) {
           searchResults.push({
-            id: subSubcategory._id || subSubcategory.id,
-            name: subSubcategory.name,
+            id,
+            name,
             type: 'subsubcategory',
             parentCategory: parentCategory?.name || 'Unknown Category',
             parentSubcategory: parentSubcategory?.name || 'Unknown Subcategory',
@@ -109,39 +133,39 @@ export default function FeaturedCategoryPage() {
             image: subSubcategory.image
           });
         }
-      });
-    }
+      }
+    });
 
     setSearchResults(searchResults);
-  }, [searchTerm, allCategories, allSubcategories, allSubSubcategories]);
+  }, [searchTerm, categoriesArray, subcategoriesArray, subSubcategoriesArray]);
 
   // Generate path based on category type
   const generatePath = (category: Category) => {
     if (category.type === 'category') {
       // Find category slug
-      const categoryData = allCategories?.find((cat: any) => 
-        (cat._id || cat.id) === category.id
+      const categoryData = categoriesArray.find((cat: CategoryItem) => 
+        (cat._id ?? cat.id) === category.id
       );
       return `/category/${categoryData?.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`;
     } else if (category.type === 'subcategory') {
       // Find subcategory and parent category slugs
-      const subcategoryData = allSubcategories?.find((sub: any) => 
-        (sub._id || sub.id) === category.id
+      const subcategoryData = subcategoriesArray.find((sub: CategoryItem) => 
+        (sub._id ?? sub.id) === category.id
       );
-      const parentCategory = allCategories?.find((cat: any) => 
-        (cat._id || cat.id) === subcategoryData?.category
+      const parentCategory = categoriesArray.find((cat: CategoryItem) => 
+        (cat._id ?? cat.id) === (typeof subcategoryData?.category === 'string' ? subcategoryData.category : subcategoryData?.category?._id ?? subcategoryData?.category?.id)
       );
       return `/category/${parentCategory?.slug || 'category'}/${subcategoryData?.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`;
     } else if (category.type === 'subsubcategory') {
       // Find sub-subcategory, subcategory, and parent category slugs
-      const subSubcategoryData = allSubSubcategories?.find((subSub: any) => 
-        (subSub._id || subSub.id) === category.id
+      const subSubcategoryData = subSubcategoriesArray.find((subSub: CategoryItem) => 
+        (subSub._id ?? subSub.id) === category.id
       );
-      const parentSubcategory = allSubcategories?.find((sub: any) => 
-        (sub._id || sub.id) === subSubcategoryData?.subcategory
+      const parentSubcategory = subcategoriesArray.find((sub: CategoryItem) => 
+        (sub._id ?? sub.id) === (typeof subSubcategoryData?.subcategory === 'string' ? subSubcategoryData.subcategory : subSubcategoryData?.subcategory?._id ?? subSubcategoryData?.subcategory?.id)
       );
-      const parentCategory = allCategories?.find((cat: any) => 
-        (cat._id || cat.id) === parentSubcategory?.category
+      const parentCategory = categoriesArray.find((cat: CategoryItem) => 
+        (cat._id ?? cat.id) === (typeof parentSubcategory?.category === 'string' ? parentSubcategory.category : parentSubcategory?.category?._id ?? parentSubcategory?.category?.id)
       );
       return `/category/${parentCategory?.slug || 'category'}/${parentSubcategory?.slug || 'subcategory'}/${subSubcategoryData?.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`;
     }
@@ -152,7 +176,7 @@ export default function FeaturedCategoryPage() {
   const addToFeatured = async (category: Category) => {
     try {
       // Check if already featured
-      const isAlreadyFeatured = featuredItems?.some(
+      const isAlreadyFeatured = featuredItemsArray.some(
         (item: FeaturedItem) => item.name === category.name
       );
 
@@ -171,8 +195,7 @@ export default function FeaturedCategoryPage() {
       setSearchTerm("");
       setSearchResults([]);
       toast.success("Item added to featured");
-    } catch (error) {
-      console.error("Error adding to featured:", error);
+    } catch {
       toast.error("Failed to add item to featured");
     }
   };
@@ -182,8 +205,7 @@ export default function FeaturedCategoryPage() {
     try {
       await deleteFeaturedItem(itemId).unwrap();
       toast.success("Item removed from featured");
-    } catch (error) {
-      console.error("Error removing from featured:", error);
+    } catch {
       toast.error("Failed to remove item from featured");
     }
   };
@@ -236,11 +258,15 @@ export default function FeaturedCategoryPage() {
                       >
                         <div className="flex items-center gap-3">
                           {category.image && (
-                            <img
-                              src={category.image}
-                              alt={category.name}
-                              className="w-10 h-10 rounded-lg object-cover"
-                            />
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                              <Image
+                                src={category.image}
+                                alt={category.name}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                           )}
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -276,7 +302,7 @@ export default function FeaturedCategoryPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No categories found matching "{searchTerm}"</p>
+                  <p className="text-gray-500 text-sm">No categories found matching &quot;{searchTerm}&quot;</p>
                 )}
               </div>
             )}
@@ -288,15 +314,15 @@ export default function FeaturedCategoryPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-500" />
-              Featured Items ({featuredItems?.length || 0})
+              Featured Items ({featuredItemsArray.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {featuredLoading ? (
               <div className="text-gray-500 text-sm">Loading featured items...</div>
-            ) : featuredItems && featuredItems.length > 0 ? (
+            ) : featuredItemsArray.length > 0 ? (
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {featuredItems.map((item: FeaturedItem, index: number) => (
+                {featuredItemsArray.map((item: FeaturedItem, index: number) => (
                   <div
                     key={item._id}
                     className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50"
@@ -338,7 +364,7 @@ export default function FeaturedCategoryPage() {
           <h3 className="font-medium text-blue-900 mb-2">How to use:</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Search across all levels: Categories, Subcategories, and Sub-Subcategories</li>
-            <li>• Results show the hierarchy (e.g., "Electronics → TV → Android")</li>
+            <li>• Results show the hierarchy (e.g., &quot;Electronics → TV → Android&quot;)</li>
             <li>• Click the + button to add any level to featured</li>
             <li>• Featured items will appear on your homepage with proper redirects</li>
             <li>• Use the X button to remove items from featured</li>

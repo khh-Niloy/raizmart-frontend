@@ -28,8 +28,16 @@ export const jsonToHtml = (jsonContent: string | object): string => {
       return '';
     }
 
+    interface TiptapNode {
+      type: string;
+      content?: TiptapNode[];
+      text?: string;
+      attrs?: Record<string, unknown>;
+      marks?: Array<{ type: string }>;
+    }
+
     // Simple recursive function to convert JSON to HTML
-    const convertToHtml = (node: any): string => {
+    const convertToHtml = (node: TiptapNode): string => {
       if (!node) return '';
 
       switch (node.type) {
@@ -70,7 +78,7 @@ export const jsonToHtml = (jsonContent: string | object): string => {
           
           // Apply marks (formatting)
           if (node.marks) {
-            node.marks.forEach((mark: any) => {
+            node.marks.forEach((mark: { type: string }) => {
               switch (mark.type) {
                 case 'bold':
                   text = `<strong>${text}</strong>`;
@@ -128,7 +136,13 @@ export const jsonToText = (jsonContent: string | object): string => {
       return '';
     }
 
-    const extractText = (node: any): string => {
+    interface TiptapNode {
+      type: string;
+      content?: TiptapNode[];
+      text?: string;
+    }
+
+    const extractText = (node: TiptapNode): string => {
       if (node.type === 'text') {
         return node.text || '';
       }

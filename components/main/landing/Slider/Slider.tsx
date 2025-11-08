@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useGetSlidersQuery } from '@/app/redux/features/slider/slider.api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,10 +15,18 @@ export default function Slider() {
   // console.log('Slider loading:', isLoading);
   // console.log('Slider error:', error);
 
-  const sliders = data?.data || [];
+  interface Slider {
+    _id: string;
+    imageUrl: string;
+    redirectUrl?: string;
+    status?: string;
+    [key: string]: unknown;
+  }
+
+  const sliders = (data?.data || []) as Slider[];
   
   // Filter only active sliders
-  const activeSliders = sliders.filter((slider: any) => slider.status === 'active');
+  const activeSliders = sliders.filter((slider: Slider) => slider.status === 'active');
   
   // console.log('All sliders:', sliders);
   // console.log('Active sliders:', activeSliders);
@@ -59,7 +68,7 @@ export default function Slider() {
     return (
       <div className="relative w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] bg-gray-100 rounded-2xl flex items-center justify-center">
         <div className="text-gray-500">
-          {error ? `Error: ${error}` : 'No active slider images available'}
+          {error ? 'Error loading slider' : 'No active slider images available'}
         </div>
       </div>
     );
@@ -73,38 +82,17 @@ export default function Slider() {
   // console.log('Current slider:', currentSlider);
   // console.log('Current slider imageUrl:', currentSlider?.imageUrl);
   
-  // Test if image URL is accessible
-  if (currentSlider?.imageUrl) {
-    fetch(currentSlider.imageUrl, { method: 'HEAD' })
-      .then(response => {
-        // console.log('🔍 Image URL accessibility test:', response.status, response.ok);
-        if (!response.ok) {
-          // console.error('❌ Image URL not accessible:', currentSlider.imageUrl);
-        }
-      })
-      .catch(error => {
-        // console.error('❌ Image URL fetch error:', error);
-      });
-  }
 
   return (
     <div className="relative w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] rounded-2xl overflow-hidden group">
       {/* Main Slider Image */}
       <div className="relative w-full h-full">
-        <img
+        <Image
           src={currentSlider.imageUrl}
           alt={`Slider ${currentSlide + 1}`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            // console.error('❌ Image failed to load:', currentSlider.imageUrl);
-            // console.error('❌ Error details:', e);
-          }}
-          onLoad={() => {
-            // console.log('✅ Image loaded successfully:', currentSlider.imageUrl);
-          }}
-          onLoadStart={() => {
-            // console.log('🔄 Starting to load image:', currentSlider.imageUrl);
-          }}
+          fill
+          className="object-cover"
+          unoptimized
         />
         
         {/* Clickable overlay if redirect URL exists */}
@@ -144,7 +132,7 @@ export default function Slider() {
       {/* Dots Indicator */}
       {activeSliders.length > 1 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {activeSliders.map((_: any, index: number) => (
+          {activeSliders.map((_: Slider, index: number) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import { Wallet, Truck } from "lucide-react";
-import { useGetCouponsQuery } from "@/app/redux/features/coupon/coupon.api";
+import { CouponResponse, useGetCouponsQuery } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
 import { useCreateOrderMutation } from "@/app/redux/features/order/order.api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -86,10 +86,18 @@ export default function CheckoutPage() {
   // Coupon handling
   const { data: coupons } = useGetCouponsQuery(undefined);
   const [couponCode, setCouponCode] = React.useState("");
-  const [appliedCoupon, setAppliedCoupon] = React.useState<any | null>(null);
+  interface Coupon {
+    _id?: string;
+    code?: string;
+    discountType?: string;
+    discountValue?: number;
+    [key: string]: unknown;
+  }
+
+  const [appliedCoupon, setAppliedCoupon] = React.useState<Coupon | null>(null);
   const [justApplied, setJustApplied] = React.useState(false);
 
-  const computeDiscountForCoupon = React.useCallback((coupon: any) => {
+  const computeDiscountForCoupon = React.useCallback((coupon: Coupon | null) => {
     if (!coupon) return 0;
     const type = (coupon.discountType || "").toString().toUpperCase();
     const value = Number(coupon.discountValue ?? 0);
@@ -114,7 +122,7 @@ export default function CheckoutPage() {
       return;
     }
     const list = Array.isArray(coupons) ? coupons : [];
-    const found = list.find((c: any) => (c?.code ?? "") === code);
+    const found = list.find((c: CouponResponse | Coupon) => (c?.code ?? "") === code);
     if (!found) {
       setAppliedCoupon(null);
       toast.error("Invalid coupon code");
@@ -132,8 +140,8 @@ export default function CheckoutPage() {
       toast.error("Coupon is not active or has expired");
       return;
     }
-    setAppliedCoupon(found);
-    const saved = computeDiscountForCoupon(found);
+    setAppliedCoupon(found as Coupon);
+    const saved = computeDiscountForCoupon(found as Coupon);
     setJustApplied(true);
     window.setTimeout(() => setJustApplied(false), 1200);
     toast.success(`🎉 Coupon applied!`, {
@@ -442,7 +450,14 @@ export default function CheckoutPage() {
                 },
               };
               try {
-                const res: any = await createOrder(payload).unwrap();
+                interface OrderResponse {
+                  success?: boolean;
+                  message?: string;
+                  data?: unknown;
+                  [key: string]: unknown;
+                }
+
+                const res = await createOrder(payload).unwrap() as OrderResponse;
                 if (res?.success) {
                   toast.success("Order placed successfully");
                   // Clear cart and reset local checkout state, then redirect to orders page
@@ -481,8 +496,9 @@ export default function CheckoutPage() {
                   setNote("");
                   router.push("/profile/orders");
                 }
-              } catch (e: any) {
-                const message = e?.data?.message || e?.message || "Failed to place order";
+              } catch (e: unknown) {
+                const errorData = e as { data?: { message?: string }; message?: string };
+                const message = errorData?.data?.message || errorData?.message || "Failed to place order";
                 toast.error(message);
               }
             }}

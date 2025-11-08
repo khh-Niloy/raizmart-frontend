@@ -15,16 +15,25 @@ import CountdownTimer from "@/components/ui/countdown-timer";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+interface Offer {
+  _id: string;
+  imageUrl?: string;
+  urlLink?: string;
+  status: string;
+  endAt?: string;
+  createdAt?: string;
+}
+
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
-  const allOffers = (data?.data as any[]) || [];
+  const allOffers: Offer[] = (data?.data as Offer[]) || [];
   const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
 
   // Filter offers based on selected status
   const offers = React.useMemo(() => {
     if (statusFilter === "all") return allOffers;
-    return allOffers.filter((offer: any) => offer.status === statusFilter);
+    return allOffers.filter((offer: Offer) => offer.status === statusFilter);
   }, [allOffers, statusFilter]);
 
   const handleStatusToggle = async (offerId: string, currentStatus: string) => {
@@ -35,9 +44,10 @@ export default function AllOfferPage() {
         status: newStatus as "active" | "inactive",
       }).unwrap();
       toast.success(`Offer status changed to ${newStatus}`);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const errorData = e as { data?: { message?: string }; message?: string };
       const errorMessage =
-        e?.data?.message || e?.message || "Failed to update offer status";
+        errorData?.data?.message || errorData?.message || "Failed to update offer status";
       toast.error(errorMessage);
     }
   };
@@ -123,7 +133,7 @@ export default function AllOfferPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {offers.map((offer: any) => (
+          {offers.map((offer: Offer) => (
             <Card key={offer._id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

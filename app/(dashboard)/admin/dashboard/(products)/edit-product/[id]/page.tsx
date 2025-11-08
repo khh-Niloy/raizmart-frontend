@@ -135,6 +135,93 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
+// TypeScript interfaces for product data from API
+interface ProductAttribute {
+  name?: string;
+  type?: string;
+  values?: Array<{
+    label?: string;
+    value?: string;
+    colorCode?: string;
+    images?: string[];
+    isDefault?: boolean;
+  }>;
+  isRequired?: boolean;
+  displayOrder?: number;
+}
+
+interface ProductVariant {
+  finalPrice?: number;
+  price?: number;
+  stock?: number;
+  discountPercentage?: number;
+  discountedPrice?: number;
+  attributeCombination?: Array<{
+    attributeType?: string;
+    attributeValue?: string;
+  }>;
+}
+
+interface ProductSpecification {
+  key?: string;
+  value?: string;
+}
+
+interface CategoryAssignment {
+  category?: string | { _id?: string };
+  subCategory?: string | { _id?: string };
+  subSubCategory?: string | { _id?: string };
+}
+
+interface ProductData {
+  name?: string;
+  price?: number;
+  stock?: number;
+  discountPercentage?: number;
+  images?: string[];
+  subCategory?: string | { _id?: string };
+  subSubCategory?: string | { _id?: string };
+  searchTags?: string[];
+  attributes?: ProductAttribute[];
+  variants?: ProductVariant[];
+  specifications?: ProductSpecification[];
+  categoryAssignments?: CategoryAssignment[];
+  [key: string]: unknown;
+}
+
+interface Brand {
+  id?: string;
+  _id?: string;
+  name?: string;
+  brandName?: string;
+}
+
+interface Category {
+  id?: string;
+  _id?: string;
+  name?: string;
+  categoryName?: string;
+}
+
+interface Subcategory {
+  id?: string;
+  _id?: string;
+  name?: string;
+  subCategoryName?: string;
+  category?: string | { id?: string; _id?: string; [key: string]: unknown };
+  parentCategoryId?: string;
+  [key: string]: unknown;
+}
+
+interface SubSubcategory {
+  id?: string;
+  _id?: string;
+  name?: string;
+  subcategory?: string | { id?: string; _id?: string; [key: string]: unknown };
+  parentSubcategoryId?: string;
+  [key: string]: unknown;
+}
+
 // TypeScript interfaces for component props
 interface AttributeManagerProps {
   attrIndex: number;
@@ -145,7 +232,7 @@ interface AttributeManagerProps {
   errors: FieldErrors<ProductFormData>;
   onRemove: () => void;
   canRemove: boolean;
-  existingAttributes?: any[];
+  existingAttributes?: ProductAttribute[];
 }
 
 interface AttributeValueManagerProps {
@@ -163,20 +250,20 @@ interface AttributeValueManagerProps {
 }
 
 interface VariantPreviewProps {
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
   basePrice: string;
 }
 
 interface VariantCreatorProps {
-  attributes: any[];
-  onAddVariant: (variant: any) => void;
+  attributes: ProductFormData['attributes'];
+  onAddVariant: (variant: ProductFormData['manualVariants'][number]) => void;
 }
 
 interface VariantListProps {
-  variants: any[];
-  onEditVariant: (index: number, variant: any) => void;
+  variants: ProductFormData['manualVariants'];
+  onEditVariant: (index: number, variant: ProductFormData['manualVariants'][number]) => void;
   onDeleteVariant: (index: number) => void;
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
 }
 
 export default function EditProductPage() {
@@ -197,6 +284,7 @@ export default function EditProductPage() {
     setValue,
     reset,
   } = useForm<ProductFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
@@ -272,16 +360,11 @@ export default function EditProductPage() {
   const { data: subSubcategoriesResp, isFetching: isSubSubcategoriesLoading } =
     useGetSubSubcategoriesQuery(undefined);
 
-  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[];
-  const categories: any[] = (categoriesResp?.data ??
-    categoriesResp ??
-    []) as any[];
-  const allSubcategories: any[] = (subcategoriesResp?.data ??
-    subcategoriesResp ??
-    []) as any[];
-  const allSubSubcategories: any[] = (subSubcategoriesResp?.data ??
-    subSubcategoriesResp ??
-    []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so responses should be the arrays)
+  const brands: Brand[] = Array.isArray(brandsResp) ? brandsResp : [];
+  const categories: Category[] = Array.isArray(categoriesResp) ? categoriesResp : [];
+  const allSubcategories: Subcategory[] = Array.isArray(subcategoriesResp) ? subcategoriesResp : [];
+  const allSubSubcategories: SubSubcategory[] = Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [];
 
   // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");
@@ -290,7 +373,7 @@ export default function EditProductPage() {
   const filteredSubcategories = React.useMemo(() => {
     if (!selectedCategoryId) return [];
     const categoryIdStr = String(selectedCategoryId);
-    return allSubcategories.filter((sc: any) => {
+    return allSubcategories.filter((sc: Subcategory) => {
       if (typeof sc.category === "string")
         return String(sc.category) === categoryIdStr;
       if (sc.category && typeof sc.category === "object") {
@@ -305,7 +388,7 @@ export default function EditProductPage() {
   const filteredSubSubcategories = React.useMemo(() => {
     if (!selectedSubCategoryId) return [];
     const subCategoryIdStr = String(selectedSubCategoryId);
-    return allSubSubcategories.filter((ssc: any) => {
+    return allSubSubcategories.filter((ssc: SubSubcategory) => {
       if (typeof ssc.subcategory === "string")
         return String(ssc.subcategory) === subCategoryIdStr;
       if (ssc.subcategory && typeof ssc.subcategory === "object") {
@@ -363,39 +446,73 @@ export default function EditProductPage() {
       console.log("Loading product data:", product);
 
       // Convert backend data to form format
+      const productData = product as ProductData;
       const formData: ProductFormData = {
-        name: product.name || "",
+        name: productData.name || "",
         descriptionImage: undefined, // File uploads need to be handled separately
-        video: product.video || (product as any).video_url || "",
+        video: (typeof productData.video === 'string' ? productData.video : '') || (productData as { video_url?: string }).video_url || "",
         description:
-          product.description || JSON.stringify({ type: "doc", content: [] }),
-        brand: String(product.brand?._id || product.brand || ""),
-        category: String(product.category?._id || product.category || ""),
-        subCategory: product.subCategory
-          ? String(product.subCategory._id || product.subCategory)
+          (typeof productData.description === 'string' ? productData.description : '') || JSON.stringify({ type: "doc", content: [] }),
+        brand: String(
+          typeof productData.brand === 'object' && productData.brand !== null && '_id' in productData.brand
+            ? productData.brand._id
+            : typeof productData.brand === 'string'
+            ? productData.brand
+            : ''
+        ),
+        category: String(
+          typeof productData.category === 'object' && productData.category !== null && '_id' in productData.category
+            ? productData.category._id
+            : typeof productData.category === 'string'
+            ? productData.category
+            : ''
+        ),
+        subCategory: productData.subCategory
+          ? String(
+              typeof productData.subCategory === 'object' && productData.subCategory !== null && '_id' in productData.subCategory
+                ? productData.subCategory._id
+                : typeof productData.subCategory === 'string'
+                ? productData.subCategory
+                : ''
+            )
           : "",
-        subSubCategory: product.subSubCategory
-          ? String(product.subSubCategory._id || product.subSubCategory)
+        subSubCategory: productData.subSubCategory
+          ? String(
+              typeof productData.subSubCategory === 'object' && productData.subSubCategory !== null && '_id' in productData.subSubCategory
+                ? productData.subSubCategory._id
+                : typeof productData.subSubCategory === 'string'
+                ? productData.subSubCategory
+                : ''
+            )
           : "",
-        searchTags: product.searchTags?.join(", ") || "",
+        searchTags: (productData.searchTags as string[])?.join(", ") || "",
         attributes:
-          product.attributes?.map((attr: any) => ({
+          productData.attributes?.map((attr: ProductAttribute) => ({
             name: attr.name || "",
             type: attr.type || "",
             values:
-              attr.values?.map((val: any) => ({
+              attr.values?.map((val) => ({
                 label: val.label || "",
                 value: val.value || "",
                 colorCode: val.colorCode || "",
                 images: [], // We'll handle existing images separately
                 isDefault: val.isDefault || false,
               })) || [],
-            isRequired: attr.isRequired || true,
+            isRequired: attr.isRequired ?? true,
             displayOrder: attr.displayOrder || 0,
           })) || [],
         manualVariants:
-          product.variants?.map((variant: any) => {
-            const variantData: any = {
+          productData.variants?.map((variant: ProductVariant) => {
+            const variantData: {
+              price: string;
+              stock: string;
+              color?: string;
+              storage?: string;
+              ram?: string;
+              region?: string;
+              discount?: string;
+              discountedPrice?: string;
+            } = {
               price: (variant.finalPrice ?? variant.price ?? "").toString() || "",
               stock: variant.stock?.toString() || "",
               discount: (variant.discountPercentage ?? "").toString() || "",
@@ -403,26 +520,49 @@ export default function EditProductPage() {
             };
 
             // Map attribute combinations to variant fields
-            variant.attributeCombination?.forEach((combo: any) => {
-              variantData[combo.attributeType] = combo.attributeValue;
+            variant.attributeCombination?.forEach((combo) => {
+              if (combo.attributeType) {
+                const key = combo.attributeType as 'color' | 'storage' | 'ram' | 'region';
+                if (key === 'color' || key === 'storage' || key === 'ram' || key === 'region') {
+                  variantData[key] = combo.attributeValue || "";
+                }
+              }
             });
 
             return variantData;
           }) || [],
         specifications:
-          product.specifications?.map((spec: any) => ({
+          productData.specifications?.map((spec: ProductSpecification) => ({
             key: spec.key || "",
             value: spec.value || "",
           })) || [],
         galleryImages: [], // Existing gallery images will be shown separately
-        simplePrice: (product as any).price?.toString() || "",
-        simpleStock: (product as any).stock?.toString() || "",
-        simpleDiscount: ((product as any).discountPercentage ?? "").toString() || "",
-        categoryAssignments: (product as any)?.categoryAssignments?.map((assignment: any) => ({
-          category: String(assignment.category?._id || assignment.category || ""),
-          subCategory: String(assignment.subCategory?._id || assignment.subCategory || ""),
+        simplePrice: productData.price?.toString() || "",
+        simpleStock: productData.stock?.toString() || "",
+        simpleDiscount: (productData.discountPercentage ?? "").toString() || "",
+        categoryAssignments: productData.categoryAssignments?.map((assignment: CategoryAssignment) => ({
+          category: String(
+            typeof assignment.category === 'object' && assignment.category !== null && '_id' in assignment.category
+              ? assignment.category._id
+              : typeof assignment.category === 'string'
+              ? assignment.category
+              : ''
+          ),
+          subCategory: String(
+            typeof assignment.subCategory === 'object' && assignment.subCategory !== null && '_id' in assignment.subCategory
+              ? assignment.subCategory._id
+              : typeof assignment.subCategory === 'string'
+              ? assignment.subCategory
+              : ''
+          ),
           subSubCategory: assignment.subSubCategory
-            ? String(assignment.subSubCategory._id || assignment.subSubCategory)
+            ? String(
+                typeof assignment.subSubCategory === 'object' && assignment.subSubCategory !== null && '_id' in assignment.subSubCategory
+                  ? assignment.subSubCategory._id
+                  : typeof assignment.subSubCategory === 'string'
+                  ? assignment.subSubCategory
+                  : ''
+              )
             : "",
         })) || [],
       };
@@ -449,17 +589,34 @@ export default function EditProductPage() {
   useEffect(() => {
     if (!product || !formInitialized.current) return;
     
-    const prodSubCategory = product.subCategory
-      ? String(product.subCategory._id || product.subCategory)
+    const productData = product as ProductData;
+    const prodSubCategory = productData.subCategory
+      ? String(
+          typeof productData.subCategory === 'object' && productData.subCategory !== null && '_id' in productData.subCategory
+            ? productData.subCategory._id
+            : typeof productData.subCategory === 'string'
+            ? productData.subCategory
+            : ''
+        )
       : "";
-    const prodSubSubCategory = product.subSubCategory
-      ? String(product.subSubCategory._id || product.subSubCategory)
+    const prodSubSubCategory = productData.subSubCategory
+      ? String(
+          typeof productData.subSubCategory === 'object' && productData.subSubCategory !== null && '_id' in productData.subSubCategory
+            ? productData.subSubCategory._id
+            : typeof productData.subSubCategory === 'string'
+            ? productData.subSubCategory
+            : ''
+        )
       : "";
 
     // Only set if filtered lists have items and value exists in the filtered list
     if (prodSubCategory && filteredSubcategories.length > 0) {
+      interface SubCategory {
+        id?: string;
+        _id?: string;
+      }
       const exists = filteredSubcategories.some(
-        (sc: any) => String(sc.id ?? sc._id) === prodSubCategory
+        (sc: SubCategory) => String(sc.id ?? sc._id) === prodSubCategory
       );
       if (exists) {
         setValue("subCategory", prodSubCategory, { shouldValidate: false });
@@ -467,8 +624,12 @@ export default function EditProductPage() {
     }
 
     if (prodSubSubCategory && filteredSubSubcategories.length > 0) {
+      interface SubSubCategory {
+        id?: string;
+        _id?: string;
+      }
       const exists = filteredSubSubcategories.some(
-        (ssc: any) => String(ssc.id ?? ssc._id) === prodSubSubCategory
+        (ssc: SubSubCategory) => String(ssc.id ?? ssc._id) === prodSubSubCategory
       );
       if (exists) {
         setValue("subSubCategory", prodSubSubCategory, { shouldValidate: false });
@@ -489,44 +650,47 @@ export default function EditProductPage() {
       const formData = new FormData();
 
       // Helper to check nested dirty
-      const hasDirty = (obj: any): boolean => {
+      const hasDirty = (obj: unknown): boolean => {
         if (!obj) return false;
         if (typeof obj === "boolean") return obj;
         if (Array.isArray(obj)) return obj.some((v) => hasDirty(v));
-        if (typeof obj === "object") return Object.values(obj).some((v) => hasDirty(v));
+        if (typeof obj === "object" && obj !== null) return Object.values(obj as Record<string, unknown>).some((v) => hasDirty(v));
         return false;
       };
 
+      type DirtyFields = Partial<Record<keyof ProductFormData, boolean | Partial<Record<string, unknown>>>>;
+
       // Add only changed primitive/basic fields
-      if ((dirtyFields as any).name) formData.append("name", data.name);
-      if ((dirtyFields as any).brand) formData.append("brand", data.brand);
-      if ((dirtyFields as any).category) formData.append("category", data.category);
-      if ((dirtyFields as any).subCategory) formData.append("subCategory", data.subCategory);
-      if ((dirtyFields as any).subSubCategory) formData.append("subSubCategory", data.subSubCategory || "");
-      if ((dirtyFields as any).searchTags) formData.append("searchTags", data.searchTags || "");
+      const dirty = dirtyFields as DirtyFields;
+      if (dirty.name) formData.append("name", data.name);
+      if (dirty.brand) formData.append("brand", data.brand);
+      if (dirty.category) formData.append("category", data.category);
+      if (dirty.subCategory) formData.append("subCategory", data.subCategory);
+      if (dirty.subSubCategory) formData.append("subSubCategory", data.subSubCategory || "");
+      if (dirty.searchTags) formData.append("searchTags", data.searchTags || "");
 
       // Add description image if provided
-      if ((dirtyFields as any).descriptionImage && data.descriptionImage) {
+      if (dirty.descriptionImage && data.descriptionImage) {
         formData.append("descriptionImage", data.descriptionImage);
       }
 
       // Add video URL
-      if ((dirtyFields as any).video) {
+      if (dirty.video) {
         formData.append("video", data.video || "");
       }
 
       // Add description (JSON string) - already in JSON format from TiptapEditor
-      if ((dirtyFields as any).description && data.description) {
+      if (dirty.description && data.description) {
         formData.append("description", data.description);
       }
 
       // Add specifications only if changed
-      if (hasDirty((dirtyFields as any).specifications)) {
+      if (hasDirty(dirty.specifications)) {
         formData.append("specifications", JSON.stringify(data.specifications));
       }
 
       // Handle attributes with images - only if any attribute path is dirty
-      if (hasDirty((dirtyFields as any).attributes)) {
+      if (hasDirty(dirty.attributes)) {
         data.attributes.forEach((attribute, attrIndex) => {
           formData.append(`attributes[${attrIndex}][name]`, attribute.name);
           formData.append(`attributes[${attrIndex}][type]`, attribute.type);
@@ -543,8 +707,8 @@ export default function EditProductPage() {
             }
 
             // Add images for color attributes (new uploads only)
-            if (value.images && (value.images as any[]).length > 0) {
-              (value.images as any[]).forEach((image: File, imageIndex: number) => {
+            if (value.images && Array.isArray(value.images) && value.images.length > 0) {
+              (value.images as File[]).forEach((image: File, imageIndex: number) => {
                 formData.append(
                   `attributes[${attrIndex}][values][${valueIndex}][images][${imageIndex}]`,
                   image
@@ -589,16 +753,16 @@ export default function EditProductPage() {
         };
       });
 
-      if (hasDirty((dirtyFields as any).manualVariants) && manualVariants.length > 0) {
+      if (hasDirty(dirty.manualVariants) && manualVariants.length > 0) {
         formData.append("manualVariants", JSON.stringify(manualVariants));
       }
 
       // Add simple price/stock/discount if provided (no variants use-case)
-      if ((dirtyFields as any).simplePrice && data.simplePrice) formData.append("price", data.simplePrice);
-      if ((dirtyFields as any).simpleStock && data.simpleStock) formData.append("stock", data.simpleStock);
-      if ((dirtyFields as any).simpleDiscount && data.simpleDiscount) formData.append("discountPercentage", data.simpleDiscount);
+      if (dirty.simplePrice && data.simplePrice) formData.append("price", data.simplePrice);
+      if (dirty.simpleStock && data.simpleStock) formData.append("stock", data.simpleStock);
+      if (dirty.simpleDiscount && data.simpleDiscount) formData.append("discountPercentage", data.simpleDiscount);
       // Also send discountedPrice if price is numeric and discount valid
-      if ((dirtyFields as any).simplePrice || (dirtyFields as any).simpleDiscount) {
+      if (dirty.simplePrice || dirty.simpleDiscount) {
         const priceStr = (data.simplePrice || "").toString().trim();
         const discountStr = (data.simpleDiscount || "").toString().trim();
         const isPriceNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
@@ -614,17 +778,17 @@ export default function EditProductPage() {
 
       // Append gallery images (if any)
       const galleryImages = (data.galleryImages as unknown as File[]) || [];
-      if (hasDirty((dirtyFields as any).galleryImages) && Array.isArray(galleryImages) && galleryImages.length > 0) {
+      if (hasDirty(dirty.galleryImages) && Array.isArray(galleryImages) && galleryImages.length > 0) {
         galleryImages.forEach((file) => {
           formData.append("galleryImages", file);
         });
       }
 
       // Add extra category routes
-      if (hasDirty((dirtyFields as any).categoryAssignments)) {
+      if (hasDirty((dirtyFields as Record<string, unknown>).categoryAssignments)) {
         const validAssignments = (data.categoryAssignments || [])
-          .filter((r: any) => r?.category && r?.subCategory)
-          .filter((r: any) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
+          .filter((r: ProductFormData['categoryAssignments'][number]) => r?.category && r?.subCategory)
+          .filter((r: ProductFormData['categoryAssignments'][number]) => !(r.category === data.category && r.subCategory === data.subCategory && (r.subSubCategory || "") === (data.subSubCategory || "")));
         if (validAssignments.length > 0) {
           formData.append("categoryAssignments", JSON.stringify(validAssignments));
         }
@@ -732,7 +896,7 @@ export default function EditProductPage() {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {brands.map((brand: any) => {
+                          {brands.map((brand: Brand) => {
                             const id = (brand.id ?? brand._id) as string;
                             const idStr = String(id);
                             const name = (brand.brandName ??
@@ -794,11 +958,11 @@ export default function EditProductPage() {
                             </Button>
                           </div>
                         )}
-                        {product && (product.descriptionImage || (product as any).description_image) && !value && (
+                        {product && ((product as ProductData).descriptionImage || (product as { description_image?: string }).description_image) && !value && (
                           <div className="space-y-1">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={(product.descriptionImage || (product as any).description_image) as string}
+                              src={((product as ProductData).descriptionImage || (product as { description_image?: string }).description_image) as string}
                               alt="Current description image"
                               className="w-full h-48 object-cover rounded border"
                             />
@@ -915,7 +1079,7 @@ export default function EditProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((c: any) => {
+                            {categories.map((c: Category) => {
                               const id = (c.id ?? c._id) as string;
                               const idStr = String(id);
                               const name = (c.name ??
@@ -975,7 +1139,7 @@ export default function EditProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubcategories.map((sc: any) => {
+                            {filteredSubcategories.map((sc: Subcategory) => {
                               const id = (sc.id ?? sc._id) as string;
                               const idStr = String(id);
                               const name = (sc.name ??
@@ -1035,7 +1199,7 @@ export default function EditProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubSubcategories.map((ssc: any) => {
+                            {filteredSubSubcategories.map((ssc: SubSubcategory) => {
                               const id = (ssc.id ?? ssc._id) as string;
                               const idStr = String(id);
                               const name = (ssc.name ??
@@ -1102,8 +1266,8 @@ export default function EditProductPage() {
                     const selectedAssignSubCategoryId = watch(`categoryAssignments.${index}.subCategory`);
 
                     const filteredAssignSubcategories = !selectedAssignCategoryId
-                      ? ([] as any[])
-                      : allSubcategories.filter((sc: any) => {
+                      ? ([] as Subcategory[])
+                      : allSubcategories.filter((sc: Subcategory) => {
                           if (typeof sc.category === "string") return sc.category === selectedAssignCategoryId;
                           if (sc.category && typeof sc.category === "object") {
                             const id = (sc.category.id ?? sc.category._id) as string;
@@ -1113,8 +1277,8 @@ export default function EditProductPage() {
                         });
 
                     const filteredAssignSubSubcategories = !selectedAssignSubCategoryId
-                      ? ([] as any[])
-                      : allSubSubcategories.filter((ssc: any) => {
+                      ? ([] as SubSubcategory[])
+                      : allSubSubcategories.filter((ssc: SubSubcategory) => {
                           if (typeof ssc.subcategory === "string") return ssc.subcategory === selectedAssignSubCategoryId;
                           if (ssc.subcategory && typeof ssc.subcategory === "object") {
                             const id = (ssc.subcategory.id ?? ssc.subcategory._id) as string;
@@ -1167,7 +1331,7 @@ export default function EditProductPage() {
                                     <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a category"} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {categories.map((c: any) => {
+                                    {categories.map((c: Category) => {
                                       const id = (c.id ?? c._id) as string;
                                       const idStr = String(id);
                                       const name = (c.name ?? c.categoryName ?? "Unnamed") as string;
@@ -1212,7 +1376,7 @@ export default function EditProductPage() {
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {filteredAssignSubcategories.map((sc: any) => {
+                                    {filteredAssignSubcategories.map((sc: Subcategory) => {
                                       const id = (sc.id ?? sc._id) as string;
                                       const idStr = String(id);
                                       const name = (sc.name ?? sc.subCategoryName ?? "Unnamed") as string;
@@ -1256,7 +1420,7 @@ export default function EditProductPage() {
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {filteredAssignSubSubcategories.map((ssc: any) => {
+                                    {filteredAssignSubSubcategories.map((ssc: SubSubcategory) => {
                                       const id = (ssc.id ?? ssc._id) as string;
                                       const idStr = String(id);
                                       const name = (ssc.name ?? ssc.subSubCategoryName ?? "Unnamed") as string;
@@ -1315,7 +1479,7 @@ export default function EditProductPage() {
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
                     canRemove={attributeFields.length > 1}
-                  existingAttributes={(product as any)?.attributes || []}
+                  existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
                   />
                 ))}
               </div>
@@ -1353,11 +1517,11 @@ export default function EditProductPage() {
               </div>
 
               {/* Show existing gallery images if available */}
-              {(product as any)?.images && Array.isArray((product as any).images) && ((product as any).images as string[]).length > 0 && (
+              {(product as ProductData)?.images && Array.isArray((product as ProductData).images) && ((product as ProductData).images as string[]).length > 0 && (
                 <div className="mb-4">
                   <p className="text-sm font-medium text-gray-700 mb-2">Current Gallery Images:</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {((product as any).images as string[]).map((imgUrl, idx) => (
+                    {((product as ProductData).images as string[]).map((imgUrl, idx) => (
                       <div key={idx} className="relative group">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -1382,7 +1546,7 @@ export default function EditProductPage() {
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
                   const current = (watch("galleryImages") as unknown as File[]) || [];
-                  setValue("galleryImages", [...current, ...files] as any, { shouldDirty: true, shouldValidate: false });
+                  setValue("galleryImages", [...current, ...files] as File[], { shouldDirty: true, shouldValidate: false });
                 }}
               />
 
@@ -1403,7 +1567,7 @@ export default function EditProductPage() {
                       onClick={() => {
                         const current = (watch("galleryImages") as unknown as File[]) || [];
                         const updated = current.filter((_, i) => i !== idx);
-                        setValue("galleryImages", updated as any, { shouldDirty: true, shouldValidate: false });
+                        setValue("galleryImages", updated as File[], { shouldDirty: true, shouldValidate: false });
                       }}
                     >
                       <X className="h-3 w-3" />
@@ -1473,7 +1637,7 @@ export default function EditProductPage() {
                   <p className="text-xs text-gray-500">Auto-calculated when price is numeric.</p>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Use this when you don't need attributes/variants.</p>
+              <p className="text-xs text-gray-500 mt-2">Use this when you don&apos;t need attributes/variants.</p>
             </div>
 
             {/* Specifications Section */}
@@ -1980,10 +2144,10 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
   };
 
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr) => attr.type === attrType);
     if (attribute) {
       const attrValue = attribute.values.find(
-        (val: any) => val.value === value
+        (val) => val.value === value
       );
       return attrValue ? attrValue.label : value;
     }
@@ -2002,11 +2166,11 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {attributes
-            .filter((attribute: any) => attribute.name && attribute.type)
-            .map((attribute: any, index: number) => {
+            .filter((attribute) => attribute.name && attribute.type)
+            .map((attribute, index: number) => {
               const validValues =
                 attribute.values?.filter(
-                  (value: any) => value.value && value.value.trim() !== ""
+                  (value) => value.value && value.value.trim() !== ""
                 ) || [];
 
               return (
@@ -2033,7 +2197,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {validValues.length > 0 ? (
-                        validValues.map((value: any, valueIndex: number) => (
+                        validValues.map((value, valueIndex: number) => (
                           <SelectItem key={valueIndex} value={value.value}>
                             {value.label}
                           </SelectItem>
@@ -2156,17 +2320,17 @@ function VariantList({
   attributes,
 }: VariantListProps) {
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr) => attr.type === attrType);
     if (attribute) {
       const attrValue = attribute.values.find(
-        (val: any) => val.value === value
+        (val) => val.value === value
       );
       return attrValue ? attrValue.label : value;
     }
     return value;
   };
 
-  const calculateVariantPrice = (variant: any) => {
+  const calculateVariantPrice = (variant: ProductFormData['manualVariants'][number]) => {
     const priceVal = variant.price;
     if (typeof priceVal === "number") return priceVal;
     const priceStr = (priceVal ?? "").toString();
@@ -2174,13 +2338,13 @@ function VariantList({
     return isNumeric ? parseFloat(priceStr) : priceStr;
   };
 
-  const calculateDiscountedPrice = (variant: any) => {
+  const calculateDiscountedPrice = (variant: ProductFormData['manualVariants'][number]) => {
     const priceVal = calculateVariantPrice(variant);
     if (typeof priceVal !== "number") return null;
     const priceNum = priceVal;
     // allow 0% discount; treat empty string as no-discount (null result)
     const hasDiscountInput = variant.discount !== "" && variant.discount !== null && variant.discount !== undefined;
-    if (!hasDiscountInput) return null;
+    if (!hasDiscountInput || !variant.discount) return null;
     const discountNum = parseFloat(variant.discount);
     if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
     return priceNum * (1 - discountNum / 100);
@@ -2220,9 +2384,9 @@ function VariantList({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {variants.map((variant: any, index: number) => (
+          {variants.map((variant: ProductFormData['manualVariants'][number], index: number) => (
             <div
-              key={variant.id}
+              key={index}
               className="p-4 border rounded-lg space-y-3"
             >
               <div className="flex items-center justify-between">
@@ -2282,8 +2446,7 @@ function VariantList({
                       onEditVariant(index, { 
                         ...variant, 
                         price: newPrice, 
-                        discountedPrice: newDiscountedPrice,
-                        id: variant.id 
+                        discountedPrice: newDiscountedPrice
                       });
                     }}
                     placeholder="e.g., 10000 or TBA"
@@ -2298,7 +2461,7 @@ function VariantList({
                     step="1"
                     value={variant.stock ?? ""}
                     onChange={(e) => {
-                      onEditVariant(index, { ...variant, stock: e.target.value, id: variant.id });
+                      onEditVariant(index, { ...variant, stock: e.target.value });
                     }}
                     className="w-28"
                   />
@@ -2329,8 +2492,7 @@ function VariantList({
                         onEditVariant(index, { 
                           ...variant, 
                           discount: v, 
-                          discountedPrice: newDiscountedPrice,
-                          id: variant.id 
+                          discountedPrice: newDiscountedPrice
                         });
                       }
                     }}

@@ -17,11 +17,18 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchItems, setSearchItems] = useState<any[]>([]);
+  interface SearchItem {
+    _id: string;
+    name: string;
+    slug: string;
+    [key: string]: unknown;
+  }
+
+  const [searchItems, setSearchItems] = useState<SearchItem[]>([]);
   const [searchPage, setSearchPage] = useState(1);
   const [searchMeta, setSearchMeta] = useState<{ total: number; page: number; limit: number; pages: number }>({ total: 0, page: 1, limit: 12, pages: 1 });
   const searchAbortRef = useRef<AbortController | null>(null);
-  const searchTimerRef = useRef<any>(null);
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced search effect
   useEffect(() => {
@@ -53,8 +60,8 @@ export default function Navbar() {
         const json = await res.json();
         setSearchItems(json?.items || []);
         setSearchMeta(json?.meta || { total: 0, page: 1, limit: 12, pages: 1 });
-      } catch (e: any) {
-        if (e?.name !== "AbortError") {
+      } catch (e: unknown) {
+        if ((e as { name?: string })?.name !== "AbortError") {
           // ignore network errors for UX; keep prior results
         }
       } finally {
@@ -133,8 +140,8 @@ export default function Navbar() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={
-                    (p?.attributes?.find?.((a: any) => a.name?.toLowerCase?.() === "color")?.values?.[0]?.images?.[0]) ||
-                    p?.images?.[0] ||
+                    (Array.isArray(p?.attributes) && p.attributes.find?.((a: { name?: string; values?: Array<{ images?: string[] }> }) => a.name?.toLowerCase?.() === "color")?.values?.[0]?.images?.[0]) ||
+                    (Array.isArray(p?.images) && p.images[0]) ||
                     "/next.svg"
                   }
                   alt={p.name}
@@ -142,7 +149,7 @@ export default function Navbar() {
                 />
                 <div className="text-sm text-gray-800 line-clamp-2 min-h-[2.5rem]">{p.name}</div>
                 <div className="mt-1 text-[#111827] font-semibold">
-                  {p?.variants?.[0]?.finalPrice ? `৳${p.variants[0].finalPrice}` : ""}
+                  {Array.isArray(p?.variants) && p.variants[0]?.finalPrice ? `৳${p.variants[0].finalPrice}` : ""}
                 </div>
               </Link>
             ))}

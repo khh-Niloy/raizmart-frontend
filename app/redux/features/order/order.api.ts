@@ -1,37 +1,81 @@
 import { baseApi } from "../../baseApi";
 
+interface Order {
+  _id: string;
+  orderNumber?: string;
+  user?: string;
+  items?: OrderItem[];
+  total?: number;
+  status?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+interface OrderItem {
+  product?: string;
+  variant?: string;
+  quantity?: number;
+  price?: number;
+  [key: string]: unknown;
+}
+
+interface OrderResponse {
+  items?: Order[];
+  data?: Order;
+}
+
+interface OrderMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPage: number;
+}
+
+interface SearchOrdersResponse {
+  items: Order[];
+  users: unknown[];
+  meta: OrderMeta;
+}
+
 export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getMyOrders: builder.query<any[], void>({
+    getMyOrders: builder.query<Order[], void>({
       query: () => ({
         url: "/orders/my",
         method: "GET",
       }),
-      transformResponse: (response: any) => {
+      transformResponse: (response: unknown): Order[] => {
         console.log("response", response);
-        const data = response?.items ?? response;
+        const orderResponse = response as OrderResponse | Order[];
+        const data = (orderResponse && 'items' in orderResponse ? orderResponse.items : orderResponse) as Order[] | undefined;
         return Array.isArray(data) ? data : [];
       },
-      providesTags: ["ORDERS" as any],
+      providesTags: ["ORDERS"],
     }),
-    getOrderById: builder.query<any, string>({
+    getOrderById: builder.query<Order, string>({
       query: (id) => ({
         url: `/orders/${id}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
-      providesTags: ["ORDERS" as any],
+      transformResponse: (response: unknown): Order => {
+        const orderResponse = response as OrderResponse | Order;
+        return (orderResponse && 'data' in orderResponse ? orderResponse.data : orderResponse) as Order;
+      },
+      providesTags: ["ORDERS"],
     }),
-    getOrderBySlug: builder.query<any, string>({
+    getOrderBySlug: builder.query<Order, string>({
       query: (slug) => ({
         url: `/orders/slug/${slug}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => response?.data ?? response,
-      providesTags: ["ORDERS" as any],
+      transformResponse: (response: unknown): Order => {
+        const orderResponse = response as OrderResponse | Order;
+        return (orderResponse && 'data' in orderResponse ? orderResponse.data : orderResponse) as Order;
+      },
+      providesTags: ["ORDERS"],
     }),
-    createOrder: builder.mutation<{ success: boolean; data?: any }, any>({
-      query: (payload) => ({
+    createOrder: builder.mutation<{ success: boolean; data?: Order }, Record<string, unknown>>({
+      query: (payload: Record<string, unknown>) => ({
         url: "/orders",
         method: "POST",
         data: payload,
@@ -39,7 +83,7 @@ export const orderApi = baseApi.injectEndpoints({
     }),
     // Admin: Get all orders without pagination (returns { items })
     getAllOrdersAdmin: builder.query<
-      { items: any[] },
+      { items: Order[] },
       { sort?: string; status?: string; startDate?: string; endDate?: string }
     >({
       query: (params) => ({
@@ -47,14 +91,17 @@ export const orderApi = baseApi.injectEndpoints({
         method: "GET",
         params,
       }),
-      transformResponse: (response: any) => ({
-        items: response?.items ?? [],
-      }),
-      providesTags: ["ORDERS" as any],
+      transformResponse: (response: unknown): { items: Order[] } => {
+        const orderResponse = response as OrderResponse;
+        return {
+          items: orderResponse?.items ?? [],
+        };
+      },
+      providesTags: ["ORDERS"],
     }),
     // Admin: Search orders by user info (kept as before)
     searchOrdersByUserAdmin: builder.query<
-      { items: any[]; users: any[]; meta: any },
+      SearchOrdersResponse,
       { searchTerm: string; page?: number; limit?: number; sort?: string }
     >({
       query: (params) => ({
@@ -62,12 +109,15 @@ export const orderApi = baseApi.injectEndpoints({
         method: "GET",
         params,
       }),
-      transformResponse: (response: any) => ({
-        items: response?.items ?? [],
-        users: response?.users ?? [],
-        meta: response?.meta ?? { page: 1, limit: 10, total: 0, totalPage: 0 },
-      }),
-      providesTags: ["ORDERS" as any],
+      transformResponse: (response: unknown): SearchOrdersResponse => {
+        const searchResponse = response as Partial<SearchOrdersResponse>;
+        return {
+          items: searchResponse?.items ?? [],
+          users: searchResponse?.users ?? [],
+          meta: searchResponse?.meta ?? { page: 1, limit: 10, total: 0, totalPage: 0 },
+        };
+      },
+      providesTags: ["ORDERS"],
     }),
   }),
 });

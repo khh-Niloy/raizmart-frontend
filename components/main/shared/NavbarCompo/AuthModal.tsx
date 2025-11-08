@@ -39,8 +39,15 @@ export default function AuthModal({ children }: AuthModalProps) {
   const [login] = useLoginMutation();
   const [userRegister] = useRegisterMutation();
 
-  const { register, handleSubmit } = useForm();
-  const onSubmit = async (data: any) => {
+  interface FormData {
+    identifier?: string;
+    password?: string;
+    name?: string;
+    confirmPassword?: string;
+  }
+
+  const { register, handleSubmit } = useForm<FormData>();
+  const onSubmit = async (data: FormData) => {
     console.log(data);
 
     if (isSignUp) {
@@ -51,21 +58,29 @@ export default function AuthModal({ children }: AuthModalProps) {
       }
       const identifier: string | undefined = data.identifier;
       const isEmail = !!identifier && /@/.test(identifier);
+      
+      // Validate required fields
+      if (!data.name || !data.password || !data.confirmPassword || !identifier) {
+        toast.error("Please fill in all required fields.");
+        return;
+      }
+      
       try {
         const payload = isEmail
           ? {
-              name: data.name,
-              email: identifier,
-              password: data.password,
-              confirmPassword: data.confirmPassword,
+              name: data.name as string,
+              email: identifier as string,
+              password: data.password as string,
+              confirmPassword: data.confirmPassword as string,
             }
           : {
-              name: data.name,
-              phone: identifier,
-              password: data.password,
-              confirmPassword: data.confirmPassword,
+              name: data.name as string,
+              phone: identifier as string,
+              password: data.password as string,
+              confirmPassword: data.confirmPassword as string,
             };
-        const res = await userRegister(payload).unwrap();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const res = await userRegister(payload as any).unwrap();
         if (res.success === true) {
           toast.success("Account created successfully!");
           setIsOpen(false);
@@ -73,19 +88,27 @@ export default function AuthModal({ children }: AuthModalProps) {
         }
       } catch (error) {
         console.log(error);
+        const errorData = error as { data?: { message?: string } };
         toast.error(
-          (error as any).data?.message ||
+          errorData?.data?.message ||
             "Failed to create account. Please try again."
         );
       }
     } else {
+      // Validate required fields for login
+      if (!data.identifier || !data.password) {
+        toast.error("Please fill in all required fields.");
+        return;
+      }
+      
       try {
         const identifier: string | undefined = data.identifier;
         const isEmail = !!identifier && /@/.test(identifier);
         const payload = isEmail
-          ? { email: identifier, password: data.password }
-          : { phone: identifier, password: data.password };
-        const res = await login(payload).unwrap();
+          ? { email: identifier as string, password: data.password as string }
+          : { phone: identifier as string, password: data.password as string };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const res = await login(payload as any).unwrap();
         if (res.success === true) {
           toast.success("Login successful!");
           setIsOpen(false);
@@ -94,8 +117,9 @@ export default function AuthModal({ children }: AuthModalProps) {
         console.log(res);
       } catch (error) {
         console.log(error);
+        const errorData = error as { data?: { message?: string } };
         toast.error(
-          (error as any).data?.message ||
+          errorData?.data?.message ||
             "Login failed. Please check your credentials."
         );
       }
@@ -115,12 +139,17 @@ export default function AuthModal({ children }: AuthModalProps) {
     }
 
     const onOpen = () => {
-      // Initialize global state if needed
-      if (!(window as any).__authModalState) {
-        (window as any).__authModalState = { openInstanceId: null };
+      interface WindowWithAuthState extends Window {
+        __authModalState?: { openInstanceId: string | null };
       }
 
-      const state = (window as any).__authModalState;
+      // Initialize global state if needed
+      const windowWithState = window as WindowWithAuthState;
+      if (!windowWithState.__authModalState) {
+        windowWithState.__authModalState = { openInstanceId: null };
+      }
+
+      const state = windowWithState.__authModalState;
 
       // If another modal is already open, don't open this one
       if (
@@ -135,11 +164,11 @@ export default function AuthModal({ children }: AuthModalProps) {
       setIsOpen(true);
     };
 
-    window.addEventListener("auth:open", onOpen as any);
+    window.addEventListener("auth:open", onOpen);
 
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("auth:open", onOpen as any);
+        window.removeEventListener("auth:open", onOpen);
       }
     };
   }, []);
@@ -151,7 +180,11 @@ export default function AuthModal({ children }: AuthModalProps) {
       typeof window !== "undefined" &&
       modalInstanceIdRef.current
     ) {
-      const state = (window as any).__authModalState;
+      interface WindowWithAuthState extends Window {
+        __authModalState?: { openInstanceId: string | null };
+      }
+      const windowWithState = window as WindowWithAuthState;
+      const state = windowWithState.__authModalState;
       if (state && state.openInstanceId === modalInstanceIdRef.current) {
         state.openInstanceId = null;
       }

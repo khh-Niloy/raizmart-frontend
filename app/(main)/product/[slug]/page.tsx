@@ -26,11 +26,58 @@ export default function ProductDetailBySlug({
   const { data, isLoading, isError } = useGetProductBySlugQuery(
     resolvedParams.slug
   );
-  const product = (data as any)?.data ?? null;
+  interface ProductData {
+    _id?: string;
+    name?: string;
+    slug?: string;
+    price?: number;
+    discountedPrice?: number;
+    discountPercentage?: number;
+    images?: string[];
+    video?: string;
+    video_url?: string;
+    descriptionImage?: string;
+    description_image?: string;
+    attributes?: Array<{
+      name: string;
+      type: string;
+      values: Array<{
+        label: string;
+        value: string;
+        attributeValue?: string;
+        colorCode?: string;
+        images?: string[];
+        isDefault?: boolean;
+      }>;
+    }>;
+    variants?: Array<{
+      sku: string;
+      finalPrice: number;
+      stock: number;
+      isActive: boolean;
+      attributeCombination: Array<{
+        attributeName: string;
+        attributeType: string;
+        attributeValue: string;
+        attributeLabel: string;
+      }>;
+    }>;
+    specifications?: Array<{
+      key: string;
+      value: string;
+    }>;
+    [key: string]: unknown;
+  }
+
+  interface ProductResponse {
+    data?: ProductData;
+  }
+
+  const product = ((data as ProductResponse)?.data ?? data ?? null) as ProductData | null;
   console.log(product);
 
   // Sync cart and wishlist prices when product data changes
-  useSyncProductPrices(product?._id, product);
+  useSyncProductPrices(product?._id, product as unknown as ProductData);
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -63,7 +110,7 @@ export default function ProductDetailBySlug({
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];
       if (def)
-        acc[attr.name] = (def as any).attributeValue || def.value || def.label;
+        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
     });
     return acc;
   }, [attributes]);
@@ -76,7 +123,7 @@ export default function ProductDetailBySlug({
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];
       if (def)
-        acc[attr.name] = (def as any).attributeValue || def.value || def.label;
+        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
     });
     return acc;
   });
@@ -89,7 +136,7 @@ export default function ProductDetailBySlug({
         const def = attr.values.find((v) => v.isDefault) || attr.values[0];
         if (def)
           newSelections[attr.name] =
-            (def as any).attributeValue || def.value || def.label;
+            (def as { attributeValue?: string }).attributeValue || def.value || def.label;
       });
       setSelectedByName(newSelections);
     }
@@ -155,7 +202,7 @@ export default function ProductDetailBySlug({
 
   // Product-level images fallback when variant/color images are missing
   const productLevelImages: string[] = React.useMemo(
-    () => (Array.isArray((product as any)?.images) ? ((product as any)?.images as string[]) : []),
+    () => (Array.isArray(product?.images) ? (product.images as string[]) : []),
     [product?.images]
   );
 
@@ -216,12 +263,26 @@ export default function ProductDetailBySlug({
     }
   };
 
+  interface TipTapNode {
+    type: string;
+    content?: TipTapNode[];
+    text?: string;
+    marks?: Array<{
+      type: string;
+      attrs?: Record<string, string>;
+    }>;
+    attrs?: {
+      level?: number;
+      [key: string]: unknown;
+    };
+  }
+
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
-  const renderTiptapToHTML = (node: any): string => {
+  const renderTiptapToHTML = (node: TipTapNode | null | undefined): string => {
     if (!node) return "";
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const renderMarks = (text: string, marks?: any[]) => {
+    const renderMarks = (text: string, marks?: TipTapNode['marks']) => {
       if (!marks || !marks.length) return text;
       return marks.reduce((acc, m) => {
         if (m.type === "bold") return `<strong>${acc}</strong>`;
@@ -239,7 +300,7 @@ export default function ProductDetailBySlug({
       }, text);
     };
 
-    const renderChildren = (children: any[]) =>
+    const renderChildren = (children: TipTapNode[] | undefined) =>
       (children || []).map(renderTiptapToHTML).join("");
 
     switch (node.type) {
@@ -287,11 +348,11 @@ export default function ProductDetailBySlug({
 
   // Extract video and descriptionImage from product
   const videoUrl = React.useMemo(() => {
-    return (product as any)?.video || (product as any)?.video_url || "";
+    return product?.video || product?.video_url || "";
   }, [product]);
 
   const descriptionImageUrl = React.useMemo(() => {
-    return (product as any)?.descriptionImage || (product as any)?.description_image || "";
+    return product?.descriptionImage || product?.description_image || "";
   }, [product]);
 
   const videoId = React.useMemo(() => {
@@ -300,7 +361,7 @@ export default function ProductDetailBySlug({
 
   // Presence flags
   const hasSpecs = React.useMemo(
-    () => Array.isArray((product as any)?.specifications) && ((product as any)?.specifications?.length || 0) > 0,
+    () => Array.isArray(product?.specifications) && (product?.specifications?.length || 0) > 0,
     [product?.specifications]
   );
   const hasDescription = React.useMemo(() => {
@@ -349,12 +410,12 @@ export default function ProductDetailBySlug({
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
-              {product?.brand?.name && (
-                <Link
-                  href={`/brands/${product?.brand?.name}`}
+              {(product.brand as { name?: string }).name && (
+                <Link 
+                  href={`/brands/${(product.brand as { name?: string }).name}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/30 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
                 >
-                  Brand: {product.brand.name}
+                  Brand: {(product.brand as { name?: string }).name}
                 </Link>
               )}
             </div>
@@ -421,37 +482,37 @@ export default function ProductDetailBySlug({
 
         {/* Right: Info & selectors */}
         <div className="flex flex-col gap-6 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
-          {product?.isFreeDelivery && (
+          {product?.isFreeDelivery === true && (
             <span className="inline-flex w-max items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
               Free Delivery
             </span>
           )}
 
           {(() => {
-            const formatPrice = (v: any) => `৳${Number(v).toLocaleString()}`;
+            const formatPrice = (v: number | string | undefined) => `৳${Number(v).toLocaleString()}`;
             const hasVariants = Array.isArray(variants) && variants.length > 0;
-            const sv: any = selectedVariant as any;
+            const sv = selectedVariant;
             const variantFinal = hasVariants ? sv?.finalPrice : undefined;
-            const variantDiscPrice = hasVariants ? sv?.discountedPrice : undefined;
-            const variantDiscPct = hasVariants ? (sv?.discountPercentage ?? sv?.discount) : undefined;
+            const variantDiscPrice = hasVariants ? (sv as { discountedPrice?: number }).discountedPrice : undefined;
+            const variantDiscPct = hasVariants ? (sv as { discountPercentage?: number }).discountPercentage : undefined;
 
-            const productFinal = !hasVariants ? (product as any)?.price : undefined;
-            const productDiscPrice = !hasVariants ? (product as any)?.discountedPrice : undefined;
-            const productDiscPct = !hasVariants ? (product as any)?.discountPercentage : undefined;
+            const productFinal = !hasVariants ? product?.price : undefined;
+            const productDiscPrice = !hasVariants ? product?.discountedPrice : undefined;
+            const productDiscPct = !hasVariants ? product?.discountPercentage : undefined;
 
             const basePrice = hasVariants ? variantFinal : productFinal;
             const discounted = hasVariants ? variantDiscPrice : productDiscPrice;
             const pct = hasVariants ? variantDiscPct : productDiscPct;
-            const stockCount = hasVariants ? parseInt(String(sv?.stock ?? 0)) : parseInt(String((product as any)?.stock ?? 0));
+            const stockCount = hasVariants ? parseInt(String(sv?.stock ?? 0)) : parseInt(String(product?.stock ?? 0));
             const inStock = Number.isFinite(stockCount) ? stockCount > 0 : false;
 
             if (basePrice === undefined && discounted === undefined) return null;
 
-            const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+            const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
             const isTBA = basePrice && !isNumeric(basePrice) && String(basePrice).toUpperCase().trim() === 'TBA';
             const showDiscount = isNumeric(discounted) && isNumeric(basePrice) && Number(discounted) < Number(basePrice);
             const pctText = (() => {
-              if (pct !== undefined && pct !== null && pct !== '') return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
+              if (pct !== undefined && pct !== null && typeof pct === 'number') return `${parseFloat(String(pct)).toFixed(0)}% OFF`;
               if (showDiscount) {
                 const p = Number(basePrice);
                 const d = Number(discounted);
@@ -606,12 +667,12 @@ export default function ProductDetailBySlug({
               // Calculate correct price with discount
               const calculatePrice = React.useMemo(() => {
                 const hasVariants = Array.isArray(variants) && variants.length > 0;
-                const sv: any = selectedVariant as any;
+                const sv = selectedVariant;
                 
                 if (hasVariants && sv) {
                   const variantFinal = sv?.finalPrice;
-                  const variantDiscPrice = sv?.discountedPrice;
-                  const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const variantDiscPrice = (sv as { discountedPrice?: number }).discountedPrice;
+                  const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
                   const isTBA = variantFinal && !isNumeric(variantFinal) && String(variantFinal).toUpperCase().trim() === 'TBA';
                   
                   if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
@@ -627,9 +688,9 @@ export default function ProductDetailBySlug({
                     isTBA: false 
                   };
                 } else {
-                  const productFinal = (product as any)?.price;
-                  const productDiscPrice = (product as any)?.discountedPrice;
-                  const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+                  const productFinal = product?.price;
+                  const productDiscPrice = product?.discountedPrice;
+                  const isNumeric = (val: unknown) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
                   const isTBA = productFinal && !isNumeric(productFinal) && String(productFinal).toUpperCase().trim() === 'TBA';
                   
                   if (isTBA) return { price: 'TBA', basePrice: undefined, discountedPrice: undefined, isTBA: true };
@@ -659,7 +720,7 @@ export default function ProductDetailBySlug({
                 selectedOptions: selectedByName,
               };
 
-              const inCart = product && selectedVariant ? has(matcher as any) : false;
+              const inCart = product && selectedVariant ? has(matcher) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
               const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number';
@@ -676,9 +737,9 @@ export default function ProductDetailBySlug({
               const onToggleWishlist = () => {
                 if (!product) return;
                 toggle({
-                  productId: product._id,
+                  productId: product._id as string,
                   slug: product.slug,
-                  name: product.name,
+                  name: product.name as string,
                   image: primaryImage,
                   price: typeof calculatePrice.price === 'number' ? calculatePrice.price : undefined,
                   basePrice: calculatePrice.basePrice,
@@ -783,7 +844,7 @@ export default function ProductDetailBySlug({
             <table className="mt-4 w-full overflow-hidden rounded-2xl border border-slate-100 text-sm">
                 <tbody>
                   {(product?.specifications || []).map(
-                    (row: any, idx: number) => (
+                    (row: { key?: string; value?: string }, idx: number) => (
                       <tr key={idx} className="odd:bg-white even:bg-slate-50">
                         <td className="w-1/3 border-b border-slate-100 p-3 font-medium text-slate-600">
                           {row.key}

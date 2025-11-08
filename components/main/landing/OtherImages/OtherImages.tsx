@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useGetOthersImagesQuery } from "@/app/redux/features/other-images/other-images.api";
 
 export default function OtherImages() {
@@ -13,9 +14,17 @@ export default function OtherImages() {
 
   const othersImages = data?.data || [];
 
+  interface OtherImage {
+    _id: string;
+    imageUrl: string;
+    redirectUrl?: string;
+    status?: string;
+    [key: string]: unknown;
+  }
+
   // Filter only active other images
-  const activeOthersImages = othersImages.filter(
-    (image: any) => image.status === "active"
+  const activeOthersImages = (othersImages as OtherImage[]).filter(
+    (image: OtherImage) => image.status === "active"
   );
 
   // console.log('All other images:', othersImages);
@@ -67,31 +76,21 @@ export default function OtherImages() {
   const slotCount = Math.max(displayImages.length, SLOTS);
 
   // console.log("Display images:", displayImages);
-  displayImages.forEach(
-    (
-      image: { imageUrl: string; redirectUrl: string; _id: string },
-      index: number
-    ) => {
-      // console.log(`Other Image ${index + 1}:`, image);
-      // console.log(`Other Image ${index + 1} URL:`, image.imageUrl);
-    }
-  );
 
   return renderGridWrapper(
     <>
       {displayImages.map(
         (
-          image: { imageUrl: string; redirectUrl: string; _id: string },
+          image: OtherImage,
           index: number
         ) => (
           <div key={image._id} className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden">
-            <img
+            <Image
               src={image.imageUrl}
               alt={`Other image ${index + 1}`}
-              className="w-full h-full object-cover"
-              onError={() => {
-                console.error("❌ Other image failed to load:", image.imageUrl);
-              }}
+              fill
+              className="object-cover"
+              unoptimized
             />
 
             {/* Clickable overlay if redirect URL exists */}

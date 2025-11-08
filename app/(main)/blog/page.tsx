@@ -9,7 +9,30 @@ import { Calendar, ArrowRight, BookOpen } from "lucide-react";
 
 export default function BlogPage() {
   const { data, isLoading, isError } = useGetBlogsQuery(undefined);
-  const blogs: any[] = (data?.data ?? data ?? []) as any[];
+  interface Blog {
+    _id?: string;
+    id?: string;
+    slug?: string;
+    blogTitle?: string;
+    title?: string;
+    status?: string;
+    image?: string;
+    thumbnail?: string;
+    category?: {
+      _id?: string;
+      id?: string;
+      name?: string;
+    } | string;
+    categoryName?: string;
+    tags?: string[];
+    blogContent?: unknown;
+    content?: unknown;
+    createdAt?: string;
+    [key: string]: unknown;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const blogs: Blog[] = Array.isArray(data) ? data : [];
 
   if (isLoading) {
     return (
@@ -81,11 +104,13 @@ export default function BlogPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeBlogs.map((blog: any) => {
+                {activeBlogs.map((blog: Blog) => {
                   const id = blog.id ?? blog._id;
                   const slug = blog.slug || id;
                   const title = blog.blogTitle || blog.title || "Untitled";
-                  const category = blog.category?.name || blog.categoryName || "Uncategorized";
+                  const category = (typeof blog.category === 'object' && blog.category !== null)
+                    ? (blog.category.name || blog.categoryName || "Uncategorized")
+                    : (blog.categoryName || "Uncategorized");
                   const image = blog.image || blog.thumbnail;
                   const tags = Array.isArray(blog.tags) ? blog.tags : [];
                   const createdAt = blog.createdAt 

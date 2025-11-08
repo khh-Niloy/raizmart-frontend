@@ -9,11 +9,42 @@ import { useGetFeaturedProductsQuery } from "@/app/redux/features/product/produc
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface Product {
+  _id: string;
+  name: string;
+  slug: string;
+  status: string;
+  price?: number;
+  discountedPrice?: number;
+  images?: string[];
+  isFreeDelivery?: boolean;
+  attributes?: Array<{
+    type?: string;
+    name?: string;
+    values?: Array<{
+      images?: string[];
+    }>;
+  }>;
+  variants?: Array<{
+    finalPrice?: number;
+    discountedPrice?: number;
+  }>;
+  [key: string]: unknown;
+}
+
+interface ProductsResponse {
+  items?: Product[];
+  data?: Product[];
+}
+
 export default function FeaturedProducts() {
   const { data, isLoading, isError } = useGetFeaturedProductsQuery(undefined);
-  const allItems: any[] = Array.isArray((data as any)) ? (data as any) : (data?.items || data?.data || []);
+  const response = data as Product[] | ProductsResponse | undefined;
+  const allItems: Product[] = Array.isArray(response) 
+    ? response 
+    : (response?.items || response?.data || []);
   // Filter to show only active products
-  const items = allItems.filter((product: any) => product.status === "active");
+  const items = allItems.filter((product: Product) => product.status === "active");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -104,9 +135,10 @@ export default function FeaturedProducts() {
         </header>
 
         <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((product: any) => {
+          {items.map((product: Product) => {
+            type AttributeType = NonNullable<Product['attributes']>[number];
             const colorAttr = (product?.attributes || []).find(
-              (a: any) => a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
+              (a: AttributeType) => a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
             );
             const primaryImage =
               colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";

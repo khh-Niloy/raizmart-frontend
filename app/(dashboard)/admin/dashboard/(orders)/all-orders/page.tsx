@@ -175,7 +175,74 @@ export default function AdminAllOrdersPage() {
                 No orders found.
               </div>
             )}
-          {orders?.map((o: any, idx: number) => (
+          {(() => {
+            interface OrderItemAttribute {
+              attributeName?: string;
+              attributeLabel?: string;
+              attributeValue?: string;
+              name?: string;
+              value?: string;
+              [key: string]: unknown;
+            }
+
+            interface OrderItem {
+            _id?: string;
+            productId?: string;
+            variantId?: string;
+            quantity?: number;
+            price?: number;
+            images?: string[];
+            productDetails?: {
+              name?: string;
+              slug?: string;
+              images?: string[];
+            };
+            variantDetails?: {
+              sku?: string;
+              attributeCombination?: Array<{
+                attributeName?: string;
+                attributeValue?: string;
+                attributeLabel?: string;
+              }>;
+            };
+            attributes?: OrderItemAttribute[];
+            humanPricing?: Record<string, string>;
+            [key: string]: unknown;
+          }
+
+          interface Order {
+            _id: string;
+            order_slug?: string;
+            status?: string;
+            couponCode?: string;
+            createdAt?: string;
+            customer?: {
+              fullName?: string;
+              email?: string;
+              phone?: string;
+            };
+            userId?: {
+              name?: string;
+              email?: string;
+              phone?: string;
+            };
+            delivery?: {
+              method?: string;
+              division?: string;
+              charge?: number;
+            };
+            items?: OrderItem[];
+            totals?: {
+              subtotal?: number;
+              discountTotal?: number;
+              shippingTotal?: number;
+              grandTotal?: number;
+            };
+            humanTotals?: Record<string, string>;
+            [key: string]: unknown;
+          }
+
+            return orders?.map((o: Order, idx: number) => (
             <div
               key={o._id}
               className={`rounded-md border mb-4 overflow-hidden ${
@@ -218,9 +285,11 @@ export default function AdminAllOrdersPage() {
                     Items: {Array.isArray(o.items) ? o.items.length : 0}
                   </Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(o.createdAt).toLocaleString()}
-                </div>
+                {o.createdAt && (
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(o.createdAt).toLocaleString()}
+                  </div>
+                )}
               </div>
 
               {/* Body */}
@@ -239,7 +308,7 @@ export default function AdminAllOrdersPage() {
                 </div>
                 <div className="col-span-12 md:col-span-4 space-y-2">
                   <div className="text-xs text-muted-foreground">Totals</div>
-                  {(o as any)?.humanTotals ? (
+                  {o?.humanTotals ? (
                     <div className="divide-y rounded-md border bg-background">
                       <div className="flex items-center justify-between px-3 py-2">
                         <span className="text-muted-foreground">Regular</span>
@@ -337,7 +406,7 @@ export default function AdminAllOrdersPage() {
                 </div>
                 {Array.isArray(o.items) && o.items.length > 0 ? (
                   <div className="space-y-3">
-                    {o.items.map((it: any, idx: number) => (
+                    {o.items.map((it: OrderItem, idx: number) => (
                       <div
                         key={idx}
                         className="rounded-md border bg-background p-3"
@@ -352,8 +421,8 @@ export default function AdminAllOrdersPage() {
                                   it.productDetails?.images?.[0]
                                 }
                                 alt={
-                                  it.productName ||
-                                  it.productDetails?.name ||
+                                  (typeof it.productName === 'string' ? it.productName : '') ||
+                                  (typeof it.productDetails?.name === 'string' ? it.productDetails.name : '') ||
                                   "product"
                                 }
                                 className="h-12 w-12 rounded object-cover border"
@@ -363,14 +432,26 @@ export default function AdminAllOrdersPage() {
                             )}
                             <div className="space-y-0.5">
                               <div className="font-medium">
-                                {it.productName || it.productDetails?.name}
+                                {(typeof it.productName === 'string' ? it.productName : '') ||
+                                 it.productDetails?.name ||
+                                 'Product'}
                               </div>
-                              <div className="text-muted-foreground text-xs">
-                                SKU: {it.sku}
-                              </div>
+                              {(() => {
+                                const skuValue = it.sku;
+                                if (skuValue && (typeof skuValue === 'string' || typeof skuValue === 'number')) {
+                                  return (
+                                    <div className="text-muted-foreground text-xs">
+                                      SKU: {String(skuValue)}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <div className="text-muted-foreground text-xs">
                                 Slug:{" "}
-                                {it.productSlug || it.productDetails?.slug}
+                                {(typeof it.productSlug === 'string' ? it.productSlug : '') ||
+                                 (typeof it.productDetails?.slug === 'string' ? it.productDetails.slug : '') ||
+                                 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -444,21 +525,27 @@ export default function AdminAllOrdersPage() {
                                     <span className="text-muted-foreground">
                                       Unit original
                                     </span>
-                                    <span>৳ {it.unitPriceOriginal}</span>
+                                    <span>৳ {typeof it.unitPriceOriginal === 'number' || typeof it.unitPriceOriginal === 'string' 
+                                      ? it.unitPriceOriginal 
+                                      : it.price || 0}</span>
                                   </div>
                                   <div className="flex items-center justify-between px-3 py-2">
                                     <span className="text-muted-foreground">
                                       Unit final
                                     </span>
                                     <span className="font-medium">
-                                      ৳ {it.unitPriceFinal}
+                                      ৳ {typeof it.unitPriceFinal === 'number' || typeof it.unitPriceFinal === 'string' 
+                                        ? it.unitPriceFinal 
+                                        : it.price || 0}
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-between px-3 py-2">
                                     <span className="text-muted-foreground">
                                       Discount %
                                     </span>
-                                    <span>{it.unitDiscountPct ?? 0}%</span>
+                                    <span>{typeof it.unitDiscountPct === 'number' || typeof it.unitDiscountPct === 'string' 
+                                      ? it.unitDiscountPct 
+                                      : 0}%</span>
                                   </div>
                                 </>
                               )}
@@ -505,20 +592,26 @@ export default function AdminAllOrdersPage() {
                                     <span className="text-muted-foreground">
                                       Line subtotal
                                     </span>
-                                    <span>৳ {it.lineSubtotal}</span>
+                                    <span>৳ {typeof it.lineSubtotal === 'number' || typeof it.lineSubtotal === 'string' 
+                                      ? it.lineSubtotal 
+                                      : 0}</span>
                                   </div>
                                   <div className="flex items-center justify-between px-3 py-2">
                                     <span className="text-muted-foreground">
                                       Line discount
                                     </span>
-                                    <span>৳ {it.lineDiscount}</span>
+                                    <span>৳ {typeof it.lineDiscount === 'number' || typeof it.lineDiscount === 'string' 
+                                      ? it.lineDiscount 
+                                      : 0}</span>
                                   </div>
                                   <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
                                     <span className="font-medium">
                                       Line total
                                     </span>
                                     <span className="font-semibold">
-                                      ৳ {it.lineTotal}
+                                      ৳ {typeof it.lineTotal === 'number' || typeof it.lineTotal === 'string' 
+                                        ? it.lineTotal 
+                                        : 0}
                                     </span>
                                   </div>
                                 </>
@@ -531,7 +624,7 @@ export default function AdminAllOrdersPage() {
                             <div className="flex flex-wrap gap-1">
                               {Array.isArray(it.attributes) &&
                               it.attributes.length > 0 ? (
-                                it.attributes.map((a: any, ai: number) => (
+                                it.attributes.map((a: OrderItemAttribute, ai: number) => (
                                   <span
                                     key={ai}
                                     className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs"
@@ -558,7 +651,8 @@ export default function AdminAllOrdersPage() {
                 )}
               </div>
             </div>
-          ))}
+          ));
+          })()}
         </div>
       </Card>
     </div>

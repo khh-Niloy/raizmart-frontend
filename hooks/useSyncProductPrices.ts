@@ -4,11 +4,17 @@ import { useEffect } from "react";
 import { useLocalCart } from "./useLocalCart";
 import { useLocalWishlist } from "./useLocalWishlist";
 
+interface PriceData {
+  price: number;
+  basePrice: number;
+  discountedPrice?: number;
+}
+
 /**
  * Helper to calculate price with discount
  */
-function calculatePriceData(basePrice: any, discountedPrice: any) {
-  const isNumeric = (val: any) => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
+function calculatePriceData(basePrice: unknown, discountedPrice: unknown): PriceData | null {
+  const isNumeric = (val: unknown): boolean => typeof val === 'number' || (!!val && /^\d+(?:\.\d+)?$/.test(String(val)));
   const isTBA = basePrice && !isNumeric(basePrice) && String(basePrice).toUpperCase().trim() === 'TBA';
   
   if (isTBA) return null;
@@ -26,11 +32,30 @@ function calculatePriceData(basePrice: any, discountedPrice: any) {
   };
 }
 
+interface Product {
+  price?: number | string;
+  discountedPrice?: number | string;
+  variants?: Array<{
+    sku: string;
+    finalPrice: number;
+    discountedPrice?: number;
+    stock: number;
+    isActive: boolean;
+    attributeCombination: Array<{
+      attributeName: string;
+      attributeType: string;
+      attributeValue: string;
+      attributeLabel: string;
+    }>;
+  }>;
+  [key: string]: unknown;
+}
+
 /**
  * Hook to sync cart and wishlist prices when a product is updated
  * Call this hook on product pages to keep prices in sync
  */
-export function useSyncProductPrices(productId: string | undefined, product: any) {
+export function useSyncProductPrices(productId: string | undefined, product: Product | undefined) {
   const { items: cartItems, updateItemPrice: updateCartItemPrice } = useLocalCart();
   const { items: wishlistItems, updateItemPrice: updateWishlistItemPrice } = useLocalWishlist();
 
@@ -88,7 +113,7 @@ export function useSyncProductPrices(productId: string | undefined, product: any
         }
       } else {
         // Product-level price (no variants)
-        const priceData = calculatePriceData((product as any)?.price, (product as any)?.discountedPrice);
+        const priceData = calculatePriceData(product?.price, product?.discountedPrice);
         if (priceData && typeof priceData.price === 'number') {
           // Only update if price changed
           if (cartItem.price !== priceData.price || 
@@ -150,7 +175,7 @@ export function useSyncProductPrices(productId: string | undefined, product: any
         }
       } else {
         // Product-level price (no variants)
-        const priceData = calculatePriceData((product as any)?.price, (product as any)?.discountedPrice);
+        const priceData = calculatePriceData(product?.price, product?.discountedPrice);
         if (priceData && typeof priceData.price === 'number') {
           // Only update if price changed
           if (wishlistItem.price !== priceData.price || 

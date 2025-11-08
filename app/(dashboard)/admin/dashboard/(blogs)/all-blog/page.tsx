@@ -5,10 +5,22 @@ import { Button } from "@/components/ui/button";
 import { useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
 import { useRouter } from "next/navigation";
 
+interface Blog {
+  id?: string;
+  _id?: string;
+  blogTitle?: string;
+  title?: string;
+  category?: string | { name?: string };
+  status?: string;
+  image?: string;
+  tags?: string[] | string;
+}
+
 export default function AllBlogPage() {
   const router = useRouter();
   const { data, isFetching } = useGetBlogsQuery(undefined);
-  const blogs: any[] = (data?.data ?? data ?? []) as any[];
+  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  const blogs: Blog[] = Array.isArray(data) ? data : [];
 
   const handleEdit = (id: string | number) => {
     router.push(`/admin/dashboard/edit-blog/${id}`);
@@ -43,10 +55,14 @@ export default function AllBlogPage() {
               <div className="text-gray-600">No blog posts found.</div>
             ) : (
               <div className="space-y-4">
-                {blogs.map((blog: any) => {
+                {blogs.map((blog: Blog) => {
                   const id = blog.id ?? blog._id;
+                  if (!id) return null;
+                  
                   const title = blog.blogTitle ?? blog.title ?? 'Untitled';
-                  const category = blog.category?.name ?? blog.category ?? 'No category';
+                  const category = typeof blog.category === 'string' 
+                    ? blog.category 
+                    : blog.category?.name ?? 'No category';
                   const status = blog.status ?? 'draft';
                   const image = blog.image;
                   const tags = Array.isArray(blog.tags) 
@@ -103,7 +119,7 @@ export default function AllBlogPage() {
                                 type="button"
                                 variant="outline"
                                 className="px-4 py-1 h-9"
-                                onClick={() => handleEdit(id)}
+                                onClick={() => handleEdit(id as string | number)}
                               >
                                 Edit
                               </Button>

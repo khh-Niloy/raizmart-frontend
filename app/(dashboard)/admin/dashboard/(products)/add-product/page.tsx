@@ -160,20 +160,20 @@ interface AttributeValueManagerProps {
 }
 
 interface VariantPreviewProps {
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
   basePrice: string;
 }
 
 interface VariantCreatorProps {
-  attributes: any[];
-  onAddVariant: (variant: any) => void;
+  attributes: ProductFormData['attributes'];
+  onAddVariant: (variant: ProductFormData['manualVariants'][number]) => void;
 }
 
 interface VariantListProps {
-  variants: any[];
-  onEditVariant: (index: number, variant: any) => void;
+  variants: ProductFormData['manualVariants'];
+  onEditVariant: (index: number, variant: ProductFormData['manualVariants'][number]) => void;
   onDeleteVariant: (index: number) => void;
-  attributes: any[];
+  attributes: ProductFormData['attributes'];
   setValue: UseFormSetValue<ProductFormData>;
 }
 
@@ -188,6 +188,7 @@ export default function AddProductPage() {
     watch,
     setValue,
   } = useForm<ProductFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
@@ -406,9 +407,9 @@ export default function AddProductPage() {
 
       // Add extra category routes
       const validAssignments = (data.categoryAssignments || [])
-        .filter((r: any) => r?.category && r?.subCategory)
+        .filter((r: ProductFormData['categoryAssignments'][number]) => r?.category && r?.subCategory)
         .filter(
-          (r: any) =>
+          (r: ProductFormData['categoryAssignments'][number]) =>
             !(
               r.category === data.category &&
               r.subCategory === data.subCategory &&
@@ -446,16 +447,44 @@ export default function AddProductPage() {
   const { data: subSubcategoriesResp, isFetching: isSubSubcategoriesLoading } =
     useGetSubSubcategoriesQuery(undefined);
 
-  const brands: any[] = (brandsResp?.data ?? brandsResp ?? []) as any[];
-  const categories: any[] = (categoriesResp?.data ??
-    categoriesResp ??
-    []) as any[];
-  const allSubcategories: any[] = (subcategoriesResp?.data ??
-    subcategoriesResp ??
-    []) as any[];
-  const allSubSubcategories: any[] = (subSubcategoriesResp?.data ??
-    subSubcategoriesResp ??
-    []) as any[];
+  interface Brand {
+    _id?: string;
+    id?: string;
+    brandName?: string;
+    name?: string;
+    [key: string]: unknown;
+  }
+
+  interface Category {
+    _id?: string;
+    id?: string;
+    name?: string;
+    [key: string]: unknown;
+  }
+
+  interface Subcategory {
+    _id?: string;
+    id?: string;
+    name?: string;
+    category?: string | { id?: string; _id?: string; [key: string]: unknown };
+    parentCategoryId?: string;
+    [key: string]: unknown;
+  }
+
+  interface SubSubcategory {
+    _id?: string;
+    id?: string;
+    name?: string;
+    subcategory?: string | { id?: string; _id?: string; [key: string]: unknown };
+    parentSubcategoryId?: string;
+    [key: string]: unknown;
+  }
+
+  // Ensure data is an array (transformResponse already extracts data, so responses should be the arrays)
+  const brands: Brand[] = Array.isArray(brandsResp) ? brandsResp : [];
+  const categories: Category[] = Array.isArray(categoriesResp) ? categoriesResp : [];
+  const allSubcategories: Subcategory[] = Array.isArray(subcategoriesResp) ? subcategoriesResp : [];
+  const allSubSubcategories: SubSubcategory[] = Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [];
 
   // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");
@@ -463,7 +492,7 @@ export default function AddProductPage() {
 
   const filteredSubcategories = React.useMemo(() => {
     if (!selectedCategoryId) return [];
-    return allSubcategories.filter((sc: any) => {
+    return allSubcategories.filter((sc: Subcategory) => {
       if (typeof sc.category === "string")
         return sc.category === selectedCategoryId;
       if (sc.category && typeof sc.category === "object") {
@@ -477,7 +506,7 @@ export default function AddProductPage() {
 
   const filteredSubSubcategories = React.useMemo(() => {
     if (!selectedSubCategoryId) return [];
-    return allSubSubcategories.filter((ssc: any) => {
+    return allSubSubcategories.filter((ssc: SubSubcategory) => {
       if (typeof ssc.subcategory === "string")
         return ssc.subcategory === selectedSubCategoryId;
       if (ssc.subcategory && typeof ssc.subcategory === "object") {
@@ -555,7 +584,7 @@ export default function AddProductPage() {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {brands.map((brand: any) => {
+                          {brands.map((brand: Brand) => {
                             const id = (brand.id ?? brand._id) as string;
                             const name = (brand.brandName ??
                               brand.name ??
@@ -719,7 +748,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((c: any) => {
+                            {categories.map((c: Category) => {
                               const id = (c.id ?? c._id) as string;
                               const name = (c.name ??
                                 c.categoryName ??
@@ -770,7 +799,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubcategories.map((sc: any) => {
+                            {filteredSubcategories.map((sc: Subcategory) => {
                               const id = (sc.id ?? sc._id) as string;
                               const name = (sc.name ??
                                 sc.subCategoryName ??
@@ -821,7 +850,7 @@ export default function AddProductPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredSubSubcategories.map((ssc: any) => {
+                            {filteredSubSubcategories.map((ssc: SubSubcategory) => {
                               const id = (ssc.id ?? ssc._id) as string;
                               const name = (ssc.name ??
                                 ssc.subSubCategoryName ??
@@ -898,8 +927,8 @@ export default function AddProductPage() {
 
                     const filteredAssignSubcategories =
                       !selectedAssignCategoryId
-                        ? ([] as any[])
-                        : allSubcategories.filter((sc: any) => {
+                        ? ([] as Subcategory[])
+                        : allSubcategories.filter((sc: Subcategory) => {
                             if (typeof sc.category === "string")
                               return sc.category === selectedAssignCategoryId;
                             if (
@@ -917,8 +946,8 @@ export default function AddProductPage() {
 
                     const filteredAssignSubSubcategories =
                       !selectedAssignSubCategoryId
-                        ? ([] as any[])
-                        : allSubSubcategories.filter((ssc: any) => {
+                        ? ([] as SubSubcategory[])
+                        : allSubSubcategories.filter((ssc: SubSubcategory) => {
                             if (typeof ssc.subcategory === "string")
                               return (
                                 ssc.subcategory === selectedAssignSubCategoryId
@@ -993,7 +1022,7 @@ export default function AddProductPage() {
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {categories.map((c: any) => {
+                                    {categories.map((c: Category) => {
                                       const id = (c.id ?? c._id) as string;
                                       const name = (c.name ??
                                         c.categoryName ??
@@ -1049,7 +1078,7 @@ export default function AddProductPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {filteredAssignSubcategories.map(
-                                      (sc: any) => {
+                                      (sc: Subcategory) => {
                                         const id = (sc.id ?? sc._id) as string;
                                         const name = (sc.name ??
                                           sc.subCategoryName ??
@@ -1100,11 +1129,18 @@ export default function AddProductPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {filteredAssignSubSubcategories.map(
-                                      (ssc: any) => {
-                                        const id = (ssc.id ??
-                                          ssc._id) as string;
-                                        const name = (ssc.name ??
-                                          ssc.subSubCategoryName ??
+                                      (ssc) => {
+                                        interface SubSubCategory {
+                                          id?: string;
+                                          _id?: string;
+                                          name?: string;
+                                          subSubCategoryName?: string;
+                                        }
+                                        const sscTyped = ssc as SubSubCategory;
+                                        const id = (sscTyped.id ??
+                                          sscTyped._id) as string;
+                                        const name = (sscTyped.name ??
+                                          sscTyped.subSubCategoryName ??
                                           "Unnamed") as string;
                                         return (
                                           <SelectItem key={id} value={id}>
@@ -1233,7 +1269,7 @@ export default function AddProductPage() {
                       const files = Array.from(e.target.files || []);
                       const current =
                         (watch("galleryImages") as unknown as File[]) || [];
-                      setValue("galleryImages", [...current, ...files] as any);
+                      setValue("galleryImages", [...current, ...files] as File[]);
                     }}
                   />
 
@@ -1258,7 +1294,7 @@ export default function AddProductPage() {
                               (watch("galleryImages") as unknown as File[]) ||
                               [];
                             const updated = current.filter((_, i) => i !== idx);
-                            setValue("galleryImages", updated as any);
+                            setValue("galleryImages", updated as File[]);
                           }}
                         >
                           <X className="h-3 w-3" />
@@ -1375,7 +1411,7 @@ export default function AddProductPage() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    Use this when you don't need attributes/variants.
+                    Use this when you don&apos;t need attributes/variants.
                   </p>
                 </div>
               );
@@ -1862,11 +1898,27 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
     setDiscount("");
   };
 
+  interface AttributeValue {
+    label: string;
+    value: string;
+    colorCode?: string;
+    images?: File[];
+    isDefault?: boolean;
+  }
+
+  interface Attribute {
+    name: string;
+    type: string;
+    values: AttributeValue[];
+    isRequired?: boolean;
+    displayOrder?: number;
+  }
+
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr: Attribute) => attr.type === attrType);
     if (attribute) {
       const attrValue = attribute.values.find(
-        (val: any) => val.value === value
+        (val: AttributeValue) => val.value === value
       );
       return attrValue ? attrValue.label : value;
     }
@@ -1885,11 +1937,11 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {attributes
-            .filter((attribute: any) => attribute.name && attribute.type)
-            .map((attribute: any, index: number) => {
+            .filter((attribute: Attribute) => attribute.name && attribute.type)
+            .map((attribute: Attribute, index: number) => {
               const validValues =
                 attribute.values?.filter(
-                  (value: any) => value.value && value.value.trim() !== ""
+                  (value: AttributeValue) => value.value && value.value.trim() !== ""
                 ) || [];
 
               return (
@@ -1916,7 +1968,7 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
                     </SelectTrigger>
                     <SelectContent>
                       {validValues.length > 0 ? (
-                        validValues.map((value: any, valueIndex: number) => (
+                        validValues.map((value: AttributeValue, valueIndex: number) => (
                           <SelectItem key={valueIndex} value={value.value}>
                             {value.label}
                           </SelectItem>
@@ -2045,16 +2097,31 @@ function VariantList({
   attributes,
   setValue,
 }: VariantListProps) {
+  interface Attribute {
+    type: string;
+    name: string;
+    values: Array<{
+      label: string;
+      value: string;
+    }>;
+  }
+
   const getAttributeLabel = (attrType: string, value: string) => {
-    const attribute = attributes.find((attr: any) => attr.type === attrType);
+    const attribute = attributes.find((attr: Attribute) => attr.type === attrType);
     if (attribute) {
-      const attrValue = attribute.values.find((val: any) => val.value === value);
+      const attrValue = attribute.values.find((val: Attribute['values'][number]) => val.value === value);
       return attrValue ? attrValue.label : value;
     }
     return value;
   };
 
-  const calculateVariantPrice = (variant: any) => {
+  interface Variant {
+    price?: number | string;
+    discount?: string;
+    [key: string]: unknown;
+  }
+
+  const calculateVariantPrice = (variant: Variant) => {
     const priceVal = variant.price;
     if (typeof priceVal === "number") return priceVal;
     const priceStr = (priceVal ?? "").toString();
@@ -2062,13 +2129,13 @@ function VariantList({
     return isNumeric ? parseFloat(priceStr) : priceStr;
   };
 
-  const calculateDiscountedPrice = (variant: any) => {
+  const calculateDiscountedPrice = (variant: Variant) => {
     const priceVal = calculateVariantPrice(variant);
     if (typeof priceVal !== "number") return null;
     const priceNum = priceVal;
     const hasDiscountInput = variant.discount !== "" && variant.discount !== null && variant.discount !== undefined;
     if (!hasDiscountInput) return null;
-    const discountNum = parseFloat(variant.discount);
+    const discountNum = parseFloat(variant.discount || "0");
     if (isNaN(discountNum) || discountNum < 0 || discountNum > 100) return null;
     return priceNum * (1 - discountNum / 100);
   };
@@ -2104,7 +2171,7 @@ function VariantList({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {variants.map((variant: any, index: number) => (
+          {variants.map((variant: Variant & { id?: string; stock?: string; customPrice?: unknown }, index: number) => (
             <div key={variant.id} className="p-4 border rounded-lg space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -2141,7 +2208,7 @@ function VariantList({
                     value={variant.price ?? ''}
                     onChange={(e) => {
                       const newPrice = e.target.value;
-                      setValue(`manualVariants.${index}.price`, newPrice as any, { shouldDirty: true, shouldValidate: false });
+                      setValue(`manualVariants.${index}.price`, newPrice, { shouldDirty: true, shouldValidate: false });
                       // Recalculate discountedPrice if discount exists
                       const priceStr = newPrice.trim();
                       const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
@@ -2152,11 +2219,11 @@ function VariantList({
                         if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
                           const calc = priceNum * (1 - discountNum / 100);
                           if (Number.isFinite(calc)) {
-                            setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2) as any, { shouldDirty: true, shouldValidate: false });
+                            setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2), { shouldDirty: true, shouldValidate: false });
                           }
                         }
                       } else {
-                        setValue(`manualVariants.${index}.discountedPrice`, '' as any, { shouldDirty: true, shouldValidate: false });
+                        setValue(`manualVariants.${index}.discountedPrice`, '', { shouldDirty: true, shouldValidate: false });
                       }
                     }}
                     placeholder="e.g., 10000 or TBA"
@@ -2171,7 +2238,7 @@ function VariantList({
                     step="1"
                     value={variant.stock ?? ''}
                     onChange={(e) => {
-                      setValue(`manualVariants.${index}.stock`, e.target.value as any, { shouldDirty: true, shouldValidate: false });
+                      setValue(`manualVariants.${index}.stock`, e.target.value, { shouldDirty: true, shouldValidate: false });
                     }}
                     className="w-28"
                   />
@@ -2187,7 +2254,7 @@ function VariantList({
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v === '' || (parseFloat(v) >= 0 && parseFloat(v) <= 100)) {
-                        setValue(`manualVariants.${index}.discount`, v as any, { shouldDirty: true, shouldValidate: false });
+                        setValue(`manualVariants.${index}.discount`, v, { shouldDirty: true, shouldValidate: false });
                         // Calculate and update discountedPrice when discount changes
                         const priceStr = (variant.price ?? '').toString().trim();
                         const isNumeric = /^\d+(?:\.\d+)?$/.test(priceStr);
@@ -2197,11 +2264,11 @@ function VariantList({
                           if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
                             const calc = priceNum * (1 - discountNum / 100);
                             if (Number.isFinite(calc)) {
-                              setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2) as any, { shouldDirty: true, shouldValidate: false });
+                              setValue(`manualVariants.${index}.discountedPrice`, calc.toFixed(2), { shouldDirty: true, shouldValidate: false });
                             }
                           }
                         } else {
-                          setValue(`manualVariants.${index}.discountedPrice`, '' as any, { shouldDirty: true, shouldValidate: false });
+                          setValue(`manualVariants.${index}.discountedPrice`, '', { shouldDirty: true, shouldValidate: false });
                         }
                       }
                     }}
@@ -2218,7 +2285,7 @@ function VariantList({
                       if (calc !== null) return calc.toFixed(2);
                       const dp = variant.discountedPrice;
                       if (dp === undefined || dp === null || dp === '') return '';
-                      const n = parseFloat(dp);
+                      const n = parseFloat(typeof dp === 'string' ? dp : String(dp || '0'));
                       return Number.isFinite(n) ? n.toFixed(2) : '';
                     })()}
                     placeholder="Auto-calculated or saved"

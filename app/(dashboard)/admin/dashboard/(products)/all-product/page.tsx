@@ -14,11 +14,8 @@ import {
   Search,
   Plus,
   Edit,
-  Trash2,
-  Eye,
   Star,
   StarOff,
-  Filter,
   MoreHorizontal,
   Package,
   Tag,
@@ -97,10 +94,12 @@ export default function AllProductPage() {
   >("all");
 
   const {
-    data: products = [],
+    data: productsData,
     isLoading,
-    error,
   } = useGetProductsQuery(undefined);
+  
+  // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
+  const products: Product[] = Array.isArray(productsData) ? productsData : [];
   const [toggleFeatured, { isLoading: isTogglingFeatured }] =
     useToggleFeaturedMutation();
   const [updateProduct, { isLoading: isUpdatingStatus }] =
@@ -135,7 +134,7 @@ export default function AllProductPage() {
       toast.success(
         `Product ${!currentStatus ? "added to" : "removed from"} featured`
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to update featured status");
     }
   };
@@ -159,19 +158,9 @@ export default function AllProductPage() {
       toast.success(
         `Product status changed to ${newStatus}`
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to update product status");
     }
-  };
-
-  const getMinPrice = (variants: Product["variants"]) => {
-    if (!variants || variants.length === 0) return 0;
-    return Math.min(...variants.map((v) => v.finalPrice));
-  };
-
-  const getMaxPrice = (variants: Product["variants"]) => {
-    if (!variants || variants.length === 0) return 0;
-    return Math.max(...variants.map((v) => v.finalPrice));
   };
 
   const getTotalStock = (variants: Product["variants"]) => {
@@ -208,22 +197,6 @@ export default function AllProductPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Error Loading Products
-            </h1>
-            <p className="text-gray-600">
-              Failed to load products. Please try again.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

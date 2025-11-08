@@ -119,7 +119,7 @@ export default function CreateSubSubCategoryPage() {
                       <SelectValue placeholder={isSubcategoriesLoading ? "Loading sub-categories..." : "Select a parent sub-category"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(subcategoriesResponse?.data ?? subcategoriesResponse ?? []).map((subcategory: any) => (
+                      {(Array.isArray(subcategoriesResponse) ? subcategoriesResponse : []).map((subcategory: { id?: string; _id?: string; name?: string; subcategoryName?: string }) => (
                         <SelectItem key={subcategory.id ?? subcategory._id} value={(subcategory.id ?? subcategory._id) as string}>
                           {subcategory.name ?? subcategory.subcategoryName ?? "Unnamed"}
                         </SelectItem>

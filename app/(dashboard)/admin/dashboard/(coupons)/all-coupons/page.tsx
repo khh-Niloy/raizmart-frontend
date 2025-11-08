@@ -10,11 +10,25 @@ import { toast } from "sonner";
 import { Edit } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 
+interface Coupon {
+  id?: string;
+  _id?: string;
+  code?: string;
+  isActive?: boolean;
+  status?: string;
+  discountType?: string;
+  discountValue?: number;
+  [key: string]: unknown;
+}
+
 export default function AllCouponsPage() {
   const { data, isFetching } = useGetCouponsQuery(undefined);
-  const allCoupons: any[] = React.useMemo(() => {
-    if (Array.isArray(data)) return data;
-    if (data && typeof data === 'object' && 'data' in data) return (data as any).data || [];
+  const allCoupons: Coupon[] = React.useMemo(() => {
+    if (Array.isArray(data)) return data as Coupon[];
+    if (data && typeof data === 'object' && 'data' in data) {
+      const dataObj = data as { data?: Coupon[] };
+      return dataObj.data || [];
+    }
     return [];
   }, [data]);
   const [updateCoupon, { isLoading: isUpdating }] = useUpdateCouponMutation();
@@ -23,15 +37,19 @@ export default function AllCouponsPage() {
   // Filter coupons based on selected status
   const coupons = React.useMemo(() => {
     if (statusFilter === "all") return allCoupons;
-    return allCoupons.filter((coupon: any) => {
+    return allCoupons.filter((coupon: Coupon) => {
       const isActive = coupon.isActive !== undefined ? coupon.isActive : (coupon.status === "active");
       return statusFilter === "active" ? isActive : !isActive;
     });
   }, [allCoupons, statusFilter]);
 
-  const handleToggle = async (c: any) => {
+  const handleToggle = async (c: Coupon) => {
     try {
       const id = c.id ?? c._id;
+      if (!id) {
+        toast.error("Invalid coupon ID");
+        return;
+      }
       const currentStatus = c.isActive !== undefined ? c.isActive : (c.status === "active");
       const newStatus = !currentStatus;
       await updateCoupon({ 
@@ -116,7 +134,7 @@ export default function AllCouponsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {coupons.map((c: any) => {
+                    {coupons.map((c: Coupon) => {
                       const id = c.id ?? c._id;
                       const type = (c.discountType ?? c.type ?? "").toString();
                       const isPercent = type.toUpperCase() === "PERCENT";
@@ -128,14 +146,14 @@ export default function AllCouponsPage() {
                           <td className="px-4 py-3 text-sm text-gray-700">{valueText}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">
                             <div className="flex flex-col">
-                              <span className="text-xs">From: {formatDate(c.startDate)}</span>
-                              <span className="text-xs">To: {formatDate(c.endDate)}</span>
+                              <span className="text-xs">From: {formatDate(c.startDate as string | undefined)}</span>
+                              <span className="text-xs">To: {formatDate(c.endDate as string | undefined)}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm">
                             {c.endDate ? (
                               <div className="inline-flex">
-                                <CountdownTimer endAt={c.endDate} darkLabels />
+                                <CountdownTimer endAt={c.endDate as string | Date} darkLabels />
                               </div>
                             ) : (
                               <span className="text-gray-500 text-xs">N/A</span>

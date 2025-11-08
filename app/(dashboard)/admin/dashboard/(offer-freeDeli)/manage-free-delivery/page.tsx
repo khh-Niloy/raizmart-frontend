@@ -23,17 +23,20 @@ interface ProductItem {
 export default function ManageFreeDeliveryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const {
-    data: products = [],
+    data: productsData,
     isLoading,
     error,
   } = useGetProductsQuery(undefined);
   const [toggleFreeDelivery, { isLoading: isToggling }] =
     useToggleFreeDeliveryMutation();
 
+  // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
+  const products: ProductItem[] = Array.isArray(productsData) ? productsData : [];
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!products || products.length === 0) return;
+    if (products.length === 0) return;
     const initial = new Set<string>();
     (products as ProductItem[]).forEach((p) => {
       if (p.isFreeDelivery) initial.add(p._id);
@@ -43,8 +46,8 @@ export default function ManageFreeDeliveryPage() {
 
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return products as ProductItem[];
-    return (products as ProductItem[]).filter((p) => {
+    if (!term) return products;
+    return products.filter((p) => {
       return (
         p.name?.toLowerCase().includes(term) ||
         p.brand?.brandName?.toLowerCase().includes(term) ||
@@ -61,7 +64,7 @@ export default function ManageFreeDeliveryPage() {
       }).unwrap();
       setSelectedIds((prev) => new Set(prev).add(product._id));
       toast.success("Set as free delivery");
-    } catch (e) {
+    } catch {
       toast.error("Failed to set free delivery");
     }
   };
@@ -78,7 +81,7 @@ export default function ManageFreeDeliveryPage() {
         return next;
       });
       toast.success("Removed from free delivery");
-    } catch (e) {
+    } catch {
       toast.error("Failed to update free delivery");
     }
   };

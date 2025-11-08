@@ -1,24 +1,63 @@
-import { baseApi } from "../../baseApi"
+import { baseApi } from "../../baseApi";
+
+interface CouponPayload {
+  code?: string;
+  discountType?: string;
+  discountValue?: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
+  status?: string;
+  usageLimit?: number;
+  usedCount?: number;
+}
+
+export interface CouponResponse {
+  _id: string;
+  code: string;
+  discountType?: string;
+  type?: string;
+  discountValue: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
+  status?: string;
+  usageLimit?: number;
+  usedCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ApiResponse<T> {
+  data?: T;
+}
 
 export const couponApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create coupon
     createCoupon: builder.mutation({
-      query: (payload) => {
+      query: (payload: CouponPayload) => {
         // Adapt frontend payload to backend schema
-        const adapted = {
+        const adapted: Record<string, unknown> = {
           ...payload,
-          discountType: (payload?.discountType ?? '').toString().toLowerCase(), // PERCENT|FIXED -> percentage|fixed
-          status: typeof payload?.isActive === 'boolean'
-            ? (payload.isActive ? 'active' : 'inactive')
-            : payload?.status,
+          discountType: (payload?.discountType ?? "").toString().toLowerCase(), // PERCENT|FIXED -> percentage|fixed
+          status:
+            typeof payload?.isActive === "boolean"
+              ? payload.isActive
+                ? "active"
+                : "inactive"
+              : payload?.status,
         };
-        delete (adapted as any).isActive;
-        return ({
-        url: "/coupons",
-        method: "POST",
-        data: adapted,
-      });
+        delete adapted.isActive;
+        return {
+          url: "/coupons",
+          method: "POST",
+          data: adapted,
+        };
       },
       invalidatesTags: ["COUPONS"],
     }),
@@ -29,14 +68,24 @@ export const couponApi = baseApi.injectEndpoints({
         url: "/coupons",
         method: "GET",
       }),
-      transformResponse: (response: any) => {
-        const items = (response?.data ?? response) as any[];
+      transformResponse: (response: unknown): CouponResponse[] => {
+        const apiResponse = response as
+          | ApiResponse<CouponResponse[]>
+          | CouponResponse[];
+        const items = (
+          apiResponse && "data" in apiResponse ? apiResponse.data : apiResponse
+        ) as CouponResponse[];
         if (!Array.isArray(items)) return items;
-        return items.map((c: any) => ({
+        return items.map((c: CouponResponse) => ({
           ...c,
           // Backend uses percentage|fixed and status active|inactive
-          discountType: (c?.discountType ?? c?.type ?? '').toString().toUpperCase(), // -> PERCENT|FIXED
-          isActive: typeof c?.isActive === 'boolean' ? c.isActive : (c?.status === 'active'),
+          discountType: (c?.discountType ?? c?.type ?? "")
+            .toString()
+            .toUpperCase(), // -> PERCENT|FIXED
+          isActive:
+            typeof c?.isActive === "boolean"
+              ? c.isActive
+              : c?.status === "active",
         }));
       },
       providesTags: ["COUPONS"],
@@ -48,13 +97,23 @@ export const couponApi = baseApi.injectEndpoints({
         url: `/coupons/${id}`,
         method: "GET",
       }),
-      transformResponse: (response: any) => {
-        const c = (response?.data ?? response) as any;
+      transformResponse: (response: unknown): CouponResponse | null => {
+        const apiResponse = response as
+          | ApiResponse<CouponResponse>
+          | CouponResponse;
+        const c = (
+          apiResponse && "data" in apiResponse ? apiResponse.data : apiResponse
+        ) as CouponResponse | null;
         if (!c) return c;
         return {
           ...c,
-          discountType: (c?.discountType ?? c?.type ?? '').toString().toUpperCase(),
-          isActive: typeof c?.isActive === 'boolean' ? c.isActive : (c?.status === 'active'),
+          discountType: (c?.discountType ?? c?.type ?? "")
+            .toString()
+            .toUpperCase(),
+          isActive:
+            typeof c?.isActive === "boolean"
+              ? c.isActive
+              : c?.status === "active",
         };
       },
       providesTags: ["COUPONS"],
@@ -62,30 +121,33 @@ export const couponApi = baseApi.injectEndpoints({
 
     // Update coupon
     updateCoupon: builder.mutation({
-      query: ({ id, data }: { id: string; data: any }) => {
+      query: ({ id, data }: { id: string; data: Partial<CouponPayload> }) => {
         // Adapt frontend payload to backend schema (all fields optional)
-        const adapted: any = { ...data };
-        
+        const adapted: Record<string, unknown> = { ...data };
+
         // Transform discountType if provided (PERCENT|FIXED -> percentage|fixed)
         if (adapted.discountType !== undefined) {
-          adapted.discountType = adapted.discountType.toString().toLowerCase();
+          adapted.discountType = adapted.discountType?.toString().toLowerCase();
         }
-        
+
         // Transform isActive to status if provided
-        if (typeof adapted.isActive === 'boolean') {
-          adapted.status = adapted.isActive ? 'active' : 'inactive';
+        if (typeof adapted.isActive === "boolean") {
+          adapted.status = adapted.isActive ? "active" : "inactive";
           delete adapted.isActive;
-        } else if (adapted.isActive === undefined && adapted.status === undefined) {
+        } else if (
+          adapted.isActive === undefined &&
+          adapted.status === undefined
+        ) {
           // If neither isActive nor status is provided, don't include status
         }
-        
+
         // Remove undefined values to send only provided fields
-        Object.keys(adapted).forEach(key => {
+        Object.keys(adapted).forEach((key) => {
           if (adapted[key] === undefined) {
             delete adapted[key];
           }
         });
-        
+
         return {
           url: `/coupons/${id}`,
           method: "PATCH",
@@ -114,7 +176,7 @@ export const couponApi = baseApi.injectEndpoints({
       invalidatesTags: ["COUPONS"],
     }),
   }),
-})
+});
 
 export const {
   useCreateCouponMutation,
@@ -123,6 +185,4 @@ export const {
   useUpdateCouponMutation,
   useToggleCouponStatusMutation,
   useDeleteCouponMutation,
-} = couponApi
-
-
+} = couponApi;

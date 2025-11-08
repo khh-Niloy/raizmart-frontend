@@ -1,26 +1,25 @@
 import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import React from "react";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useLocalCart } from "@/hooks/useLocalCart";
-import { useRouter } from "next/navigation";
 import { useAuthGate } from "@/hooks/useAuthGate";
 
 export default function WishList() {
   const { items, count, remove, clear } = useLocalWishlist();
   const { addItem, has } = useLocalCart();
-  const router = useRouter();
   const { requireAuth } = useAuthGate();
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
     const onCloseAll = () => setIsOpen(false);
     if (typeof window !== "undefined") {
-      window.addEventListener("dialog:closeAll", onCloseAll as any);
+      window.addEventListener("dialog:closeAll", onCloseAll);
     }
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("dialog:closeAll", onCloseAll as any);
+        window.removeEventListener("dialog:closeAll", onCloseAll);
       }
     };
   }, []);
@@ -65,7 +64,7 @@ export default function WishList() {
               <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-[#02C1BE]/30 bg-[#f7fffe] text-center text-sm text-slate-500">
                 <Heart className="h-6 w-6 text-[#02C1BE]" />
                 <p className="max-w-sm px-6">
-                  You haven't saved anything yet. Explore the catalog and tap
+                  You haven&apos;t saved anything yet. Explore the catalog and tap
                   the heart icon to build your shortlist.
                 </p>
               </div>
@@ -83,7 +82,7 @@ export default function WishList() {
                     sku: it.sku,
                     selectedOptions: it.selectedOptions,
                   };
-                  const inCart = has(matcher as any);
+                  const inCart = has(matcher);
                   const canAddToCart =
                     typeof it.price === "number" && it.price > 0;
 
@@ -93,11 +92,13 @@ export default function WishList() {
                       className="group relative flex items-center gap-3 sm:gap-4 rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm transition hover:shadow-md"
                     >
                       {/* Product Image */}
-                      <div className="flex-shrink-0">
-                        <img
+                      <div className="relative flex-shrink-0 h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                        <Image
                           src={it.image || "/next.svg"}
                           alt={it.name}
-                          className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-gray-200 object-contain bg-gray-50"
+                          fill
+                          className="object-contain"
+                          unoptimized
                         />
                       </div>
 

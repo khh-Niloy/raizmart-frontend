@@ -88,7 +88,9 @@ export default function CreateBrandPage() {
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (
-                <p className="text-sm text-red-600">{(errors.image as any).message}</p>
+                <p className="text-sm text-red-600">
+                  {typeof errors.image?.message === 'string' ? errors.image.message : 'Invalid image'}
+                </p>
               )}
             </div>
 

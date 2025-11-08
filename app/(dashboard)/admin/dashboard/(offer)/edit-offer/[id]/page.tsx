@@ -65,7 +65,16 @@ export default function EditOfferPage() {
   });
   const [updateOffer, { isLoading: isSubmitting }] = useUpdateOfferMutation();
 
-  const offer = (data?.data as any) || data;
+  interface OfferData {
+    _id?: string;
+    imageUrl?: string;
+    urlLink?: string;
+    endAt?: string;
+    status?: string;
+    [key: string]: unknown;
+  }
+
+  const offer = (data && 'data' in data ? (data.data as OfferData) : (data as OfferData | undefined)) || undefined;
 
   const {
     register,
@@ -167,9 +176,10 @@ export default function EditOfferPage() {
       await updateOffer(payload).unwrap();
       toast.success("Offer updated successfully");
       router.push("/admin/dashboard/all-offer");
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const errorData = e as { data?: { message?: string }; message?: string };
       const errorMessage =
-        e?.data?.message || e?.message || "Failed to update offer";
+        errorData?.data?.message || errorData?.message || "Failed to update offer";
       toast.error(errorMessage);
     }
   };
@@ -340,10 +350,10 @@ export default function EditOfferPage() {
                 key={offer?._id || "status"} // Force re-render when offer loads
                 name="status"
                 control={control}
-                defaultValue={offer?.status || "active"}
+                defaultValue={(offer?.status || "active") as "active" | "inactive"}
                 render={({ field }) => {
                   // Ensure we always have a valid value
-                  const currentValue = field.value || offer?.status || "active";
+                  const currentValue = (field.value || offer?.status || "active") as "active" | "inactive";
                   return (
                     <Select
                       value={currentValue}
