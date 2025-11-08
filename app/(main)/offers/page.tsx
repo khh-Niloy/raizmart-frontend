@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useGetAllOffersQuery } from "@/app/redux/features/offer/offer.api";
+import { useGetAllOffersQuery, useUpdateOfferMutation } from "@/app/redux/features/offer/offer.api";
 import { Image as ImageIcon, Tag, Clock, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ function CountdownTimer({ endAt }: CountdownTimerProps) {
 
 export default function OffersPage() {
   const { data, isLoading, isError } = useGetAllOffersQuery(undefined);
+  const [updateOffer] = useUpdateOfferMutation();
   const offers = (data?.data as any[]) || [];
 
   // Helper function to check if offer is expired
@@ -83,6 +84,41 @@ export default function OffersPage() {
     const now = new Date().getTime();
     return endDate <= now;
   };
+
+  // Automatically update expired offers to inactive status
+  React.useEffect(() => {
+    if (!offers || offers.length === 0) return;
+
+    const updateExpiredOffers = async () => {
+      const expiredOffers = offers.filter((offer: any) => {
+        // Only update offers that are currently active but expired
+        return offer.status === "active" && isOfferExpired(offer.endAt);
+      });
+
+      // Update each expired offer to inactive
+      for (const offer of expiredOffers) {
+        try {
+          await updateOffer({
+            id: offer._id,
+            status: "inactive",
+            imageUrl: offer.imageUrl,
+            urlLink: offer.urlLink,
+            endAt: offer.endAt,
+          }).unwrap();
+        } catch (error) {
+          console.error(`Failed to update expired offer ${offer._id}:`, error);
+        }
+      }
+    };
+
+    // Check immediately
+    updateExpiredOffers();
+
+    // Check every minute for expired offers
+    const interval = setInterval(updateExpiredOffers, 60000);
+
+    return () => clearInterval(interval);
+  }, [offers, updateOffer]);
 
   if (isLoading) {
     return (
@@ -126,8 +162,14 @@ export default function OffersPage() {
     );
   }
 
-  // Filter to show only active offers
-  const activeOffers = offers.filter((offer: any) => offer.status === "active");
+  // Filter to show only active offers that are not expired
+  const activeOffers = offers.filter((offer: any) => {
+    // Must have status "active"
+    if (offer.status !== "active") return false;
+    // Must not be expired
+    if (isOfferExpired(offer.endAt)) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 pt-10">

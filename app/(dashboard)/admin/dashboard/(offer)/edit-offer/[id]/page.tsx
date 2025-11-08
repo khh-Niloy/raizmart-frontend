@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -72,34 +72,39 @@ export default function EditOfferPage() {
     handleSubmit,
     setValue,
     watch,
+    control,
+    reset,
     formState: { errors },
   } = useForm<UpdateOfferForm>({
     resolver: zodResolver(updateOfferSchema),
     defaultValues: {
       image: undefined,
-      imageUrl: "",
-      urlLink: "",
-      endAt: "",
-      status: undefined,
+      imageUrl: offer?.imageUrl || "",
+      urlLink: offer?.urlLink || "",
+      endAt: offer?.endAt ? isoToDatetimeLocal(offer.endAt) : "",
+      status: (offer?.status || "active") as "active" | "inactive" | undefined,
     },
   });
 
   // Watch imageUrl to handle existing image
   const imageUrl = watch("imageUrl");
 
-  // Populate form when offer data loads
+  // Populate form when offer data loads - use reset to avoid race conditions
   useEffect(() => {
     if (offer) {
-      setValue("imageUrl", offer.imageUrl || "");
-      setValue("urlLink", offer.urlLink || "");
-      setValue("endAt", isoToDatetimeLocal(offer.endAt));
-      setValue("status", offer.status || "active");
+      reset({
+        image: undefined,
+        imageUrl: offer.imageUrl || "",
+        urlLink: offer.urlLink || "",
+        endAt: isoToDatetimeLocal(offer.endAt),
+        status: (offer.status || "active") as "active" | "inactive",
+      });
       // Set preview to existing image
       if (offer.imageUrl) {
         setPreview(offer.imageUrl);
       }
     }
-  }, [offer, setValue]);
+  }, [offer, reset]);
 
   const handleImageChange = (file: File | undefined) => {
     if (file) {
@@ -331,20 +336,32 @@ export default function EditOfferPage() {
             {/* Status */}
             <div className="space-y-2">
               <Label>Status (Optional)</Label>
-              <Select
-                value={watch("status") || ""}
-                onValueChange={(value) =>
-                  setValue("status", value as "active" | "inactive")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                key={offer?._id || "status"} // Force re-render when offer loads
+                name="status"
+                control={control}
+                defaultValue={offer?.status || "active"}
+                render={({ field }) => {
+                  // Ensure we always have a valid value
+                  const currentValue = field.value || offer?.status || "active";
+                  return (
+                    <Select
+                      value={currentValue}
+                      onValueChange={(value) =>
+                        field.onChange(value as "active" | "inactive")
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  );
+                }}
+              />
               {errors.status && (
                 <p className="text-sm text-red-600">
                   {errors.status.message as string}

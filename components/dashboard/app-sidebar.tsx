@@ -210,10 +210,10 @@ const data = {
       title: "Featured Management",
       icon: Star,
       items: [
-        {
-          title: "Featured Category",
-          url: "/admin/dashboard/featured-category",
-        },
+        // {
+        //   title: "Featured Category",
+        //   url: "/admin/dashboard/featured-category",
+        // },
         {
           title: "Featured Product",
           url: "/admin/dashboard/featured-product",
@@ -258,7 +258,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <span>Home</span>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pb-20">
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>

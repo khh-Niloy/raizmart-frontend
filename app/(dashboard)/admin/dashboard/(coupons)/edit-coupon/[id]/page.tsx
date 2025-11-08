@@ -273,7 +273,7 @@ export default function EditCouponPage() {
 
             {/* Status + submit in a single row - matching create page */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label>Status</Label>
                 <div className="flex items-center gap-3">
                   <Controller
@@ -290,7 +290,7 @@ export default function EditCouponPage() {
                   <span className="text-sm text-gray-700">Active</span>
                 </div>
                 <p className="text-xs text-gray-500">Toggle to change status</p>
-              </div>
+              </div> */}
 
               <div className="flex justify-end md:justify-start">
                 <Button type="submit" disabled={isLoading || isFetching} className="px-8">

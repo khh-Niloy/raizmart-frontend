@@ -3,35 +3,44 @@
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useDeleteCouponMutation, useGetCouponsQuery, useToggleCouponStatusMutation } from "@/app/redux/features/coupon/coupon.api";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useGetCouponsQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
 
 export default function AllCouponsPage() {
   const { data, isFetching } = useGetCouponsQuery(undefined);
-  const coupons: any[] = (data?.data ?? data ?? []) as any[];
-  const [toggleStatus] = useToggleCouponStatusMutation();
-  const [deleteCoupon] = useDeleteCouponMutation();
+  const allCoupons: any[] = React.useMemo(() => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && 'data' in data) return (data as any).data || [];
+    return [];
+  }, [data]);
+  const [updateCoupon, { isLoading: isUpdating }] = useUpdateCouponMutation();
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
+
+  // Filter coupons based on selected status
+  const coupons = React.useMemo(() => {
+    if (statusFilter === "all") return allCoupons;
+    return allCoupons.filter((coupon: any) => {
+      const isActive = coupon.isActive !== undefined ? coupon.isActive : (coupon.status === "active");
+      return statusFilter === "active" ? isActive : !isActive;
+    });
+  }, [allCoupons, statusFilter]);
 
   const handleToggle = async (c: any) => {
     try {
       const id = c.id ?? c._id;
-      await toggleStatus({ id, isActive: !c.isActive }).unwrap();
-      toast.success(`Coupon ${!c.isActive ? "activated" : "deactivated"}`);
+      const currentStatus = c.isActive !== undefined ? c.isActive : (c.status === "active");
+      const newStatus = !currentStatus;
+      await updateCoupon({ 
+        id, 
+        data: { isActive: newStatus } 
+      }).unwrap();
+      toast.success(`Coupon ${newStatus ? "activated" : "deactivated"}`);
     } catch (e) {
       toast.error("Failed to update status");
-      console.error(e);
-    }
-  };
-
-  const handleDelete = async (c: any) => {
-    try {
-      const id = c.id ?? c._id;
-      await deleteCoupon(id).unwrap();
-      toast.success("Coupon deleted");
-    } catch (e) {
-      toast.error("Failed to delete coupon");
       console.error(e);
     }
   };
@@ -60,6 +69,34 @@ export default function AllCouponsPage() {
           </div>
 
           <div className="px-6 pb-6">
+            {/* Status Filter Buttons */}
+            <div className="mb-6 flex items-center gap-3">
+              <Button
+                variant={statusFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("all")}
+                className={statusFilter === "all" ? "bg-black text-white hover:bg-black/90" : ""}
+              >
+                All Status
+              </Button>
+              <Button
+                variant={statusFilter === "active" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("active")}
+                className={statusFilter === "active" ? "bg-black text-white hover:bg-black/90" : ""}
+              >
+                Active
+              </Button>
+              <Button
+                variant={statusFilter === "inactive" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("inactive")}
+                className={statusFilter === "inactive" ? "bg-black text-white hover:bg-black/90" : ""}
+              >
+                Inactive
+              </Button>
+            </div>
+
             {isFetching ? (
               <div className="text-gray-600">Loading coupons...</div>
             ) : coupons.length === 0 ? (
@@ -74,7 +111,6 @@ export default function AllCouponsPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Value</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Valid</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Ends In</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Min Order</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">Actions</th>
                     </tr>
@@ -105,37 +141,35 @@ export default function AllCouponsPage() {
                               <span className="text-gray-500 text-xs">N/A</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{c.minOrderAmount ?? 0}</td>
                           <td className="px-4 py-3 text-sm">
-                            <span className={`inline-flex px-2 py-1 rounded text-xs ${c.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"}`}>
-                              {c.isActive ? "Active" : "Inactive"}
-                            </span>
+                            {(() => {
+                              const isActive = c.isActive !== undefined ? c.isActive : (c.status === "active");
+                              return (
+                                <span className={`inline-flex px-2 py-1 rounded text-xs ${isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"}`}>
+                                  {isActive ? "Active" : "Inactive"}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3 text-sm">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggle(c)}
-                              >
-                                {c.isActive ? "Disable" : "Enable"}
-                              </Button>
+                            <div className="flex justify-end items-center gap-3">
+                              {/* Toggle Status Switch */}
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={c.isActive !== undefined ? c.isActive : (c.status === "active")}
+                                  onCheckedChange={() => handleToggle(c)}
+                                  disabled={isUpdating}
+                                />
+                                <Label className="text-sm text-gray-600 cursor-pointer" onClick={() => handleToggle(c)}>
+                                  {c.isActive !== undefined ? (c.isActive ? "Active" : "Inactive") : (c.status === "active" ? "Active" : "Inactive")}
+                                </Label>
+                              </div>
                               <Link href={`/admin/dashboard/edit-coupon/${id}`} className="cursor-pointer">
                                 <Button type="button" variant="outline" size="sm" className="px-3">
                                   <Edit className="h-4 w-4 mr-1" />
                                   Edit
                                 </Button>
                               </Link>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDelete(c)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
                             </div>
                           </td>
                         </tr>
