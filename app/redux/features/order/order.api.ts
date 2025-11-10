@@ -119,6 +119,30 @@ export const orderApi = baseApi.injectEndpoints({
       },
       providesTags: ["ORDERS"],
     }),
+    // Admin: Download orders as PDF
+    downloadOrdersPDF: builder.query<
+      Blob,
+      { startDate: string; endDate: string; sort?: string; status?: string }
+    >({
+      queryFn: async (params) => {
+        try {
+          const { axiosInstance } = await import("@/lib/axios");
+          const response = await axiosInstance.get("/orders/download-pdf", {
+            params,
+            responseType: "blob",
+          });
+          return { data: response.data as Blob };
+        } catch (error: unknown) {
+          const axiosError = error as { response?: { status?: number; data?: unknown }; message?: string };
+          return {
+            error: {
+              status: axiosError.response?.status,
+              data: axiosError.response?.data || axiosError.message,
+            },
+          };
+        }
+      },
+    }),
   }),
 });
 
@@ -129,6 +153,7 @@ export const {
   useGetOrderBySlugQuery,
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
+  useLazyDownloadOrdersPDFQuery,
 } = orderApi;
 
 

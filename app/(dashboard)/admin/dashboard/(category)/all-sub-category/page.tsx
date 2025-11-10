@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useGetSubcategoriesQuery, useGetCategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -75,11 +76,14 @@ export default function AllSubCategoryPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-gray-900 font-medium">{subName}</span>
                             {!!sc?.image && (
-                              <img
-                                src={sc?.image?.startsWith?.('http') ? sc.image : '/' + sc?.image?.replace?.(/^\/*/, '')}
-                                alt="Subcategory"
-                                className="h-7 w-7 object-contain rounded border border-gray-200 bg-white"
-                              />
+                              <div className="relative h-7 w-7">
+                                <Image
+                                  src={sc?.image?.startsWith?.('http') ? sc.image : '/' + sc?.image?.replace?.(/^\/*/, '')}
+                                  alt="Subcategory"
+                                  fill
+                                  className="object-contain rounded border border-gray-200 bg-white"
+                                />
+                              </div>
                             )}
                           </div>
                           <span className="text-xs text-gray-500">Parent: {parentLabel}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -107,12 +108,15 @@ export default function AllSubSubCategoryPage() {
                       </div>
                     </CardHeader>
                     {!!subSubCategory?.image && (
-                              <img
-                                src={subSubCategory.image}
-                                alt="Image"
-                                className="h-14 w-14 object-contain rounded border border-gray-200 bg-white ml-10"
-                              />
-                            )}
+                              <div className="relative h-14 w-14 ml-10">
+                                <Image
+                                  src={subSubCategory.image}
+                                  alt="Image"
+                                  fill
+                                  className="object-contain rounded border border-gray-200 bg-white"
+                                />
+                              </div>
+                    )}
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         <div>

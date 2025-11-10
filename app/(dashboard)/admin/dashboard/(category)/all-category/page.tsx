@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useGetCategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -45,11 +46,14 @@ export default function AllCategoryPage() {
                           {cat?.name ?? cat?.categoryName ?? "Unnamed"}
                         </span>
                         {!!cat?.image && (
-                          <img
-                            src={cat?.image}
-                            alt="Category"
-                            className="h-12 w-12 object-contain rounded border border-gray-200 bg-white"
-                          />
+                          <div className="relative h-12 w-12">
+                            <Image
+                              src={cat?.image}
+                              alt="Category"
+                              fill
+                              className="object-contain rounded border border-gray-200 bg-white"
+                            />
+                          </div>
                         )}
                       </div>
                       <div className="flex gap-2">

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   useGetCategoriesQuery,
@@ -247,11 +247,6 @@ interface AttributeValueManagerProps {
   onRemove: () => void;
   canRemove: boolean;
   existingImageUrls?: string[];
-}
-
-interface VariantPreviewProps {
-  attributes: ProductFormData['attributes'];
-  basePrice: string;
 }
 
 interface VariantCreatorProps {
@@ -2056,6 +2051,7 @@ function AttributeValueManager({
                 `attributes.${attrIndex}.values.${valueIndex}.images`
               )?.map((file: File, imageIndex: number) => (
                 <div key={imageIndex} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={URL.createObjectURL(file)}
                     alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}

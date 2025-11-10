@@ -53,8 +53,6 @@ const couponSchema = z
     { message: "Percentage discount cannot exceed 100%", path: ["discountValue"] }
   );
 
-type CouponFormData = z.infer<typeof couponSchema>;
-
 interface CouponFormInput {
   code: string;
   discountType: "PERCENT" | "FIXED";

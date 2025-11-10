@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -140,11 +141,12 @@ export default function EditSubSubCategoryPage() {
                 )}
               </div>
               {!!currentImage && (
-                <div className="flex-shrink-0 ml-2">
-                  <img
+                <div className="flex-shrink-0 ml-2 relative h-14 w-14">
+                  <Image
                     src={currentImage?.startsWith?.("http") ? currentImage : "/" + currentImage?.replace?.(/^\/*/, "")}
                     alt="Current Sub-sub-category"
-                    className="h-14 w-14 rounded border border-gray-200 object-contain"
+                    fill
+                    className="rounded border border-gray-200 object-contain"
                   />
                 </div>
               )}

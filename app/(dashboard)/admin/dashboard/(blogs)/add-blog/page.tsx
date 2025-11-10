@@ -204,6 +204,7 @@ export default function AddBlogPage() {
           </div>
           {thumbnail && (
             <div className="mt-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={URL.createObjectURL(thumbnail)}
                 alt="Thumbnail preview"

@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -188,9 +189,10 @@ export default function CategoryListing({ params }: { params: Promise<{ category
         <Link href={`/product/${product.slug}`} className="cursor-pointer block">
           {/* Product Image */}
           <div className="relative w-full h-40 sm:h-48 mb-3 bg-gray-50 rounded-xl overflow-hidden">
-            <img
+            <Image
               src={primaryImage}
               alt={product.name}
+              fill
               className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             />
           </div>

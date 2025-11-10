@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
+  useLazyDownloadOrdersPDFQuery,
 } from "@/app/redux/features/order/order.api";
 
 const formatDateInput = (d?: Date | string) => {
@@ -55,6 +56,8 @@ export default function AdminAllOrdersPage() {
     { skip: !isSearching || !searchTerm.trim() }
   );
 
+  const [downloadPDF, { isLoading: isDownloadingPDF }] = useLazyDownloadOrdersPDFQuery();
+
   useEffect(() => {
     if (isSearching) {
       refetchSearch();
@@ -71,6 +74,40 @@ export default function AdminAllOrdersPage() {
       refetchSearch();
     } else {
       refetchAll();
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!startDate || !endDate) {
+      alert("Please select both start date and end date to download PDF");
+      return;
+    }
+
+    try {
+      const result = await downloadPDF({
+        startDate,
+        endDate,
+        sort,
+        status: status || undefined,
+      }).unwrap();
+
+      // Create a blob URL and trigger download
+      const blob = new Blob([result], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `orders_${startDate}_to_${endDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'data' in error 
+        ? (error as { data?: { message?: string } }).data?.message
+        : error && typeof error === 'object' && 'message' in error
+        ? (error as { message?: string }).message
+        : undefined;
+      alert(errorMessage || "Failed to download PDF");
     }
   };
 
@@ -102,6 +139,13 @@ export default function AdminAllOrdersPage() {
           </Button>
           <Button variant="outline" onClick={refresh}>
             Refresh
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleDownloadPDF}
+            disabled={!startDate || !endDate || isDownloadingPDF}
+          >
+            {isDownloadingPDF ? "Downloading..." : "Download PDF"}
           </Button>
         </div>
       </div>
@@ -243,12 +287,12 @@ export default function AdminAllOrdersPage() {
           }
 
             return orders?.map((o: Order, idx: number) => (
-            <div
-              key={o._id}
-              className={`rounded-md border mb-4 overflow-hidden ${
-                idx % 2 === 0 ? "bg-background" : "bg-muted/10"
-              }`}
-            >
+            <div key={o._id}>
+              <div
+                className={`rounded-md border mb-4 overflow-hidden ${
+                  idx % 2 === 0 ? "bg-background" : "bg-muted/10"
+                }`}
+              >
               {/* Colored separator without extra padding */}
               {/* <div className="h-10 rounded-b-sm  w-full bg-[#02C1BE]" /> */}
 
@@ -415,6 +459,7 @@ export default function AdminAllOrdersPage() {
                           <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
                             {it.images?.[0] ||
                             it.productDetails?.images?.[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={
                                   it.images?.[0] ||
@@ -650,6 +695,10 @@ export default function AdminAllOrdersPage() {
                   </div>
                 )}
               </div>
+              </div>
+              {idx < orders.length - 1 && (
+                <div className="h-[50px] w-full" />
+              )}
             </div>
           ));
           })()}
