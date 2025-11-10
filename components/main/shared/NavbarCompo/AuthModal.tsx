@@ -319,7 +319,8 @@ export default function AuthModal({ children }: AuthModalProps) {
             {!isSignUp && (
               <div className="flex justify-end mt-2">
                 <Link
-                  href="/forgot-password"
+                  href="/forget-pass"
+                  onClick={() => setIsOpen(false)}
                   className="text-sm underline font-bold hover:text-custom/80 transition-colors duration-200 cursor-pointer"
                 >
                   Forget Password?

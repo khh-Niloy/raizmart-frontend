@@ -22,6 +22,20 @@ interface OTPPayload {
   otp: string;
 }
 
+interface ForgetPasswordCreateOTPPayload {
+  email: string;
+}
+
+interface ForgetPasswordVerifyOTPPayload {
+  email: string;
+  otp: string;
+}
+
+interface ResetPasswordPayload {
+  email: string;
+  newPassword: string;
+}
+
 interface UserInfo {
   _id: string;
   name: string;
@@ -91,8 +105,41 @@ export const authApi = baseApi.injectEndpoints({
                 method: "POST",
             }),
             invalidatesTags: ["USER"],
+        }),
+        forgetPasswordCreateOTP: builder.mutation({
+            query: (payload: ForgetPasswordCreateOTPPayload)=>({
+                url: "/forget-password/create-otp",
+                method: "POST",
+                data: payload
+            })
+        }),
+        forgetPasswordVerifyOTP: builder.mutation({
+            query: (payload: ForgetPasswordVerifyOTPPayload)=>({
+                url: "/forget-password/verify-otp",
+                method: "POST",
+                data: payload
+            })
+        }),
+        resetPassword: builder.mutation({
+            query: (payload: ResetPasswordPayload)=>({
+                url: "/auth/reset-password",
+                method: "POST",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
         })
     })
 })
 
-export const { useRegisterMutation, useLoginMutation, useChangePasswordMutation, useSendOTPMutation, useVerifyOTPMutation, useUserInfoQuery, useUseLogoutMutation } = authApi
+export const { 
+    useRegisterMutation, 
+    useLoginMutation, 
+    useChangePasswordMutation, 
+    useSendOTPMutation, 
+    useVerifyOTPMutation, 
+    useUserInfoQuery, 
+    useUseLogoutMutation,
+    useForgetPasswordCreateOTPMutation,
+    useForgetPasswordVerifyOTPMutation,
+    useResetPasswordMutation
+} = authApi
