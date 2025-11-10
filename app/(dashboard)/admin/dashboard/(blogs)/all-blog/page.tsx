@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
 import { useRouter } from "next/navigation";
@@ -77,15 +78,16 @@ export default function AllBlogPage() {
                       <div className="flex flex-col md:flex-row gap-4">
                         {/* Image */}
                         {image && (
-                          <div className="flex-shrink-0">
-                            <img
+                          <div className="flex-shrink-0 relative w-32 h-24">
+                            <Image
                               src={
                                 image.startsWith('http')
                                   ? image
                                   : `/${image.replace(/^\/*/, '')}`
                               }
-                              alt={title}
-                              className="w-32 h-24 object-cover rounded border"
+                              alt={title || 'Blog image'}
+                              fill
+                              className="object-cover rounded border"
                             />
                           </div>
                         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useGetBlogByIdQuery, useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -323,12 +324,13 @@ export default function BlogDetailPage({
             {/* Featured Image */}
             {image && (
               <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-3xl overflow-hidden shadow-[0_30px_90px_-60px_rgba(5,150,145,0.45)] border border-white/70">
-                <img
+                <Image
                   src={
                     image.startsWith("http") ? image : `/${image.replace(/^\/*/, "")}`
                   }
                   alt={title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
             )}
@@ -424,14 +426,15 @@ export default function BlogDetailPage({
                     >
                       {relatedImage && (
                         <div className="relative w-full h-48 sm:h-56 overflow-hidden bg-gray-100">
-                          <img
+                          <Image
                             src={
                               relatedImage.startsWith("http")
                                 ? relatedImage
                                 : `/${relatedImage.replace(/^\/*/, "")}`
                             }
                             alt={relatedTitle}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                           <div className="absolute top-4 left-4">
                             <span className="inline-flex items-center rounded-full bg-[#02C1BE]/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white uppercase tracking-wide">

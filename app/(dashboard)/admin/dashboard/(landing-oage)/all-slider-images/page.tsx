@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useGetSlidersQuery, useDeleteSliderMutation } from '@/app/redux/features/slider/slider.api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -101,10 +102,11 @@ export default function AllSliderImagesPage() {
               <CardContent className="space-y-4">
                 {/* Image Preview */}
                 <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={slider.imageUrl}
                     alt="Slider preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
 

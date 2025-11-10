@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -98,17 +99,15 @@ export default function EditCategoryPage() {
       const formData = new FormData();
       formData.append("name", data.name);
       formData.append("isActive", String(data.isActive));
-      let sendingImage = false;
       if (
         data.image &&
         data.image instanceof FileList &&
         data.image.length > 0
       ) {
         formData.append("image", data.image[0]);
-        sendingImage = true;
       }
 
-      const res = await updateCategory({ id: categoryId, formData }).unwrap();
+      await updateCategory({ id: categoryId, formData }).unwrap();
       toast.success("Category updated successfully!");
     } catch (error) {
       console.error("Update category failed:", error);
@@ -160,15 +159,18 @@ export default function EditCategoryPage() {
               {currentImage && (
                 <div className="mb-2">
                   {/* If backend serves absolute/relative path, may need prefix if not full URL */}
-                  <img
-                    src={
-                      currentImage.startsWith("http")
-                        ? currentImage
-                        : "/" + currentImage.replace(/^\/*/, "")
-                    }
-                    alt="Current Category"
-                    className="h-24 w-auto max-w-xs rounded border border-gray-200 object-contain"
-                  />
+                  <div className="relative h-24 w-auto max-w-xs">
+                    <Image
+                      src={
+                        currentImage.startsWith("http")
+                          ? currentImage
+                          : "/" + currentImage.replace(/^\/*/, "")
+                      }
+                      alt="Current Category"
+                      fill
+                      className="rounded border border-gray-200 object-contain"
+                    />
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">
                     Existing image. Upload below to change.
                   </div>

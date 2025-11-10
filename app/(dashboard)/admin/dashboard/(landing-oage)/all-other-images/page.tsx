@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useGetOthersImagesQuery, useDeleteOthersImageMutation } from '@/app/redux/features/other-images/other-images.api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -101,10 +102,11 @@ export default function AllOtherImagesPage() {
               <CardContent className="space-y-4">
                 {/* Image Preview */}
                 <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={othersImage.imageUrl}
                     alt="Others image preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
 

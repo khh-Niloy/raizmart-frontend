@@ -5,7 +5,7 @@ import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
 import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
-import { ProductDetailSkeleton, PageLoader } from "@/components/ui/loading";
+import { ProductDetailSkeleton } from "@/components/ui/loading";
 import { useAuthGate } from "@/hooks/useAuthGate";
 
 // Helper function to extract YouTube video ID from URL
@@ -104,21 +104,10 @@ export default function ProductDetailBySlug({
     }>;
   }>;
 
-  // Build initial selections (prefer default flags, else first option)
-  const initialSelections = React.useMemo(() => {
-    const acc: Record<string, string> = {};
-    attributes.forEach((attr) => {
-      const def = attr.values.find((v) => v.isDefault) || attr.values[0];
-      if (def)
-        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
-    });
-    return acc;
-  }, [attributes]);
-
   const [selectedByName, setSelectedByName] = React.useState<
     Record<string, string>
   >(() => {
-    // Initialize state with initial selections directly
+    // Initialize state with initial selections (prefer default flags, else first option)
     const acc: Record<string, string> = {};
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];

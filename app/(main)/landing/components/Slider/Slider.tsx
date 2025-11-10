@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useGetSlidersQuery } from '@/app/redux/features/slider/slider.api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,8 +90,8 @@ export default function Slider() {
           // console.error('❌ Image URL not accessible:', currentSlider.imageUrl);
         }
       })
-      .catch(error => {
-        // console.error('❌ Image URL fetch error:', error);
+      .catch(() => {
+        // console.error('❌ Image URL fetch error:', currentSlider.imageUrl);
       });
   }
 
@@ -98,13 +99,13 @@ export default function Slider() {
     <div className="relative w-full h-[480px] rounded-lg overflow-hidden group">
       {/* Main Slider Image */}
       <div className="relative w-full h-full">
-        <img
+        <Image
           src={currentSlider.imageUrl}
           alt={`Slider ${currentSlide + 1}`}
-          className="w-full h-full object-cover"
-          onError={(e) => {
+          fill
+          className="object-cover"
+          onError={() => {
             // console.error('❌ Image failed to load:', currentSlider.imageUrl);
-            // console.error('❌ Error details:', e);
           }}
           onLoad={() => {
             // console.log('✅ Image loaded successfully:', currentSlider.imageUrl);

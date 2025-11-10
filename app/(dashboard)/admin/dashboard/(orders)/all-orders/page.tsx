@@ -101,8 +101,13 @@ export default function AdminAllOrdersPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
-      alert(error?.data?.message || error?.message || "Failed to download PDF");
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'data' in error 
+        ? (error as { data?: { message?: string } }).data?.message
+        : error && typeof error === 'object' && 'message' in error
+        ? (error as { message?: string }).message
+        : undefined;
+      alert(errorMessage || "Failed to download PDF");
     }
   };
 
@@ -454,6 +459,7 @@ export default function AdminAllOrdersPage() {
                           <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
                             {it.images?.[0] ||
                             it.productDetails?.images?.[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={
                                   it.images?.[0] ||

@@ -132,11 +132,12 @@ export const orderApi = baseApi.injectEndpoints({
             responseType: "blob",
           });
           return { data: response.data as Blob };
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const axiosError = error as { response?: { status?: number; data?: unknown }; message?: string };
           return {
             error: {
-              status: error.response?.status,
-              data: error.response?.data || error.message,
+              status: axiosError.response?.status,
+              data: axiosError.response?.data || axiosError.message,
             },
           };
         }

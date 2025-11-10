@@ -293,7 +293,7 @@ export default function ForgetPasswordPage() {
             </button>
             <div className="text-center">
               <span className="text-gray-600 text-sm">
-                Didn't receive code?{" "}
+                Didn&apos;t receive code?{" "}
               </span>
               {resendCooldown > 0 ? (
                 <span className="text-gray-500 text-sm font-semibold">

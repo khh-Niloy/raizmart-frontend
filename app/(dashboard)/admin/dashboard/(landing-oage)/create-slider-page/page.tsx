@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Upload, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateSlidersMutation } from "@/app/redux/features/slider/slider.api";
 
@@ -36,7 +36,6 @@ export default function CreateSliderPagePage() {
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<SliderPageForm>({
@@ -127,7 +126,7 @@ export default function CreateSliderPagePage() {
       const redirectUrls = data.sliderImages.map(slider => slider.link || '');
 
       // Use RTK Query mutation
-      const result = await createSliders({
+      await createSliders({
         images,
         redirectUrls
       }).unwrap();
@@ -254,6 +253,7 @@ export default function CreateSliderPagePage() {
                 <div className="space-y-2">
                   <Label>Preview</Label>
                   <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={previewImages[index]}
                       alt="Preview"

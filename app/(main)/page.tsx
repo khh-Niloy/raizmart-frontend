@@ -5,7 +5,7 @@ import WhyChooseUs from "@/components/main/landing/whyChooseUs/WhyChooseUs";
 import FeaturedProducts from "@/components/main/landing/FeaturedProducts/FeaturedProducts";
 import BrandProducts from "@/components/main/landing/BrandProducts/BrandProducts";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Sparkles, Clock4, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (

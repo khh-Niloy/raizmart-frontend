@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   useGetCategoriesQuery,
@@ -159,11 +159,6 @@ interface AttributeValueManagerProps {
   canRemove: boolean;
 }
 
-interface VariantPreviewProps {
-  attributes: ProductFormData['attributes'];
-  basePrice: string;
-}
-
 interface VariantCreatorProps {
   attributes: ProductFormData['attributes'];
   onAddVariant: (variant: ProductFormData['manualVariants'][number]) => void;
@@ -171,7 +166,6 @@ interface VariantCreatorProps {
 
 interface VariantListProps {
   variants: ProductFormData['manualVariants'];
-  onEditVariant: (index: number, variant: ProductFormData['manualVariants'][number]) => void;
   onDeleteVariant: (index: number) => void;
   attributes: ProductFormData['attributes'];
   setValue: UseFormSetValue<ProductFormData>;
@@ -227,7 +221,6 @@ export default function AddProductPage() {
     fields: manualVariantFields,
     append: appendManualVariant,
     remove: removeManualVariant,
-    update: updateManualVariant,
   } = useFieldArray({
     control,
     name: "manualVariants",
@@ -1212,7 +1205,6 @@ export default function AddProductPage() {
             {/* Variant List */}
             <VariantList
               variants={manualVariantFields}
-              onEditVariant={updateManualVariant}
               onDeleteVariant={removeManualVariant}
               attributes={watch("attributes")}
               setValue={setValue}
@@ -1806,6 +1798,7 @@ function AttributeValueManager({
                 `attributes.${attrIndex}.values.${valueIndex}.images`
               )?.map((file: File, imageIndex: number) => (
                 <div key={imageIndex} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={URL.createObjectURL(file)}
                     alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}
@@ -2092,7 +2085,6 @@ function VariantCreator({ attributes, onAddVariant }: VariantCreatorProps) {
 // Variant List Component
 function VariantList({
   variants,
-  onEditVariant,
   onDeleteVariant,
   attributes,
   setValue,
