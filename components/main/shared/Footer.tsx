@@ -63,23 +63,22 @@ export default function Footer() {
             </div>
             <div className="flex items-center gap-3 mt-5">
               <Link
-                href="#"
+                href="https://www.facebook.com/share/1CubAbVr45/?mibextid=wwXIfr"
                 className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <Facebook className="w-5 h-5" />
               </Link>
               <Link
-                href="#"
+                href="https://www.instagram.com/raiz_mart?igsh=bjF0cDl6aHZ2MjB4&utm_source=qr"
                 className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <Instagram className="w-5 h-5" />
               </Link>
-              <Link
-                href="#"
-                className="w-9 h-9 rounded-xl border border-gray-200 hover:border-[#02C1BE] hover:bg-[#02C1BE]/5 text-gray-600 hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <Linkedin className="w-5 h-5" />
-              </Link>
+              
             </div>
           </div>
 

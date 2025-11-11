@@ -6,11 +6,20 @@ import {
   useToggleFeaturedMutation,
   useUpdateProductMutation,
   useToggleTrendingMutation,
+  useDeleteProductMutation,
 } from "@/app/redux/features/product/product.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Search,
   Plus,
@@ -25,6 +34,7 @@ import {
   CheckCircle,
   TrendingUp,
   TrendingDown,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -96,6 +106,8 @@ export default function AllProductPage() {
   const [featuredFilter, setFeaturedFilter] = useState<
     "all" | "featured" | "not-featured"
   >("all");
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const {
     data: productsData,
@@ -110,6 +122,8 @@ export default function AllProductPage() {
     useToggleTrendingMutation();
   const [updateProduct, { isLoading: isUpdatingStatus }] =
     useUpdateProductMutation();
+  const [deleteProduct, { isLoading: isDeleting }] =
+    useDeleteProductMutation();
 
   // Filter products based on search and filters
   const filteredProducts = products.filter((product: Product) => {
@@ -183,6 +197,23 @@ export default function AllProductPage() {
       );
     } catch {
       toast.error("Failed to update product status");
+    }
+  };
+
+  const openDeleteDialog = (product: Product) => {
+    setProductToDelete(product);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete?._id) return;
+    try {
+      await deleteProduct(productToDelete._id).unwrap();
+      toast.success("Product deleted successfully");
+      setIsDeleteOpen(false);
+      setProductToDelete(null);
+    } catch {
+      toast.error("Failed to delete product");
     }
   };
 
@@ -472,6 +503,14 @@ export default function AllProductPage() {
                               </>
                             )}
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => openDeleteDialog(product)}
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Product
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -533,6 +572,37 @@ export default function AllProductPage() {
           )}
         </div>
       </div>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {productToDelete?.name ?? "this product"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

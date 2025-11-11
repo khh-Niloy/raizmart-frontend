@@ -97,6 +97,15 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ["PRODUCTS"],
     }),
 
+    // Delete Product (soft delete -> set inactive)
+    deleteProduct: builder.mutation({
+      query: (id: string) => ({
+        url: `/products/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
     // Toggle Free Delivery Status
     toggleFreeDelivery: builder.mutation({
       query: ({ id, isFreeDelivery }: { id: string; isFreeDelivery: boolean }) => ({
@@ -186,6 +195,7 @@ export const {
   useGetTrendingProductsQuery,
   useGetProductByIdQuery,
   useUpdateProductMutation,
+  useDeleteProductMutation,
   useToggleFeaturedMutation,
   useToggleTrendingMutation,
   useToggleFreeDeliveryMutation,
