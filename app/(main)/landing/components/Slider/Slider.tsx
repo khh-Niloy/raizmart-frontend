@@ -15,7 +15,7 @@ export default function Slider() {
   // console.log('Slider loading:', isLoading);
   // console.log('Slider error:', error);
 
-  const sliders = data?.data || [];
+  const sliders = data || [];
   
   // Filter only active sliders
   interface Slider {
