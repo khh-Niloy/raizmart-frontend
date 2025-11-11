@@ -17,6 +17,12 @@ interface ChangePasswordPayload {
   newPassword: string;
 }
 
+interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface OTPPayload {
   email: string;
   otp: string;
@@ -127,6 +133,14 @@ export const authApi = baseApi.injectEndpoints({
                 data: payload
             }),
             invalidatesTags: ["USER"],
+        }),
+        updateUser: builder.mutation({
+            query: (payload: UpdateUserPayload)=>({
+                url: "/user/me",
+                method: "PATCH",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
         })
     })
 })
@@ -141,5 +155,6 @@ export const {
     useUseLogoutMutation,
     useForgetPasswordCreateOTPMutation,
     useForgetPasswordVerifyOTPMutation,
-    useResetPasswordMutation
+    useResetPasswordMutation,
+    useUpdateUserMutation
 } = authApi

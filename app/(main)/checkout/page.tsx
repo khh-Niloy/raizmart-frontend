@@ -186,7 +186,7 @@ export default function CheckoutPage() {
         <Link href="/" className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer">&lt; Back</Link>
         <h1 className="text-3xl font-semibold mt-2">Checkout &amp; Confirm Order</h1>
         <div className="mt-3 bg-orange-100 text-orange-700 text-sm rounded-xl px-4 py-3 inline-block">
-          অর্ডার সংক্রান্ত যেকোনো প্রয়োজনে কথা বলুন আমাদের কাস্টমার সার্ভিস প্রতিনিধি সাথে - 09678148148
+          অর্ডার সংক্রান্ত যেকোনো প্রয়োজনে কথা বলুন আমাদের কাস্টমার সার্ভিস প্রতিনিধির সাথে - 01601560955
         </div>
       </div>
 

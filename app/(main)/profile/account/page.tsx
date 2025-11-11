@@ -2,7 +2,11 @@
 
 import React, { useState } from "react";
 import { Edit } from "lucide-react";
-import { useUserInfoQuery, useChangePasswordMutation } from "@/app/redux/features/auth/auth.api";
+import {
+  useUserInfoQuery,
+  useChangePasswordMutation,
+  useUpdateUserMutation,
+} from "@/app/redux/features/auth/auth.api";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +26,20 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [open, setOpen] = useState(false);
   const [changePassword, { isLoading }] = useChangePasswordMutation();
+  
+  // Edit name state
+  const [nameOpen, setNameOpen] = useState(false);
+  const [name, setName] = useState("");
+  
+  // Edit email state
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  
+  // Edit phone state
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  
+  const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +54,86 @@ export default function AccountPage() {
       setNewPassword("");
       setOpen(false);
     } catch (error: unknown) {
-      const errorData = error as { data?: { message?: string }; message?: string };
-      const message = errorData?.data?.message || errorData?.message || "Failed to update password";
+      const errorData = error as {
+        data?: { message?: string };
+        message?: string;
+      };
+      const message =
+        errorData?.data?.message ||
+        errorData?.message ||
+        "Failed to update password";
+      toast.error(message);
+    }
+  };
+
+  const handleUpdateName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!name.trim()) {
+        toast.error("Please enter a name");
+        return;
+      }
+      await updateUser({ name: name.trim() }).unwrap();
+      toast.success("Name updated successfully");
+      setName("");
+      setNameOpen(false);
+    } catch (error: unknown) {
+      const errorData = error as {
+        data?: { message?: string };
+        message?: string;
+      };
+      const message =
+        errorData?.data?.message ||
+        errorData?.message ||
+        "Failed to update name";
+      toast.error(message);
+    }
+  };
+
+  const handleUpdateEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!email.trim()) {
+        toast.error("Please enter an email");
+        return;
+      }
+      await updateUser({ email: email.trim() }).unwrap();
+      toast.success("Email updated successfully");
+      setEmail("");
+      setEmailOpen(false);
+    } catch (error: unknown) {
+      const errorData = error as {
+        data?: { message?: string };
+        message?: string;
+      };
+      const message =
+        errorData?.data?.message ||
+        errorData?.message ||
+        "Failed to update email";
+      toast.error(message);
+    }
+  };
+
+  const handleUpdatePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!phone.trim()) {
+        toast.error("Please enter a phone number");
+        return;
+      }
+      await updateUser({ phone: phone.trim() }).unwrap();
+      toast.success("Phone updated successfully");
+      setPhone("");
+      setPhoneOpen(false);
+    } catch (error: unknown) {
+      const errorData = error as {
+        data?: { message?: string };
+        message?: string;
+      };
+      const message =
+        errorData?.data?.message ||
+        errorData?.message ||
+        "Failed to update phone";
       toast.error(message);
     }
   };
@@ -45,10 +141,13 @@ export default function AccountPage() {
   return (
     <section className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">Profile</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+          Profile
+        </p>
         <h1 className="text-3xl font-bold text-slate-900">Account Details</h1>
         <p className="text-sm text-slate-500">
-          Update your personal information and keep your security preferences up to date.
+          Update your personal information and keep your security preferences up
+          to date.
         </p>
       </header>
 
@@ -57,27 +156,153 @@ export default function AccountPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-500">Name</p>
-              <p className="text-lg font-semibold text-slate-900">{userInfo?.name || "Hasib Hossain Niloy"}</p>
+              <p className="text-lg font-semibold text-slate-900">
+                {userInfo?.name || "update your name"}
+              </p>
             </div>
-            <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-[#02C1BE]/30 hover:text-[#02C1BE]">
-              <Edit className="h-4 w-4" />
-              Edit
-            </button>
+            <Dialog open={nameOpen} onOpenChange={setNameOpen}>
+              <DialogTrigger asChild>
+                <button 
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-[#02C1BE]/30 hover:text-[#02C1BE]"
+                  onClick={() => setName(userInfo?.name || "")}
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Update Name</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleUpdateName} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      required
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      className="w-full sm:w-auto"
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? "Updating..." : "Save"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">Email</p>
-              <p className="mt-2 text-sm font-medium text-slate-800">
-                {userInfo?.email || "khhniloy0@gmail.com"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Phone</p>
-              <p className="mt-2 text-sm font-medium text-slate-600">
-                {userInfo?.phone || "Not provided"}
-              </p>
-            </div>
+            {userInfo?.email && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+                      Email
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-800">
+                      {userInfo?.email}
+                    </p>
+                  </div>
+                  <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+                    <DialogTrigger asChild>
+                      <button
+                        className="ml-2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#02C1BE]"
+                        onClick={() => setEmail(userInfo?.email || "")}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Update Email</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleUpdateEmail} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Enter your email"
+                            required
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="submit"
+                            className="w-full sm:w-auto"
+                            disabled={isUpdating}
+                          >
+                            {isUpdating ? "Updating..." : "Save"}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+            )}
+            {userInfo?.phone && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
+                      Phone
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-800">
+                      {userInfo?.phone}
+                    </p>
+                  </div>
+                  <Dialog open={phoneOpen} onOpenChange={setPhoneOpen}>
+                    <DialogTrigger asChild>
+                      <button
+                        className="ml-2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#02C1BE]"
+                        onClick={() => setPhone(userInfo?.phone || "")}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Update Phone</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleUpdatePhone} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="Enter your phone number"
+                            required
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="submit"
+                            className="w-full sm:w-auto"
+                            disabled={isUpdating}
+                          >
+                            {isUpdating ? "Updating..." : "Save"}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -122,7 +347,11 @@ export default function AccountPage() {
                     />
                   </div>
                   <DialogFooter>
-                    <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                    <Button
+                      type="submit"
+                      className="w-full sm:w-auto"
+                      disabled={isLoading}
+                    >
                       {isLoading ? "Updating..." : "Save"}
                     </Button>
                   </DialogFooter>
