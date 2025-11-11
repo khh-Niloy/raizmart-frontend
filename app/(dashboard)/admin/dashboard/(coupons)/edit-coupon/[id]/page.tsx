@@ -19,7 +19,7 @@ const couponSchema = z
       .string()
       .optional()
       .transform((v) => v ? v.trim().toUpperCase() : v),
-    discountType: z.enum(["PERCENT", "FIXED"]).optional(),
+    discountType: z.enum(["PERCENT", "FIXED", "FREE_DELIVERY"]).optional(),
     discountValue: z
       .union([z.string(), z.number()])
       .optional()
@@ -58,6 +58,16 @@ const couponSchema = z
       return true;
     },
     { message: "Percentage discount cannot exceed 100%", path: ["discountValue"] }
+  )
+  .refine(
+    (data) => {
+      // FREE_DELIVERY should have discountValue of 0 or undefined
+      if (data.discountType === "FREE_DELIVERY" && data.discountValue !== undefined) {
+        return Number(data.discountValue) === 0;
+      }
+      return true;
+    },
+    { message: "FREE_DELIVERY coupons should have discountValue of 0", path: ["discountValue"] }
   );
 
 type CouponFormData = z.infer<typeof couponSchema>;
@@ -114,7 +124,7 @@ export default function EditCouponPage() {
       if (coupon.code) setValue("code", coupon.code);
       if (coupon.discountType || coupon.type) {
         const discountType = (coupon.discountType ?? coupon.type ?? "PERCENT").toString().toUpperCase();
-        setValue("discountType", discountType as "PERCENT" | "FIXED");
+        setValue("discountType", discountType as "PERCENT" | "FIXED" | "FREE_DELIVERY");
       }
       if (coupon.discountValue !== undefined) {
         setValue("discountValue", Number(coupon.discountValue));
@@ -144,8 +154,12 @@ export default function EditCouponPage() {
       }
       if (data.discountType !== undefined) {
         payload.discountType = data.discountType;
+        // For FREE_DELIVERY, set discountValue to 0
+        if (data.discountType === "FREE_DELIVERY") {
+          payload.discountValue = 0;
+        }
       }
-      if (data.discountValue !== undefined && data.discountValue !== null) {
+      if (data.discountValue !== undefined && data.discountValue !== null && data.discountType !== "FREE_DELIVERY") {
         if (typeof data.discountValue === 'string' && data.discountValue !== "") {
           payload.discountValue = Number(data.discountValue);
         } else if (typeof data.discountValue === 'number') {
@@ -233,6 +247,7 @@ export default function EditCouponPage() {
                       <SelectContent>
                         <SelectItem value="PERCENT">Percentage (%)</SelectItem>
                         <SelectItem value="FIXED">Fixed amount</SelectItem>
+                        <SelectItem value="FREE_DELIVERY">Free Delivery</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -242,17 +257,30 @@ export default function EditCouponPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Discount Value</Label>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  min="0" 
-                  {...register("discountValue")} 
-                  disabled={isFetching}
-                  defaultValue={coupon?.discountValue || ""}
+                <Controller
+                  control={control}
+                  name="discountType"
+                  render={({ field: typeField }) => (
+                    <>
+                      <Label>Discount Value</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        min="0" 
+                        {...register("discountValue")} 
+                        disabled={isFetching || typeField.value === "FREE_DELIVERY"}
+                        defaultValue={coupon?.discountValue || ""}
+                        placeholder={typeField.value === "FREE_DELIVERY" ? "Not required for Free Delivery" : ""}
+                      />
+                      {errors.discountValue && <p className="text-sm text-red-600">{errors.discountValue.message}</p>}
+                      <p className="text-xs text-gray-500">
+                        {typeField.value === "FREE_DELIVERY" 
+                          ? "Free Delivery coupons don't require a discount value" 
+                          : "Leave empty to keep current value"}
+                      </p>
+                    </>
+                  )}
                 />
-                {errors.discountValue && <p className="text-sm text-red-600">{errors.discountValue.message}</p>}
-                <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
 
               <div className="space-y-2">
