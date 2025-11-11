@@ -5,6 +5,7 @@ import {
   useGetProductsQuery,
   useToggleFeaturedMutation,
   useUpdateProductMutation,
+  useToggleTrendingMutation,
 } from "@/app/redux/features/product/product.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,8 @@ import {
   Calendar,
   XCircle,
   CheckCircle,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,6 +83,7 @@ interface Product {
   }>;
   status: "active" | "inactive";
   isFeatured: boolean;
+  isTrending?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,6 +106,8 @@ export default function AllProductPage() {
   const products: Product[] = Array.isArray(productsData) ? productsData : [];
   const [toggleFeatured, { isLoading: isTogglingFeatured }] =
     useToggleFeaturedMutation();
+  const [toggleTrending, { isLoading: isTogglingTrending }] =
+    useToggleTrendingMutation();
   const [updateProduct, { isLoading: isUpdatingStatus }] =
     useUpdateProductMutation();
 
@@ -136,6 +142,23 @@ export default function AllProductPage() {
       );
     } catch {
       toast.error("Failed to update featured status");
+    }
+  };
+
+  const handleToggleTrending = async (
+    productId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      await toggleTrending({
+        id: productId,
+        isTrending: !currentStatus,
+      }).unwrap();
+      toast.success(
+        `Product ${!currentStatus ? "added to" : "removed from"} trending`
+      );
+    } catch {
+      toast.error("Failed to update trending status");
     }
   };
 
@@ -357,6 +380,15 @@ export default function AllProductPage() {
                               Featured
                             </Badge>
                           )}
+                          {product.isTrending && (
+                            <Badge
+                              variant="outline"
+                              className="text-orange-600 border-orange-600"
+                            >
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              Trending
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <DropdownMenu>
@@ -393,6 +425,27 @@ export default function AllProductPage() {
                               <>
                                 <Star className="h-4 w-4 mr-2" />
                                 Add to Featured
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleToggleTrending(
+                                product._id,
+                                !!product.isTrending
+                              )
+                            }
+                            disabled={isTogglingTrending}
+                          >
+                            {product.isTrending ? (
+                              <>
+                                <TrendingDown className="h-4 w-4 mr-2" />
+                                Remove from Trending
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-4 w-4 mr-2" />
+                                Add to Trending
                               </>
                             )}
                           </DropdownMenuItem>

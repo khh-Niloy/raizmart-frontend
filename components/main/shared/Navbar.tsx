@@ -191,7 +191,7 @@ export default function Navbar() {
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center group cursor-pointer">
                 <span suppressHydrationWarning>
-                  <Image src="/logo.png" alt="RaizMart" width={90} height={90} />
+                  <Image src="/logo.png" alt="RaizMart" width={90} height={90} suppressHydrationWarning />
                 </span>
               </Link>
             </div>
@@ -316,6 +316,7 @@ export default function Navbar() {
                     height={40}
                     className="h-10 w-auto"
                     priority
+                    suppressHydrationWarning
                   />
                 </div>
               </Link>
