@@ -1,5 +1,9 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const sliderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Get all sliders
@@ -9,7 +13,10 @@ export const sliderApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["SLIDERS"],
-      transformResponse: (response: any) => response.data,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
     }),
     
     // Create sliders (bulk upload)

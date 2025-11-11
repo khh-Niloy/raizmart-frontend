@@ -23,7 +23,7 @@ export default function Slider() {
     [key: string]: unknown;
   }
 
-  const sliders = (data?.data || []) as Slider[];
+  const sliders = (data || []) as Slider[];
   
   // Filter only active sliders
   const activeSliders = sliders.filter((slider: Slider) => slider.status === 'active');

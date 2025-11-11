@@ -1,5 +1,9 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
 export const othersImagesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Get all others images
@@ -9,7 +13,10 @@ export const othersImagesApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["OTHERS_IMAGES"],
-      transformResponse: (response: any) => response.data,
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
     }),
     
     // Create others images (bulk upload)

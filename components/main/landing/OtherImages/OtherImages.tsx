@@ -12,7 +12,7 @@ export default function OtherImages() {
   // console.log('Other Images loading:', isLoading);
   // console.log('Other Images error:', error);
 
-  const othersImages = data?.data || [];
+  const othersImages = data || [];
 
   interface OtherImage {
     _id: string;
