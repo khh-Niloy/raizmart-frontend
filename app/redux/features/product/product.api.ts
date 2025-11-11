@@ -32,10 +32,36 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["PRODUCTS"],
     }),
 
+    // Get Trending Products
+    getTrendingProducts: builder.query({
+      query: () => ({
+        url: "/products/trend",
+        method: "GET",
+      }),
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
+      providesTags: ["PRODUCTS"],
+    }),
+
     // Get Featured Products
     getFeaturedProducts: builder.query({
       query: () => ({
         url: "/products/featured",
+        method: "GET",
+      }),
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
+      providesTags: ["PRODUCTS"],
+    }),
+
+    // Get New Arrivals (last 7 days)
+    getNewArrivals: builder.query({
+      query: () => ({
+        url: "/products/new-arrivals",
         method: "GET",
       }),
       transformResponse: <T,>(response: unknown): T => {
@@ -71,6 +97,15 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ["PRODUCTS"],
     }),
 
+    // Delete Product (soft delete -> set inactive)
+    deleteProduct: builder.mutation({
+      query: (id: string) => ({
+        url: `/products/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
     // Toggle Free Delivery Status
     toggleFreeDelivery: builder.mutation({
       query: ({ id, isFreeDelivery }: { id: string; isFreeDelivery: boolean }) => ({
@@ -87,6 +122,16 @@ export const productApi = baseApi.injectEndpoints({
         url: `/products/${id}/featured`,
         method: "PATCH",
         data: { isFeatured },
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
+    // Toggle Trending Status
+    toggleTrending: builder.mutation({
+      query: ({ id, isTrending }: { id: string; isTrending: boolean }) => ({
+        url: `/products/${id}/trends`,
+        method: "PATCH",
+        data: { isTrending },
       }),
       invalidatesTags: ["PRODUCTS"],
     }),
@@ -146,9 +191,13 @@ export const {
   useCreateProductMutation,
   useGetProductsQuery,
   useGetFeaturedProductsQuery,
+  useGetNewArrivalsQuery,
+  useGetTrendingProductsQuery,
   useGetProductByIdQuery,
   useUpdateProductMutation,
+  useDeleteProductMutation,
   useToggleFeaturedMutation,
+  useToggleTrendingMutation,
   useToggleFreeDeliveryMutation,
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,

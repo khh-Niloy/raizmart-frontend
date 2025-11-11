@@ -90,6 +90,7 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
       discountPercentage?: number;
       discount?: number;
       sku?: string;
+      stock?: number;
     }>;
     [key: string]: unknown;
   }
@@ -169,6 +170,7 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
     })();
     
     const finalPrice = showDiscount && discounted ? Number(discounted) : (isNumeric(basePrice) ? Number(basePrice) : 0);
+    const inStock = hasVariants ? Number(variant?.stock ?? 0) > 0 : true;
     
     const matcher = {
       productId: product?._id as string,
@@ -236,20 +238,22 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
         {/* Add to Cart Button */}
         <button
           className={`mt-3 w-full h-10 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-            inCart
+            inCart || !inStock
               ? "bg-gray-100 text-gray-500 cursor-not-allowed"
               : "bg-white hover:bg-[#02C1BE] hover:text-white hover:border-[#02C1BE] text-gray-700 border-gray-200"
           }`}
           onClick={(e) => {
             e.preventDefault();
-            if (inCart) return;
+            if (inCart || !inStock) return;
             if (!requireAuth()) return;
             addItem({ ...matcher, quantity: 1 });
           }}
-          disabled={inCart}
+          disabled={inCart || !inStock}
         >
           {inCart ? (
             "Added to Cart"
+          ) : !inStock ? (
+            "Unavailable"
           ) : (
             <>
               <ShoppingCart className="w-4 h-4" />

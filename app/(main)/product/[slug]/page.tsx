@@ -7,6 +7,8 @@ import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
 import { ProductDetailSkeleton } from "@/components/ui/loading";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { useGetBrandProductsQuery } from "@/app/redux/features/brand/brand.api";
+import { toast } from "sonner";
 
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
@@ -78,6 +80,18 @@ export default function ProductDetailBySlug({
 
   // Sync cart and wishlist prices when product data changes
   useSyncProductPrices(product?._id, product as unknown as ProductData);
+
+  // Fetch related products by same brand (exclude current product)
+  const brandName =
+    ((product?.brand as { name?: string })?.name as string | undefined) || undefined;
+  const {
+    data: brandProductsData,
+    isLoading: isBrandLoading,
+    isError: isBrandError,
+  } = useGetBrandProductsQuery(
+    { brand: brandName as string, page: 1, limit: 12, sort: "newest" },
+    { skip: !brandName }
+  );
 
   // Prepare attributes/options
   const attributes = (product?.attributes ?? []) as Array<{
@@ -697,6 +711,30 @@ export default function ProductDetailBySlug({
                 }
               }, [selectedVariant, variants, product]);
 
+              // Variant-wise stock handling
+              const stockInfo = React.useMemo(() => {
+                const hasVariants = Array.isArray(variants) && variants.length > 0;
+                const sv = selectedVariant;
+                const stockCount = hasVariants
+                  ? Number(sv?.stock ?? 0)
+                  : Number((product as unknown as { stock?: number })?.stock ?? 0);
+                return {
+                  hasVariants,
+                  stockCount: Number.isFinite(stockCount) ? Math.max(0, stockCount) : 0,
+                };
+              }, [selectedVariant, variants, product]);
+
+              const inStock = stockInfo.stockCount > 0;
+              const maxQty = stockInfo.stockCount || 0;
+
+              // Ensure qty respects current stock when variant/product changes
+              React.useEffect(() => {
+                setQty((prev) => {
+                  if (!inStock) return 1; // keep UI simple when OOS
+                  return Math.min(Math.max(1, prev), maxQty);
+                });
+              }, [inStock, maxQty]);
+
               const matcher = {
                 productId: product?._id as string,
                 slug: product?.slug as string,
@@ -712,14 +750,14 @@ export default function ProductDetailBySlug({
               const inCart = product && selectedVariant ? has(matcher) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
-              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number';
+              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number' && inStock;
 
               const onAddToCart = () => {
                 if (!product || !selectedVariant || !canAddToCart) return;
                 if (!ensureAuth()) return;
                 addItem({
                   ...matcher,
-                  quantity: qty,
+                  quantity: Math.min(qty, maxQty),
                 });
               };
 
@@ -744,13 +782,29 @@ export default function ProductDetailBySlug({
                     <button
                       className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      disabled={!inStock || qty <= 1}
                     >
                       -
                     </button>
-                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{qty}</div>
+                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{Math.min(qty, maxQty || 1)}</div>
                     <button
                       className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
-                      onClick={() => setQty((q) => q + 1)}
+                      onClick={() => {
+                        if (!inStock) {
+                          toast.warning("Out of stock");
+                          return;
+                        }
+                        setQty((q) => {
+                          const next = q + 1;
+                          if (maxQty && next > maxQty) {
+                            toast.warning(
+                              `Only ${maxQty} ${maxQty > 1 ? "items" : "item"} available`
+                            );
+                            return maxQty;
+                          }
+                          return next;
+                        });
+                      }}
                     >
                       +
                     </button>
@@ -764,9 +818,15 @@ export default function ProductDetailBySlug({
                     }`}
                     onClick={!inCart && canAddToCart ? onAddToCart : undefined}
                     disabled={inCart || !canAddToCart}
-                    title={!canAddToCart ? "Price is TBA - Cannot add to cart" : undefined}
+                    title={
+                      !inStock
+                        ? "Out of stock - Cannot add to cart"
+                        : !canAddToCart
+                        ? "Price is TBA - Cannot add to cart"
+                        : undefined
+                    }
                   >
-                    {inCart ? "Added" : !canAddToCart ? "Price TBA" : "Add To Cart"}
+                    {inCart ? "Added" : !inStock ? "Unavailable" : !canAddToCart ? "Price TBA" : "Add To Cart"}
                   </button>
                   <button
                     className={`flex-1 sm:flex-none rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold transition ${inWishlist ? "cursor-not-allowed bg-slate-100 text-slate-400" : "hover:border-[#02C1BE]/40 hover:text-[#02C1BE]"}`}
@@ -927,6 +987,108 @@ export default function ProductDetailBySlug({
           </p>
         </div>
       </div>
+      {/* Related Products by brand */}
+      {brandName && !isBrandError && (
+        <div className="mt-10 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6">
+          <h2 className="text-2xl font-semibold text-slate-900">Related Products</h2>
+          {isBrandLoading ? (
+            <div className="mt-4 text-sm text-slate-500">Loading related products…</div>
+          ) : (() => {
+            type Item = {
+              _id?: string;
+              name?: string;
+              slug?: string;
+              status?: string;
+              images?: string[];
+              variants?: Array<{ finalPrice?: number; discountedPrice?: number }>;
+              price?: number;
+              discountedPrice?: number;
+              attributes?: Array<{
+                type?: string;
+                name?: string;
+                values?: Array<{ images?: string[] }>;
+              }>;
+            };
+            const response = (brandProductsData as any) || {};
+            const items: Item[] = Array.isArray(response)
+              ? response
+              : (response.items as Item[]) || [];
+            const filtered = (items || [])
+              .filter((p) => p && p.status === "active")
+              .filter((p) => p._id !== product?._id)
+              .slice(0, 10);
+            if (!filtered.length) {
+              return (
+                <div className="mt-3 text-sm text-slate-500">
+                  No related products found.
+                </div>
+              );
+            }
+            const getPrimaryImage = (p: Item): string => {
+              const colorAttr = (p.attributes || []).find(
+                (a) =>
+                  a?.type?.toLowerCase?.() === "color" ||
+                  a?.name?.toLowerCase?.() === "color"
+              );
+              return (
+                (colorAttr?.values?.[0]?.images?.[0] as string | undefined) ||
+                (p.images?.[0] as string | undefined) ||
+                "/next.svg"
+              );
+            };
+            const getFinalPrice = (p: Item): { final?: number; base?: number } => {
+              const v = (p.variants || [])[0];
+              const base = (v?.finalPrice || p.price) as number | undefined;
+              const disc = (v?.discountedPrice || p.discountedPrice) as
+                | number
+                | undefined;
+              const final =
+                base && disc && disc < base ? disc : base ? base : undefined;
+              return { final, base };
+            };
+            return (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {filtered.map((rp) => {
+                  const img = getPrimaryImage(rp);
+                  const { final, base } = getFinalPrice(rp);
+                  const showStrike = !!(base && final && base > final);
+                  return (
+                    <Link
+                      key={rp._id}
+                      href={`/product/${rp.slug}`}
+                      className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)]"
+                    >
+                      <div className="relative mb-3 h-40 w-full overflow-hidden rounded-xl bg-gray-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img}
+                          alt={rp.name || "Product"}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="line-clamp-2 min-h-[44px] text-sm font-medium text-gray-900">
+                        {rp.name}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        {typeof final === "number" && (
+                          <span className="text-base font-bold text-emerald-600">
+                            ৳ {final.toLocaleString()}
+                          </span>
+                        )}
+                        {showStrike && typeof base === "number" && (
+                          <span className="text-xs text-gray-400 line-through">
+                            ৳ {base.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       </main>
     </div>
   );

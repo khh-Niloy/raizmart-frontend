@@ -4,6 +4,8 @@ import React from "react";
 import WhyChooseUs from "@/components/main/landing/whyChooseUs/WhyChooseUs";
 import FeaturedProducts from "@/components/main/landing/FeaturedProducts/FeaturedProducts";
 import BrandProducts from "@/components/main/landing/BrandProducts/BrandProducts";
+import NewArrivals from "@/components/main/landing/NewArrivals/NewArrivals";
+import TrendingProducts from "@/components/main/landing/TrendingProducts/TrendingProducts";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
@@ -76,6 +78,12 @@ export default function HomePage() {
             <div className="flex flex-col gap-4 ">
               <div className="">
                 <FeaturedProducts />
+              </div>
+              <div className="">
+                <TrendingProducts />
+              </div>
+              <div className="">
+                <NewArrivals />
               </div>
               <div className="">
                 <BrandProducts />
