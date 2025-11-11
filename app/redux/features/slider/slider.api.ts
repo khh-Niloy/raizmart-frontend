@@ -9,6 +9,7 @@ export const sliderApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["SLIDERS"],
+      transformResponse: (response: any) => response.data,
     }),
     
     // Create sliders (bulk upload)

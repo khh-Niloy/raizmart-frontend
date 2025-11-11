@@ -9,6 +9,7 @@ export const othersImagesApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["OTHERS_IMAGES"],
+      transformResponse: (response: any) => response.data,
     }),
     
     // Create others images (bulk upload)
