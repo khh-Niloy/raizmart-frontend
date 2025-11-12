@@ -9,6 +9,29 @@ import TrendingProducts from "@/components/main/landing/TrendingProducts/Trendin
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
+const faqs = [
+  {
+    question: "How quickly will my order arrive?",
+    answer:
+      "Most in-stock items ship within 24 hours. Standard delivery takes 2-4 business days nationwide, and you can track every stage from your dashboard.",
+  },
+  {
+    question: "Do you offer installment or Buy Now Pay Later options?",
+    answer:
+      "Yes. At checkout you can choose from flexible payment plans powered by our banking partners, including interest-free installments on select products.",
+  },
+  {
+    question: "What is the warranty for electronics purchased on Raizmart?",
+    answer:
+      "Official brand warranties apply to all electronics. You also get our 7-day product guarantee—if there’s a manufacturing defect, we handle the replacement.",
+  },
+  {
+    question: "Can I return or exchange an item?",
+    answer:
+      "Absolutely. Initiate a return from your orders page within 7 days of delivery. Our support team will arrange pickup or drop-off based on your location.",
+  },
+];
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50">
@@ -70,7 +93,6 @@ export default function HomePage() {
             </section>
           </div>
 
-
           <div className="mx-auto w-[95%]">
             <div className="flex flex-col gap-4 ">
               <div className="">
@@ -88,9 +110,46 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14">
+          <div className=" w-[95%] mx-auto px-4 sm:px-6 lg:px-14">
             <WhyChooseUs />
           </div>
+
+          <section className=" w-[95%] mx-auto px-4 sm:px-6 lg:px-14 pb-16">
+            <div className="rounded-3xl border border-white/80 bg-white/95 p-8 shadow-[0_40px_100px_-70px_rgba(15,23,42,0.4)]">
+              <div className="max-w-3xl space-y-4">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#02C1BE]">
+                  FAQ
+                </p>
+                <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                  Answers to what shoppers ask the most
+                </h2>
+                <p className="text-base text-slate-600">
+                  We combine reliable fulfillment, flexible payments, and local
+                  support to make every purchase stress-free. Here are a few
+                  quick answers before you get started.
+                </p>
+              </div>
+
+              <div className="mt-10 grid gap-6 md:grid-cols-2">
+                {faqs.map((faq) => (
+                  <details
+                    key={faq.question}
+                    className="group rounded-2xl border border-slate-100 bg-white p-6 [summary::-webkit-details-marker]:hidden"
+                  >
+                    <summary className="flex cursor-pointer items-start justify-between gap-4 text-left text-base font-semibold text-slate-800 transition group-open:text-[#02C1BE]">
+                      {faq.question}
+                      <span className="mt-1 inline-flex h-6 w-6 flex-none items-center justify-center rounded-full border border-slate-200 text-xs font-medium text-slate-500 transition group-open:border-[#02C1BE]/40 group-open:text-[#02C1BE] group-open:rotate-45">
+                        +
+                      </span>
+                    </summary>
+                    <p className="mt-4 text-sm leading-relaxed text-slate-600">
+                      {faq.answer}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
