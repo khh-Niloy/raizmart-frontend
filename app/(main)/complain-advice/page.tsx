@@ -52,7 +52,7 @@ export default function ComplainAdvicePage() {
     <div className="relative min-h-screen bg-gradient-to-br from-[#F4FBFB] via-white to-[#FFF7F3] py-16">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-[#02C1BE]/20 via-transparent to-transparent" />
       <div className="mx-auto w-[95%] max-w-6xl">
-        <div className="mb-10 flex flex-col items-start justify-between gap-6 rounded-3xl bg-white/80 px-8 py-10 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.35)] backdrop-blur-sm sm:flex-row sm:px-12">
+        <div className="mb-10 flex flex-col items-start justify-between gap-6 rounded-3xl bg-white/80 px-8 py-10 shadow-[0_40px_120px_-60px_rgba(5,150,145,0.35)] backdrop-blur-sm sm:flex-row sm:px-12">
           <div className="max-w-2xl space-y-4">
             <p className="inline-flex items-center rounded-full bg-[#02C1BE]/10 px-4 py-1 text-sm font-medium text-[#02C1BE]">
               We are listening
@@ -89,7 +89,7 @@ export default function ComplainAdvicePage() {
         </div>
 
         <div className="w-full">
-          <div className="rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_40px_120px_-70px_rgba(15,23,42,0.35)] backdrop-blur-sm sm:p-10">
+          <div className="rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_40px_120px_-70px_rgba(5,150,145,0.35)] backdrop-blur-sm sm:p-10">
             <form className="space-y-8" onSubmit={handleSubmit}>
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">

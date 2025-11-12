@@ -10,7 +10,7 @@ export default function MainLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <main className="pt-28 md:pt-20 pb-16 md:pb-0">{children}</main>
+      <main className="pt-36 lg:pt-30 pb-16 md:pb-0">{children}</main>
       <Footer />
       <WhatsAppFloatingButton />
     </div>
