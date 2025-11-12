@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Package, ChevronRight } from "lucide-react";
+import { Package, ChevronRight, FileText, Download } from "lucide-react";
 import { useGetMyOrdersQuery } from "@/app/redux/features/order/order.api";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import { useAuthGate } from "@/hooks/useAuthGate";
@@ -62,6 +62,7 @@ interface Order {
     method?: string;
   };
   couponCode?: string;
+  invoiceUrl?: string | null;
   [key: string]: unknown;
 }
 
@@ -349,13 +350,26 @@ export default function OrdersPage() {
                         selectedOrder._id ||
                         selectedOrder.id}
                     </div>
-                    <Badge
-                      className={getStatusColor(
-                        String(selectedOrder.status || "")
+                    <div className="flex items-center gap-2">
+                      {selectedOrder?.invoiceUrl && (
+                        <a
+                          href={selectedOrder.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/20 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Invoice
+                        </a>
                       )}
-                    >
-                      {String(selectedOrder.status || "Processing")}
-                    </Badge>
+                      <Badge
+                        className={getStatusColor(
+                          String(selectedOrder.status || "")
+                        )}
+                      >
+                        {String(selectedOrder.status || "Processing")}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
@@ -547,6 +561,20 @@ export default function OrdersPage() {
                       </span>
                     </div>
                   </div>
+
+                  {selectedOrder?.invoiceUrl && (
+                    <div className="flex justify-center">
+                      <a
+                        href={selectedOrder.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#02C1BE] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_-30px_rgba(5,150,145,0.65)] transition hover:bg-[#01b1ae]"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Invoice PDF
+                      </a>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">No order selected.</div>
