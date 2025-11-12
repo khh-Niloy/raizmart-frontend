@@ -39,7 +39,12 @@ export default function AllCouponsPage() {
   const isCouponExpired = React.useCallback((coupon: Coupon): boolean => {
     if (!coupon.endDate) return false;
     try {
-      const endDate = new Date(coupon.endDate);
+      const endDateValue = coupon.endDate;
+      // Check if endDate is a valid string or number
+      if (typeof endDateValue !== 'string' && typeof endDateValue !== 'number' && !(endDateValue instanceof Date)) {
+        return false;
+      }
+      const endDate = new Date(endDateValue);
       const now = new Date();
       return endDate < now;
     } catch {

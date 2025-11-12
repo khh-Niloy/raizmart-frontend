@@ -88,11 +88,15 @@ export default function AllAdminPage() {
       setIsConfirmOpen(false);
       setAdminToUpdate(null);
       refetch();
-    } catch (error: any) {
-        console.log("error", error),
-      toast.error(
-        error?.data?.message || error?.message || "Failed to update role"
-      );
+    } catch (error: unknown) {
+      console.log("error", error);
+      const errorMessage = 
+        (error && typeof error === 'object' && 'data' in error && error.data && typeof error.data === 'object' && 'message' in error.data && typeof error.data.message === 'string')
+          ? error.data.message
+          : (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+          ? error.message
+          : "Failed to update role";
+      toast.error(errorMessage);
     }
   };
 
@@ -126,10 +130,14 @@ export default function AllAdminPage() {
       setIsModalOpen(false);
       // Refetch admins list
       refetch();
-    } catch (error: any) {
-      toast.error(
-        error?.data?.message || error?.message || "Failed to create/update admin"
-      );
+    } catch (error: unknown) {
+      const errorMessage = 
+        (error && typeof error === 'object' && 'data' in error && error.data && typeof error.data === 'object' && 'message' in error.data && typeof error.data.message === 'string')
+          ? error.data.message
+          : (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+          ? error.message
+          : "Failed to create/update admin";
+      toast.error(errorMessage);
     }
   };
 
@@ -301,7 +309,7 @@ export default function AllAdminPage() {
               <DialogHeader>
                 <DialogTitle>Add Admin</DialogTitle>
                 <DialogDescription>
-                  Create a new admin user or update an existing user's role to
+                  Create a new admin user or update an existing user&apos;s role to
                   ADMIN.
                 </DialogDescription>
               </DialogHeader>
