@@ -102,6 +102,22 @@ export const blogCategoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, arg) => ["BLOGS", { type: "BLOGS", id: arg.id }],
     }),
+
+    deleteBlogCategory: builder.mutation({
+      query: (id: string) => ({
+        url: `/blog-categories/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["BLOG_CATEGORIES"],
+    }),
+
+    deleteBlog: builder.mutation({
+      query: (id: string) => ({
+        url: `/blogs/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["BLOGS"],
+    }),
   }),
 })
 
@@ -110,8 +126,10 @@ export const {
   useGetBlogCategoriesQuery,
   useGetBlogCategoryByIdQuery,
   useUpdateBlogCategoryMutation,
+  useDeleteBlogCategoryMutation,
   useCreateBlogMutation,
   useGetBlogsQuery,
   useGetBlogByIdQuery,
-  useUpdateBlogMutation
+  useUpdateBlogMutation,
+  useDeleteBlogMutation
 } = blogCategoryApi

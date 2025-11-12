@@ -2,12 +2,11 @@
 import React from "react";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
-import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
+import { useGetProductBySlugQuery, useGetProductsBySlugsQuery } from "@/app/redux/features/product/product.api";
 import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
 import { ProductDetailSkeleton } from "@/components/ui/loading";
 import { useAuthGate } from "@/hooks/useAuthGate";
-import { useGetBrandProductsQuery } from "@/app/redux/features/brand/brand.api";
 import { toast } from "sonner";
 
 // Helper function to extract YouTube video ID from URL
@@ -40,6 +39,9 @@ export default function ProductDetailBySlug({
     video_url?: string;
     descriptionImage?: string;
     description_image?: string;
+    category?: string | { slug?: string; name?: string; [key: string]: unknown };
+    subCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
+    subSubCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
     attributes?: Array<{
       name: string;
       type: string;
@@ -81,16 +83,53 @@ export default function ProductDetailBySlug({
   // Sync cart and wishlist prices when product data changes
   useSyncProductPrices(product?._id, product as unknown as ProductData);
 
-  // Fetch related products by same brand (exclude current product)
-  const brandName =
-    ((product?.brand as { name?: string })?.name as string | undefined) || undefined;
+  // Extract category information from product
+  // Category can be an object with slug/name or a string
+  const getCategorySlug = React.useMemo(() => {
+    try {
+      if (!product) return { categorySlug: undefined, subCategorySlug: undefined, subSubCategorySlug: undefined };
+      
+      const extractSlug = (cat: unknown): string | undefined => {
+        if (!cat) return undefined;
+        if (typeof cat === 'string') return cat;
+        if (typeof cat === 'object' && cat !== null) {
+          const obj = cat as { slug?: string; name?: string; [key: string]: unknown };
+          return obj.slug || obj.name;
+        }
+        return undefined;
+      };
+
+      return {
+        categorySlug: extractSlug(product.category),
+        subCategorySlug: extractSlug(product.subCategory),
+        subSubCategorySlug: extractSlug(product.subSubCategory),
+      };
+    } catch (error) {
+      // If category extraction fails, just return undefined values
+      console.warn('Error extracting category information:', error);
+      return { categorySlug: undefined, subCategorySlug: undefined, subSubCategorySlug: undefined };
+    }
+  }, [product]);
+
+  const { categorySlug, subCategorySlug, subSubCategorySlug } = getCategorySlug;
+
+  // Fetch related products by same category hierarchy (exclude current product)
+  // Only fetch if we have at least category or subcategory
+  const hasCategoryData = !!(categorySlug || subCategorySlug);
   const {
-    data: brandProductsData,
-    isLoading: isBrandLoading,
-    isError: isBrandError,
-  } = useGetBrandProductsQuery(
-    { brand: brandName as string, page: 1, limit: 12, sort: "newest" },
-    { skip: !brandName }
+    data: relatedProductsData,
+    isLoading: isRelatedLoading,
+    isError: isRelatedError,
+  } = useGetProductsBySlugsQuery(
+    {
+      category: categorySlug,
+      subcategory: subCategorySlug,
+      subsubcategory: subSubCategorySlug,
+      page: 1,
+      limit: 12,
+      sort: "newest",
+    },
+    { skip: !product || !hasCategoryData }
   );
 
   // Prepare attributes/options
@@ -987,11 +1026,11 @@ export default function ProductDetailBySlug({
           </p>
         </div>
       </div>
-      {/* Related Products by brand */}
-      {brandName && !isBrandError && (
+      {/* Related Products by category */}
+      {hasCategoryData && !isRelatedError && (
         <div className="mt-10 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6">
           <h2 className="text-2xl font-semibold text-slate-900">Related Products</h2>
-          {isBrandLoading ? (
+          {isRelatedLoading ? (
             <div className="mt-4 text-sm text-slate-500">Loading related products…</div>
           ) : (() => {
             type Item = {
@@ -1009,7 +1048,7 @@ export default function ProductDetailBySlug({
                 values?: Array<{ images?: string[] }>;
               }>;
             };
-            const response = (brandProductsData as any) || {};
+            const response = (relatedProductsData as any) || {};
             const items: Item[] = Array.isArray(response)
               ? response
               : (response.items as Item[]) || [];

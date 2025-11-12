@@ -1,10 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
+import { useGetBlogsQuery, useDeleteBlogMutation } from "@/app/redux/features/blog-category/blog-category.api";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 interface Blog {
   id?: string;
@@ -20,11 +30,36 @@ interface Blog {
 export default function AllBlogPage() {
   const router = useRouter();
   const { data, isFetching } = useGetBlogsQuery(undefined);
+  const [deleteBlog, { isLoading: isDeleting }] = useDeleteBlogMutation();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [blogToDelete, setBlogToDelete] = useState<Blog | null>(null);
+  
   // Ensure data is an array (transformResponse already extracts data, so data should be the array)
   const blogs: Blog[] = Array.isArray(data) ? data : [];
 
   const handleEdit = (id: string | number) => {
     router.push(`/admin/dashboard/edit-blog/${id}`);
+  };
+
+  const openDeleteDialog = (blog: Blog) => {
+    setBlogToDelete(blog);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!blogToDelete) return;
+    const blogId = blogToDelete.id ?? blogToDelete._id;
+    if (!blogId) return;
+    
+    try {
+      await deleteBlog(blogId as string).unwrap();
+      toast.success("Blog deleted successfully");
+      setIsDeleteOpen(false);
+      setBlogToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete blog");
+      console.error("Delete error:", error);
+    }
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -117,14 +152,25 @@ export default function AllBlogPage() {
                               >
                                 {status}
                               </span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="px-4 py-1 h-9"
-                                onClick={() => handleEdit(id as string | number)}
-                              >
-                                Edit
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="px-4 py-1 h-9"
+                                  onClick={() => handleEdit(id as string | number)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  className="px-4 py-1 h-9"
+                                  onClick={() => openDeleteDialog(blog)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -137,6 +183,38 @@ export default function AllBlogPage() {
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Blog</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {blogToDelete?.blogTitle ?? blogToDelete?.title ?? "this blog"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

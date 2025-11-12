@@ -1,11 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
-import { useGetSubcategoriesQuery, useGetCategoriesQuery } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { useGetSubcategoriesQuery, useGetCategoriesQuery, useDeleteSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Edit } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function AllSubCategoryPage() {
   interface Subcategory {
@@ -26,6 +35,10 @@ export default function AllSubCategoryPage() {
 
   const { data, isFetching } = useGetSubcategoriesQuery(undefined);
   const { data: categoriesData, isFetching: isCatsLoading } = useGetCategoriesQuery(undefined);
+  const [deleteSubcategory, { isLoading: isDeleting }] = useDeleteSubcategoryMutation();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [subcategoryToDelete, setSubcategoryToDelete] = useState<Subcategory | null>(null);
+  
   // Ensure data is an array (transformResponse already extracts data, so data should be the array)
   const subcategories: Subcategory[] = Array.isArray(data) ? data : [];
   const categories: Category[] = React.useMemo(() => {
@@ -42,6 +55,27 @@ export default function AllSubCategoryPage() {
     });
     return map;
   }, [categories]);
+
+  const openDeleteDialog = (subcategory: Subcategory) => {
+    setSubcategoryToDelete(subcategory);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!subcategoryToDelete) return;
+    const subcategoryId = subcategoryToDelete.id ?? subcategoryToDelete._id;
+    if (!subcategoryId) return;
+    
+    try {
+      await deleteSubcategory(subcategoryId as string).unwrap();
+      toast.success("Subcategory deleted successfully");
+      setIsDeleteOpen(false);
+      setSubcategoryToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete subcategory");
+      console.error("Delete error:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -95,6 +129,16 @@ export default function AllSubCategoryPage() {
                               Edit
                             </Button>
                           </Link>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="px-4 py-1 h-9"
+                            onClick={() => openDeleteDialog(sc)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
                         </div>
                       </div>
                     </li>
@@ -105,6 +149,38 @@ export default function AllSubCategoryPage() {
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Subcategory</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {subcategoryToDelete?.name ?? subcategoryToDelete?.subCategoryName ?? "this subcategory"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

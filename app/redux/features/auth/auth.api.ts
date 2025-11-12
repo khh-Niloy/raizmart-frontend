@@ -50,6 +50,28 @@ interface UserInfo {
   role?: string;
 }
 
+interface CreateAdminPayload {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+interface UpdateRolePayload {
+  email: string;
+  role: string;
+}
+
+interface AdminUser {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface ApiResponse<T> {
   data?: T;
 }
@@ -141,6 +163,33 @@ export const authApi = baseApi.injectEndpoints({
                 data: payload
             }),
             invalidatesTags: ["USER"],
+        }),
+        getAllAdmins: builder.query<AdminUser[], void>({
+            query: ()=>({
+                url: "/user/admins",
+                method: "GET",
+            }),
+            transformResponse: (response: unknown): AdminUser[] => {
+                const apiResponse = response as ApiResponse<AdminUser[]>;
+                return apiResponse.data ?? [];
+            },
+            providesTags: ["USER"],
+        }),
+        createAdmin: builder.mutation({
+            query: (payload: CreateAdminPayload)=>({
+                url: "/user/create-admin",
+                method: "POST",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
+        }),
+        updateRole: builder.mutation({
+            query: (payload: UpdateRolePayload)=>({
+                url: "/user/update-role",
+                method: "PATCH",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
         })
     })
 })
@@ -156,5 +205,8 @@ export const {
     useForgetPasswordCreateOTPMutation,
     useForgetPasswordVerifyOTPMutation,
     useResetPasswordMutation,
-    useUpdateUserMutation
+    useUpdateUserMutation,
+    useGetAllAdminsQuery,
+    useCreateAdminMutation,
+    useUpdateRoleMutation
 } = authApi

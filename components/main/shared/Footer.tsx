@@ -13,7 +13,7 @@ import {
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100">
-      <div className="w-[90%] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Three-column layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10">
           {/* Left: Logo + Contact + Socials */}
@@ -77,12 +77,12 @@ export default function Footer() {
             <h3 className="text-gray-900 font-semibold mb-3">Stores</h3>
             <div className="space-y-4 text-sm">
               <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-[#02C1BE] mt-0.5" />
-                <div>
-                  <p className="text-gray-900 font-medium">
-                    West Kazipara,Central Masjid Gali, Mirpur, Dhaka-1216
+                <MapPin className="w-5 h-5 text-[#02C1BE] mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-gray-900 font-medium break-words">
+                    West Kazipara, Central Masjid Gali, Mirpur, Dhaka-1216
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 break-words">
                     House No- 679, 6th floor
                   </p>
                 </div>
@@ -117,8 +117,8 @@ export default function Footer() {
         </div>
 
         {/* Developed by Quicktech */}
-        <div className="flex justify-end">
-          <div className="flex items-center gap-3">
+        <div className="flex justify-center sm:justify-end mt-8 sm:mt-0">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-3 w-full sm:w-auto">
             <Image
               src="/Quicktech_logo_1.png"
               alt="Quicktech Solutions"
@@ -126,14 +126,14 @@ export default function Footer() {
               height={40}
               className="h-12 w-auto rounded-md"
             />
-            <div className="flex items-start gap-2 flex-col">
+            <div className="flex items-start gap-2 flex-col text-center sm:text-left">
               <span className="text-sm text-gray-600">
                 Developed by <span className="font-bold">Quicktech Solutions</span>
               </span>
-              <div className="group flex items-center gap-2">
+              <div className="group flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                 <Link
                   href="https://www.facebook.com/quicktech5"
-                  className="w-6 h-6 rounded-xl border border-gray-200 group-hover:border-[#02C1BE] group-hover:bg-[#02C1BE]/5 text-gray-600 group-hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-6 h-6 rounded-xl border border-gray-200 group-hover:border-[#02C1BE] group-hover:bg-[#02C1BE]/5 text-gray-600 group-hover:text-[#02C1BE] flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -143,7 +143,7 @@ export default function Footer() {
                 </Link>
                 <Link
                   href="https://www.facebook.com/quicktech5"
-                  className="text-xs text-gray-600 group-hover:text-[#02C1BE] transition-colors cursor-pointer"
+                  className="text-xs text-gray-600 group-hover:text-[#02C1BE] transition-colors cursor-pointer break-all sm:break-normal"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -155,13 +155,18 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-gray-500">
-          <p className="text-xs sm:text-sm">
+        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 text-sm text-gray-500">
+          <p className="text-xs sm:text-sm text-center sm:text-left">
             © {new Date().getFullYear()} RaizMart. All rights reserved.
           </p>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-center sm:text-left">
             <span>Support:</span>
-            raizmart@gmail.com
+            <a 
+              href="mailto:raizmart@gmail.com" 
+              className="text-gray-500 hover:text-[#02C1BE] transition-colors break-all sm:break-normal"
+            >
+              raizmart@gmail.com
+            </a>
           </div>
         </div>
       </div>
