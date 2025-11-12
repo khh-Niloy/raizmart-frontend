@@ -33,6 +33,73 @@ export default function AllCouponsPage() {
   }, [data]);
   const [updateCoupon, { isLoading: isUpdating }] = useUpdateCouponMutation();
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
+  const processedExpiredCouponsRef = React.useRef<Set<string>>(new Set());
+
+  // Check if a coupon is expired
+  const isCouponExpired = React.useCallback((coupon: Coupon): boolean => {
+    if (!coupon.endDate) return false;
+    try {
+      const endDate = new Date(coupon.endDate);
+      const now = new Date();
+      return endDate < now;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Automatically deactivate expired coupons
+  React.useEffect(() => {
+    if (isFetching || allCoupons.length === 0) return;
+
+    const deactivateExpiredCoupons = async () => {
+      const expiredCoupons = allCoupons.filter((coupon: Coupon) => {
+        const id = coupon.id ?? coupon._id;
+        if (!id) return false;
+        
+        // Skip if already processed
+        if (processedExpiredCouponsRef.current.has(id)) return false;
+        
+        // Check if coupon is expired and currently active
+        const isExpired = isCouponExpired(coupon);
+        const isActive = coupon.isActive !== undefined ? coupon.isActive : (coupon.status === "active");
+        
+        return isExpired && isActive;
+      });
+
+      // Deactivate all expired coupons
+      for (const coupon of expiredCoupons) {
+        const id = coupon.id ?? coupon._id;
+        if (!id) continue;
+
+        try {
+          await updateCoupon({
+            id,
+            data: { isActive: false }
+          }).unwrap();
+          
+          // Mark as processed to avoid duplicate calls
+          processedExpiredCouponsRef.current.add(id);
+        } catch (error) {
+          console.error(`Failed to deactivate expired coupon ${id}:`, error);
+        }
+      }
+    };
+
+    // Check immediately when coupons are loaded
+    deactivateExpiredCoupons();
+
+    // Set up interval to check every 30 seconds
+    const interval = setInterval(deactivateExpiredCoupons, 30000);
+
+    return () => clearInterval(interval);
+  }, [allCoupons, isFetching, isCouponExpired, updateCoupon]);
+
+  // Reset processed coupons when data changes
+  React.useEffect(() => {
+    if (data) {
+      processedExpiredCouponsRef.current.clear();
+    }
+  }, [data]);
 
   // Filter coupons based on selected status
   const coupons = React.useMemo(() => {
@@ -136,13 +203,23 @@ export default function AllCouponsPage() {
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {coupons.map((c: Coupon) => {
                       const id = c.id ?? c._id;
-                      const type = (c.discountType ?? c.type ?? "").toString();
-                      const isPercent = type.toUpperCase() === "PERCENT";
-                      const valueText = isPercent ? `${c.discountValue}%` : `৳${c.discountValue}`;
+                      const type = (c.discountType ?? c.type ?? "").toString().toUpperCase();
+                      const isPercent = type === "PERCENT";
+                      const isFreeDelivery = type === "FREE_DELIVERY";
+                      const valueText = isFreeDelivery 
+                        ? "Free Delivery" 
+                        : isPercent 
+                          ? `${c.discountValue}%` 
+                          : `৳${c.discountValue}`;
+                      const typeText = isFreeDelivery 
+                        ? "Free Delivery" 
+                        : isPercent 
+                          ? "Percent" 
+                          : "Fixed";
                       return (
                         <tr key={id}>
                           <td className="px-4 py-3 text-sm text-gray-900 font-medium">{c.code}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{isPercent ? "Percent" : "Fixed"}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{typeText}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">{valueText}</td>
                           <td className="px-4 py-3 text-sm text-gray-700">
                             <div className="flex flex-col">

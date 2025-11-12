@@ -70,9 +70,6 @@ export default function HomePage() {
             </section>
           </div>
 
-          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14">
-            <WhyChooseUs />
-          </div>
 
           <div className="mx-auto w-[95%]">
             <div className="flex flex-col gap-4 ">
@@ -89,6 +86,10 @@ export default function HomePage() {
                 <BrandProducts />
               </div>
             </div>
+          </div>
+
+          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14">
+            <WhyChooseUs />
           </div>
         </div>
       </div>

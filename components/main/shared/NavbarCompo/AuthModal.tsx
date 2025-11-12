@@ -389,7 +389,7 @@ export default function AuthModal({ children }: AuthModalProps) {
                 <div className="flex-grow h-px bg-gray-400 opacity-40" />
               </div>
               <Link
-                href={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google?redirect=${pathname}`}
+                href={`${process.env.NEXT_PUBLIC_BASE_URL}auth/google?redirect=${encodeURIComponent(pathname)}`}
               >
                 <button
                   type="button"
