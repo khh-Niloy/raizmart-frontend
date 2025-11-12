@@ -191,7 +191,7 @@ export default function EditCategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label
                 htmlFor="isActive"
                 className="text-sm font-medium text-gray-700"
@@ -214,7 +214,7 @@ export default function EditCategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">

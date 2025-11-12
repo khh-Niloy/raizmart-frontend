@@ -51,6 +51,7 @@ export default function EditSubcategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubcategoryFormData>({
     resolver: zodResolver(subcategorySchema),
     defaultValues: {
@@ -106,10 +107,11 @@ export default function EditSubcategoryPage() {
             category: catValue,
             isActive: currentSubcategory.isActive ?? true,
           });
+          setValue("category", catValue, { shouldValidate: false });
         }
       }
     }
-  }, [subcategoriesResponse, categoriesResponse, subcategoryId, reset]);
+  }, [subcategoriesResponse, categoriesResponse, subcategoryId, reset, setValue]);
 
   const onSubmit = async (data: SubcategoryFormData) => {
     try {
@@ -218,8 +220,10 @@ export default function EditSubcategoryPage() {
                 name="category"
                 render={({ field }) => (
                   <Select
+                    key={`${field.value || "empty"}-${(Array.isArray(categoriesResponse) ? categoriesResponse.length : 0)}`}
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value || undefined}
+                    defaultValue={field.value || undefined}
                     disabled={isCategoriesLoading}
                   >
                     <SelectTrigger className="w-full">
@@ -254,7 +258,7 @@ export default function EditSubcategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label
                 htmlFor="isActive"
                 className="text-sm font-medium text-gray-700"
@@ -277,7 +281,7 @@ export default function EditSubcategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">

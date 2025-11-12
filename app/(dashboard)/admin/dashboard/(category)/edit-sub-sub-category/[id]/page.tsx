@@ -44,6 +44,7 @@ export default function EditSubSubCategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubSubCategoryFormData>({
     resolver: zodResolver(subSubCategorySchema),
     defaultValues: {
@@ -93,10 +94,11 @@ export default function EditSubSubCategoryPage() {
             subcategory: subVal,
             isActive: currentSubSubCategory.isActive ?? true
           });
+          setValue("subcategory", subVal, { shouldValidate: false });
         }
       }
     }
-  }, [subSubCategoriesResponse, subcategoriesResponse, subSubCategoryId, reset]);
+  }, [subSubCategoriesResponse, subcategoriesResponse, subSubCategoryId, reset, setValue]);
 
   const onSubmit = async (data: SubSubCategoryFormData) => {
     try {
@@ -177,7 +179,13 @@ export default function EditSubSubCategoryPage() {
                 control={control}
                 name="subcategory"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isSubcategoriesLoading}>
+                  <Select
+                    key={`${field.value || "empty"}-${(Array.isArray(subcategoriesResponse) ? subcategoriesResponse.length : 0)}`}
+                    onValueChange={field.onChange}
+                    value={field.value || undefined}
+                    defaultValue={field.value || undefined}
+                    disabled={isSubcategoriesLoading}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={isSubcategoriesLoading ? "Loading sub-categories..." : "Select a parent sub-category"} />
                     </SelectTrigger>
@@ -197,7 +205,7 @@ export default function EditSubSubCategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
                 Status
               </Label>
@@ -217,7 +225,7 @@ export default function EditSubSubCategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">
