@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { toast } from "sonner";
+import { useCreateFeedbackMutation } from "@/app/redux/features/feedback/feedback.api";
 
 export default function ComplainAdvicePage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createFeedback, { isLoading: isSubmitting }] = useCreateFeedbackMutation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
     const data = {
@@ -20,31 +19,27 @@ export default function ComplainAdvicePage() {
     };
 
     try {
-      const response = await fetch("/api/complain-advice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.ok) {
+      const result = await createFeedback(data).unwrap();
+      
+      if (result.success) {
         toast.success("✅ Thank you! Your submission has been received.");
         (e.target as HTMLFormElement).reset();
       } else {
         throw new Error(
-          result.error || "⚠️ Something went wrong. You can try whatsapp us directly."
+          result.message || "⚠️ Something went wrong. You can try whatsapp us directly."
         );
       }
     } catch (error: unknown) {
       console.error("Error submitting form:", error);
-      toast.error(
-        error instanceof Error
+      const errorMessage = 
+        error && typeof error === "object" && "data" in error && 
+        typeof error.data === "object" && error.data !== null && "message" in error.data
+          ? (error.data as { message: string }).message
+          : error instanceof Error
           ? error.message
-          : "Failed to submit. You can try whatsapp us directly."
-      );
-    } finally {
-      setIsSubmitting(false);
+          : "Failed to submit. You can try whatsapp us directly.";
+      
+      toast.error(errorMessage);
     }
   };
 
