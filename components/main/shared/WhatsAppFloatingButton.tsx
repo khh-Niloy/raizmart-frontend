@@ -6,9 +6,9 @@ import { X } from "lucide-react";
 export default function WhatsAppFloatingButton() {
   const [showMessage, setShowMessage] = useState(true);
   
-  // Replace with your actual WhatsApp number (format: country code + number without + or spaces)
-  // Example: "1234567890" for US number or "919876543210" for Indian number
-  const whatsappNumber = "01608362979"; // TODO: Replace with actual WhatsApp number
+  // WhatsApp number in international format (country code + number without + or spaces)
+  // Bangladesh: 880 + number without leading zero
+  const whatsappNumber = "8801608362979";
   const defaultMessage = "Hi, is there anyone to assist me?";
 
   const handleWhatsAppClick = () => {

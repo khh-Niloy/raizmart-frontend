@@ -114,7 +114,10 @@ export default function HomePage() {
             <WhyChooseUs />
           </div>
 
-          <section className=" w-[95%] mx-auto px-4 sm:px-6 lg:px-14 pb-16">
+          <section
+            id="faq"
+            className=" w-[95%] mx-auto px-4 sm:px-6 lg:px-14 pb-16"
+          >
             <div className="rounded-3xl border border-white/80 bg-white/95 p-8 shadow-[0_40px_100px_-70px_rgba(15,23,42,0.4)]">
               <div className="max-w-3xl space-y-4">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#02C1BE]">

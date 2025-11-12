@@ -96,22 +96,42 @@ export default function Footer() {
             <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-sm">
               <Link
                 href="/"
-                className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
               >
                 Home
               </Link>
               <Link
                 href="/blog"
-                className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
               >
                 Blog
               </Link>
               <Link
                 href="/offers"
-                className="text-gray-600 hover:text-[#02C1BE] transition-colors cursor-pointer"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
               >
                 Offers
               </Link>
+              <Link
+                href="/complain-advice"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
+              >
+                Complain / Advice
+              </Link>
+              <Link
+                href="/#faq"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
+              >
+                FAQ
+              </Link>
+              <a
+                href="https://wa.me/8801608362979?text=Hi, is there anyone to assist me?"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 hover:text-[#02C1BE] hover:underline hover:font-semibold transition-colors cursor-pointer"
+              >
+                Contact us
+              </a>
             </nav>
           </div>
         </div>
