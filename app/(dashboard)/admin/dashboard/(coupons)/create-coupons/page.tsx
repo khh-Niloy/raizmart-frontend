@@ -201,7 +201,7 @@ export default function CreateCouponsPage() {
                         <p className="text-sm text-red-600">{errors.discountValue.message}</p>
                       )}
                       {typeField.value === "FREE_DELIVERY" && (
-                        <p className="text-xs text-gray-500">Free Delivery coupons don't require a discount value</p>
+                        <p className="text-xs text-gray-500">Free Delivery coupons don&apos;t require a discount value</p>
                       )}
                     </>
                   )}

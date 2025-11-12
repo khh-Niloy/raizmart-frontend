@@ -104,9 +104,33 @@ export default function Navbar() {
     useGetCategoriesQuery(undefined);
   const { data: subSubcategories } = useGetSubSubcategoriesQuery(undefined);
 
-  const categoriesList = Array.isArray(categories) ? categories : [];
+  interface Category {
+    _id: string;
+    name: string;
+    slug: string;
+    subcategories?: Subcategory[];
+    [key: string]: unknown;
+  }
+
+  interface Subcategory {
+    _id: string;
+    name: string;
+    slug: string;
+    subSubcategories?: SubSubcategory[];
+    [key: string]: unknown;
+  }
+
+  interface SubSubcategory {
+    _id: string;
+    name: string;
+    slug?: string;
+    subcategory?: string | { _id: string };
+    [key: string]: unknown;
+  }
+
+  const categoriesList = Array.isArray(categories) ? (categories as Category[]) : [];
   const subSubcategoriesList = Array.isArray(subSubcategories)
-    ? subSubcategories
+    ? (subSubcategories as SubSubcategory[])
     : [];
 
   const initialNavbarLinks = [
@@ -507,7 +531,7 @@ export default function Navbar() {
                 ) : (
                   <>
                     <div className="px-3">
-                      {categoriesList.map((category: any) => {
+                      {categoriesList.map((category: Category) => {
                       const categorySubcategories = category.subcategories || [];
                       const hasSubcategories = categorySubcategories.length > 0;
                       const isExpanded = expandedCategories.has(category._id);
@@ -544,7 +568,7 @@ export default function Navbar() {
                               {isExpanded && (
                                 <div className="mt-1.5 ml-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-in slide-in-from-top-2 duration-200">
                                   {categorySubcategories.map(
-                                    (subcategory: any) => {
+                                    (subcategory: Subcategory) => {
                                       // Get sub-subcategories for this subcategory
                                       let subSubcategoriesForThisSub =
                                         subcategory.subSubcategories || [];
@@ -555,7 +579,7 @@ export default function Navbar() {
                                       ) {
                                         subSubcategoriesForThisSub =
                                           subSubcategoriesList.filter(
-                                            (subSub: any) => {
+                                            (subSub: SubSubcategory) => {
                                               if (
                                                 typeof subSub.subcategory ===
                                                 "string"
@@ -630,7 +654,7 @@ export default function Navbar() {
                                           {hasSubSubcategories && isSubcategoryExpanded && (
                                             <div className="pl-4 bg-white/50 animate-in slide-in-from-top-2 duration-200">
                                               {subSubcategoriesForThisSub.map(
-                                                (subSubcategory: any) => {
+                                                (subSubcategory: SubSubcategory) => {
                                                   const subSubcategorySlug =
                                                     subSubcategory.slug ||
                                                     subSubcategory.name

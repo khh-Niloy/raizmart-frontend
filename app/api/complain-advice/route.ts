@@ -22,10 +22,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error submitting form:", error);
+    const errorMessage = 
+      (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string')
+        ? error.message
+        : "Submission failed";
     return NextResponse.json(
-      { ok: false, error: error.message || "Submission failed" },
+      { ok: false, error: errorMessage },
       { status: 500 }
     );
   }

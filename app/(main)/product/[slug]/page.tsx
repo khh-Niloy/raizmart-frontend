@@ -1048,7 +1048,11 @@ export default function ProductDetailBySlug({
                 values?: Array<{ images?: string[] }>;
               }>;
             };
-            const response = (relatedProductsData as any) || {};
+            interface RelatedProductsResponse {
+              items?: Item[];
+              [key: string]: unknown;
+            }
+            const response = (relatedProductsData as RelatedProductsResponse | Item[] | null | undefined) || {};
             const items: Item[] = Array.isArray(response)
               ? response
               : (response.items as Item[]) || [];
