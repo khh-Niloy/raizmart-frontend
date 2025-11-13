@@ -1473,7 +1473,7 @@ export default function EditProductPage() {
                     setValue={setValue}
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
-                    canRemove={attributeFields.length > 1}
+                    canRemove={attributeFields.length > 0}
                   existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
                   />
                 ))}
