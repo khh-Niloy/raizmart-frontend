@@ -10,6 +10,7 @@ import { useCreateOrderMutation } from "@/app/redux/features/order/order.api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { Badge } from "@/components/ui/badge";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -63,18 +64,25 @@ export default function CheckoutPage() {
     discountValue?: number;
   }
 
+  console.log(items);
+
   const [appliedCoupon, setAppliedCoupon] = React.useState<Coupon | null>(null);
   const [justApplied, setJustApplied] = React.useState(false);
 
-  // Calculate delivery charge - free if FREE_DELIVERY coupon is applied
+  // Calculate delivery charge - free if FREE_DELIVERY coupon is applied OR if any product has isFreeDelivery
   const deliveryCharge = React.useMemo(() => {
     // If FREE_DELIVERY coupon is applied, delivery is free
     if (appliedCoupon?.discountType === "FREE_DELIVERY") {
       return 0;
     }
+    // If any product in cart has isFreeDelivery set to true, delivery is free
+    const hasFreeDeliveryProduct = items.some((item) => item.isFreeDelivery === true);
+    if (hasFreeDeliveryProduct) {
+      return 0;
+    }
     if (!division) return 0;
     return division === "Dhaka" ? 60 : 120;
-  }, [division, appliedCoupon]);
+  }, [division, appliedCoupon, items]);
 
   const computeDiscountForCoupon = React.useCallback((coupon: Coupon | null) => {
     if (!coupon) return 0;
@@ -397,16 +405,23 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-semibold">Order Summary</h2>
           <div className="mt-4 space-y-4">
             {items.map((it) => (
-              <div key={`${it.productId}-${it.sku || ""}`} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div key={`${it.productId}-${it.sku || ""}`} className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.image || "/next.svg"} alt={it.name} className="w-12 h-12 object-contain rounded-md border" />
-                  <div>
-                    <div className="text-sm font-medium">{it.name}</div>
-                    <div className="text-xs text-gray-500">{it.quantity} quantity</div>
+                  <img src={it.image || "/next.svg"} alt={it.name} className="w-12 h-12 object-contain rounded-md border flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900">{it.name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-xs text-gray-500">{it.quantity} quantity</div>
+                      {it.isFreeDelivery === true && (
+                        <Badge className="bg-emerald-600 text-white border-transparent text-[10px] px-1.5 py-0.5 font-medium">
+                          Free Delivery
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="text-sm">৳ {(it.price * it.quantity).toFixed(2)}</div>
+                <div className="text-sm font-medium text-gray-900 flex-shrink-0">৳ {(it.price * it.quantity).toFixed(2)}</div>
               </div>
             ))}
           </div>
@@ -456,7 +471,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Delivery</span>
-              {appliedCoupon?.discountType === "FREE_DELIVERY" ? (
+              {appliedCoupon?.discountType === "FREE_DELIVERY" || items.some((item) => item.isFreeDelivery === true) ? (
                 <span className="flex items-center gap-1">
                   <span className="text-green-600 font-semibold">Free</span>
                   {division && (
