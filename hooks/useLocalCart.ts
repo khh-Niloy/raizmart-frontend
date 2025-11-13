@@ -13,6 +13,7 @@ export type CartItem = {
   sku?: string;
   selectedOptions?: Record<string, string>; // attributeName -> value
   quantity: number;
+  isFreeDelivery?: boolean;
 };
 
 export type LocalCart = {

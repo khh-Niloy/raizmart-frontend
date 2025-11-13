@@ -39,6 +39,7 @@ export default function ProductDetailBySlug({
     video_url?: string;
     descriptionImage?: string;
     description_image?: string;
+    isFreeDelivery?: boolean;
     category?: string | { slug?: string; name?: string; [key: string]: unknown };
     subCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
     subSubCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
@@ -784,15 +785,19 @@ export default function ProductDetailBySlug({
                 discountedPrice: calculatePrice.discountedPrice,
                 sku: selectedVariant?.sku as string | undefined,
                 selectedOptions: selectedByName,
+                isFreeDelivery: product?.isFreeDelivery,
               };
 
-              const inCart = product && selectedVariant ? has(matcher) : false;
+              const hasVariants = Array.isArray(variants) && variants.length > 0;
+              const inCart = product && (hasVariants ? selectedVariant : true) ? has(matcher) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
               const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number' && inStock;
 
               const onAddToCart = () => {
-                if (!product || !selectedVariant || !canAddToCart) return;
+                if (!product || !canAddToCart) return;
+                // Only require selectedVariant if product has variants
+                if (hasVariants && !selectedVariant) return;
                 if (!ensureAuth()) return;
                 addItem({
                   ...matcher,

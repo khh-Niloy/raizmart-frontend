@@ -182,6 +182,7 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
       discountedPrice: showDiscount && discounted ? Number(discounted) : undefined,
       sku: variant?.sku as string | undefined,
       selectedOptions: undefined,
+      isFreeDelivery: product?.isFreeDelivery,
     };
     const inCart = has(matcher);
     
