@@ -1190,7 +1190,7 @@ export default function AddProductPage() {
                     setValue={setValue}
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
-                    canRemove={attributeFields.length > 1}
+                    canRemove={attributeFields.length > 0}
                   />
                 ))}
               </div>

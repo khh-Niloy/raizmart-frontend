@@ -54,31 +54,6 @@ export default function CheckoutPage() {
     "Mymensingh",
   ];
 
-  const districtByDivision: Record<string, string[]> = {
-    Dhaka: ["Dhaka", "Gazipur", "Narayanganj"],
-    Chattogram: ["Chattogram", "Cox's Bazar"],
-    Rajshahi: ["Rajshahi"],
-    Khulna: ["Khulna"],
-    Barishal: ["Barishal"],
-    Sylhet: ["Sylhet"],
-    Rangpur: ["Rangpur"],
-    Mymensingh: ["Mymensingh"],
-  };
-
-  const upazilaByDistrict: Record<string, string[]> = {
-    Dhaka: ["Dhanmondi", "Gulshan", "Mirpur"],
-    Gazipur: ["Gazipur Sadar"],
-    Narayanganj: ["Narayanganj Sadar"],
-    Chattogram: ["Kotwali", "Pahartali"],
-    "Cox's Bazar": ["Cox's Bazar Sadar"],
-    Rajshahi: ["Rajshahi Sadar"],
-    Khulna: ["Khulna Sadar"],
-    Barishal: ["Barishal Sadar"],
-    Sylhet: ["Sylhet Sadar"],
-    Rangpur: ["Rangpur Sadar"],
-    Mymensingh: ["Mymensingh Sadar"],
-  };
-
   // Coupon handling
   const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
   const [couponCode, setCouponCode] = React.useState("");
@@ -290,11 +265,12 @@ export default function CheckoutPage() {
             </div>
             <div>
               <label className="text-sm text-gray-700">District *</label>
-              <Select
+              <input
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.district ? "border-red-500" : ""}`}
+                placeholder="Enter your district"
                 value={district}
-                onValueChange={(val) => {
-                  setDistrict(val);
-                  setUpazila("");
+                onChange={(e) => {
+                  setDistrict(e.target.value);
                   if (validationErrors.district) {
                     setValidationErrors(prev => {
                       const newErrors = { ...prev };
@@ -303,27 +279,19 @@ export default function CheckoutPage() {
                     });
                   }
                 }}
-                disabled={!division}
-              >
-                <SelectTrigger className={`mt-1 w-full rounded-xl ${validationErrors.district ? "border-red-500" : ""}`}>
-                  <SelectValue placeholder="Select your district" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(districtByDivision[division] || []).map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
               {validationErrors.district && (
                 <p className="text-xs text-red-600 mt-1">{validationErrors.district}</p>
               )}
             </div>
             <div>
               <label className="text-sm text-gray-700">Upazila *</label>
-              <Select
+              <input
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.upazila ? "border-red-500" : ""}`}
+                placeholder="Enter your upazila"
                 value={upazila}
-                onValueChange={(val) => {
-                  setUpazila(val);
+                onChange={(e) => {
+                  setUpazila(e.target.value);
                   if (validationErrors.upazila) {
                     setValidationErrors(prev => {
                       const newErrors = { ...prev };
@@ -332,17 +300,7 @@ export default function CheckoutPage() {
                     });
                   }
                 }}
-                disabled={!district}
-              >
-                <SelectTrigger className={`mt-1 w-full rounded-xl ${validationErrors.upazila ? "border-red-500" : ""}`}>
-                  <SelectValue placeholder="Select your upazila" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(upazilaByDistrict[district] || []).map((u) => (
-                    <SelectItem key={u} value={u}>{u}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
               {validationErrors.upazila && (
                 <p className="text-xs text-red-600 mt-1">{validationErrors.upazila}</p>
               )}

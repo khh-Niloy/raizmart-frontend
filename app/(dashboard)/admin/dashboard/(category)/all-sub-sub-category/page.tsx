@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,14 @@ import { Edit, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useGetSubSubcategoriesQuery, useDeleteSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface SubSubCategory {
   id?: string;
@@ -26,18 +34,29 @@ export default function AllSubSubCategoryPage() {
   const { data: subSubCategoriesResponse, isFetching } = useGetSubSubcategoriesQuery(undefined);
   console.log(subSubCategoriesResponse);
   const [deleteSubSubcategory, { isLoading: isDeleting }] = useDeleteSubSubcategoryMutation();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [subSubCategoryToDelete, setSubSubCategoryToDelete] = useState<SubSubCategory | null>(null);
   // Ensure data is an array (transformResponse already extracts data, so subSubCategoriesResponse should be the array)
   const subSubCategories: SubSubCategory[] = Array.isArray(subSubCategoriesResponse) ? subSubCategoriesResponse : [];
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this sub-sub-category?")) {
-      try {
-        await deleteSubSubcategory(id).unwrap();
-        toast.success("Sub-sub-category deleted successfully");
-      } catch (error) {
-        console.error("Delete failed:", error);
-        toast.error("Failed to delete sub-sub-category. Please try again.");
-      }
+  const openDeleteDialog = (subSubCategory: SubSubCategory) => {
+    setSubSubCategoryToDelete(subSubCategory);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!subSubCategoryToDelete) return;
+    const id = subSubCategoryToDelete.id ?? subSubCategoryToDelete._id;
+    if (!id) return;
+
+    try {
+      await deleteSubSubcategory(id).unwrap();
+      toast.success("Sub-sub-category deleted successfully");
+      setIsDeleteOpen(false);
+      setSubSubCategoryToDelete(null);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.error("Failed to delete sub-sub-category. Please try again.");
     }
   };
   return (
@@ -90,19 +109,14 @@ export default function AllSubSubCategoryPage() {
                             </Button>
                           </Link>
                           <Button 
-                            variant="outline" 
+                            variant="destructive" 
                             size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => {
-                              const categoryId = subSubCategory.id ?? subSubCategory._id;
-                              if (categoryId) {
-                                handleDelete(categoryId);
-                              }
-                            }}
+                            className="px-4 py-1 h-9"
+                            onClick={() => openDeleteDialog(subSubCategory)}
                             disabled={isDeleting}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
-                            {isDeleting ? "Deleting..." : "Delete"}
+                            Delete
                           </Button>
                         </div>
                       </div>
@@ -160,6 +174,29 @@ export default function AllSubSubCategoryPage() {
           </div>
         </div>
       </div>
+      
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Sub-Sub-Category</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {subSubCategoryToDelete?.name ?? "this sub-sub-category"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

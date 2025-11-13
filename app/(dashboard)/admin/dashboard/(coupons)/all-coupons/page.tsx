@@ -5,10 +5,18 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useGetCouponsQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
+import { useDeleteCouponMutation, useGetCouponsQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
-import { Edit } from "lucide-react";
+import { Edit, Trash } from "lucide-react";
 import CountdownTimer from "@/components/ui/countdown-timer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Coupon {
   id?: string;
@@ -32,7 +40,10 @@ export default function AllCouponsPage() {
     return [];
   }, [data]);
   const [updateCoupon, { isLoading: isUpdating }] = useUpdateCouponMutation();
+  const [deleteCoupon, { isLoading: isDeleting }] = useDeleteCouponMutation();
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
+  const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
+  const [couponToDelete, setCouponToDelete] = React.useState<Coupon | null>(null);
   const processedExpiredCouponsRef = React.useRef<Set<string>>(new Set());
 
   // Check if a coupon is expired
@@ -131,6 +142,30 @@ export default function AllCouponsPage() {
       toast.success(`Coupon ${newStatus ? "activated" : "deactivated"}`);
     } catch (e) {
       toast.error("Failed to update status");
+      console.error(e);
+    }
+  };
+
+  const openDeleteDialog = (c: Coupon) => {
+    setCouponToDelete(c);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!couponToDelete) return;
+    const id = couponToDelete.id ?? couponToDelete._id;
+    if (!id) {
+      toast.error("Invalid coupon ID");
+      return;
+    }
+
+    try {
+      await deleteCoupon(id).unwrap();
+      toast.success(`Coupon ${couponToDelete.code} deleted`);
+      setIsDeleteOpen(false);
+      setCouponToDelete(null);
+    } catch (e) {
+      toast.error("Failed to delete coupon");
       console.error(e);
     }
   };
@@ -270,6 +305,17 @@ export default function AllCouponsPage() {
                                   Edit
                                 </Button>
                               </Link>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="px-3"
+                                onClick={() => openDeleteDialog(c)}
+                                disabled={isDeleting}
+                              >
+                                <Trash className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -282,6 +328,45 @@ export default function AllCouponsPage() {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={isDeleteOpen}
+        onOpenChange={(open) => {
+          setIsDeleteOpen(open);
+          if (!open) {
+            setCouponToDelete(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Coupon</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {couponToDelete?.code ?? "this coupon"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

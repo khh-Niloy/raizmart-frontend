@@ -58,7 +58,10 @@ export default function CreateSubCategoryPage() {
       const res = await createSubcategory(formData).unwrap();
       console.log("Sub-category created:", res);
       toast.success("Sub-category created successfully!");
-      reset();
+      reset({
+        name: "",
+        category: "",
+      });
     } catch (error) {
       console.error("Create sub-category failed:", error);
       toast.error("Failed to create sub-category. Please try again.");
@@ -116,7 +119,14 @@ export default function CreateSubCategoryPage() {
                 control={control}
                 name="category"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isCategoriesLoading}>
+                  <Select
+                    key={field.value || "empty"}
+                    value={field.value || undefined}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                    }}
+                    disabled={isCategoriesLoading}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={isCategoriesLoading ? "Loading categories..." : "Select a parent category"} />
                     </SelectTrigger>
