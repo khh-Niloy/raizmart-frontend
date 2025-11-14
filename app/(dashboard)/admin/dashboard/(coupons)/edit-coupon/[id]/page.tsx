@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useGetCouponByIdQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
 
@@ -284,22 +285,38 @@ export default function EditCouponPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Input 
-                  type="datetime-local" 
-                  {...register("startDate")} 
-                  disabled={isFetching}
+                <Controller
+                  control={control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isFetching}
+                      placeholder="Select date"
+                      dateLabel="Start Date"
+                      timeLabel="Time"
+                    />
+                  )}
                 />
                 {errors.startDate && <p className="text-sm text-red-600">{errors.startDate.message}</p>}
                 <p className="text-xs text-gray-500">Leave empty to keep current value</p>
               </div>
 
               <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input 
-                  type="datetime-local" 
-                  {...register("endDate")} 
-                  disabled={isFetching}
+                <Controller
+                  control={control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isFetching}
+                      placeholder="Select date"
+                      dateLabel="End Date"
+                      timeLabel="Time"
+                    />
+                  )}
                 />
                 {errors.endDate && <p className="text-sm text-red-600">{errors.endDate.message}</p>}
                 <p className="text-xs text-gray-500">Leave empty to keep current value</p>
