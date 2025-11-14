@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useGetSubcategoriesQuery, useCreateSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema
 const subSubCategorySchema = z.object({
@@ -36,6 +37,7 @@ export default function CreateSubSubCategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubSubCategoryFormData>({
     resolver: zodResolver(subSubCategorySchema),
     defaultValues: {
@@ -99,8 +101,15 @@ export default function CreateSubSubCategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register('image')}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (

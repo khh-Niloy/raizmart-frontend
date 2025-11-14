@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateSlidersMutation } from "@/app/redux/features/slider/slider.api";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema for slider images
 const sliderImageSchema = z.object({
@@ -218,8 +219,13 @@ export default function CreateSliderPagePage() {
                   <div className="flex-1">
                     <Input
                       type="file"
-                      accept="image/*"
+                      accept={IMAGE_ACCEPT}
                       onChange={(e) => {
+                        const isValid = validateImageFileChange(e);
+                        if (!isValid) {
+                          removeImage(index);
+                          return;
+                        }
                         const file = e.target.files?.[0];
                         if (file) {
                           handleImageUpload(index, file);

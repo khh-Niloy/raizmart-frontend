@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateOffersMutation } from "@/app/redux/features/offer/offer.api";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Schema: a list of offer items, each with image + url + endAt
 const offerItemSchema = z.object({
@@ -120,8 +121,15 @@ export default function CreateOfferPage() {
                   <Label>Image</Label>
                   <Input
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageChange(index, e.target.files?.[0])}
+                    accept={IMAGE_ACCEPT}
+                    onChange={(e) => {
+                      const isValid = validateImageFileChange(e);
+                      if (!isValid) {
+                        handleImageChange(index, undefined);
+                        return;
+                      }
+                      handleImageChange(index, e.target.files?.[0]);
+                    }}
                   />
                   {previews[index] && (
                     <div className="space-y-2">

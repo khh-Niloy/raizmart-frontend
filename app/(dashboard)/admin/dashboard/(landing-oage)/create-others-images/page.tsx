@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateOthersImagesMutation } from "@/app/redux/features/other-images/other-images.api";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema for others images
 const othersImageSchema = z.object({
@@ -133,8 +134,13 @@ export default function CreateOthersImagesPage() {
                     <div className="flex-1">
                       <Input
                         type="file"
-                        accept="image/*"
+                        accept={IMAGE_ACCEPT}
                         onChange={(e) => {
+                          const isValid = validateImageFileChange(e);
+                          if (!isValid) {
+                            removeOthersImage(index);
+                            return;
+                          }
                           const file = e.target.files?.[0];
                           if (file) {
                             handleOthersImageUpload(index, file);
