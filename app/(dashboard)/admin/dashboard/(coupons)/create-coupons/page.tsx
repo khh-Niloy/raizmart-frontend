@@ -110,6 +110,12 @@ export default function CreateCouponsPage() {
     }
   }, [discountType, setValue, clearErrors]);
 
+  const toISOString = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  };
+
   const onSubmit = async (data: CouponFormInput) => {
     try {
       // Basic date validation
@@ -123,8 +129,8 @@ export default function CreateCouponsPage() {
       const payload: Record<string, unknown> = {
         code: data.code.trim(),
         discountType: data.discountType,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: toISOString(data.startDate),
+        endDate: toISOString(data.endDate),
         isActive: data.isActive,
         description: data.description || "",
       };

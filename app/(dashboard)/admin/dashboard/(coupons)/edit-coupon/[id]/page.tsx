@@ -139,6 +139,12 @@ export default function EditCouponPage() {
     }
   }, [coupon, setValue]);
 
+  const toISOString = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  };
+
   const onSubmit = async (data: CouponFormData) => {
     try {
       if (!id) {
@@ -168,10 +174,10 @@ export default function EditCouponPage() {
         }
       }
       if (data.startDate !== undefined && data.startDate !== "") {
-        payload.startDate = data.startDate;
+        payload.startDate = toISOString(data.startDate);
       }
       if (data.endDate !== undefined && data.endDate !== "") {
-        payload.endDate = data.endDate;
+        payload.endDate = toISOString(data.endDate);
       }
       if (data.isActive !== undefined) {
         payload.isActive = data.isActive;
