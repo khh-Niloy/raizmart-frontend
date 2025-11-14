@@ -33,8 +33,14 @@ function calculatePriceData(basePrice: unknown, discountedPrice: unknown): Price
 }
 
 interface Product {
+  _id?: string;
+  name?: string;
+  slug?: string;
+  images?: string[];
+  image?: string;
   price?: number | string;
   discountedPrice?: number | string;
+  isFreeDelivery?: boolean;
   variants?: Array<{
     sku: string;
     finalPrice: number;
@@ -52,15 +58,22 @@ interface Product {
 }
 
 /**
- * Hook to sync cart and wishlist prices when a product is updated
- * Call this hook on product pages to keep prices in sync
+ * Hook to sync cart and wishlist product information when a product is updated
+ * Call this hook on product pages to keep product data (name, image, slug, prices) in sync
  */
 export function useSyncProductPrices(productId: string | undefined, product: Product | undefined) {
-  const { items: cartItems, updateItemPrice: updateCartItemPrice } = useLocalCart();
-  const { items: wishlistItems, updateItemPrice: updateWishlistItemPrice } = useLocalWishlist();
+  const { items: cartItems, updateProductInfo: updateCartProductInfo } = useLocalCart();
+  const { items: wishlistItems, updateProductInfo: updateWishlistProductInfo } = useLocalWishlist();
 
   useEffect(() => {
     if (!productId || !product) return;
+
+    // Extract product-level information
+    const productName = product.name;
+    const productSlug = product.slug;
+    const productImages = product.images || [];
+    const productImage = product.image || (productImages.length > 0 ? productImages[0] : undefined);
+    const productIsFreeDelivery = product.isFreeDelivery;
 
     const variants = (product?.variants ?? []) as Array<{
       sku: string;
@@ -82,61 +95,58 @@ export function useSyncProductPrices(productId: string | undefined, product: Pro
     cartItems.forEach((cartItem) => {
       if (cartItem.productId !== productId) return;
 
+      // Prepare updates object
+      const updates: {
+        name?: string;
+        slug?: string;
+        image?: string;
+        price?: number;
+        basePrice?: number;
+        discountedPrice?: number;
+        isFreeDelivery?: boolean;
+      } = {};
+
+      // Update product info (name, slug, image) if changed
+      if (productName && cartItem.name !== productName) {
+        updates.name = productName;
+      }
+      if (productSlug && cartItem.slug !== productSlug) {
+        updates.slug = productSlug;
+      }
+      if (productImage && cartItem.image !== productImage) {
+        updates.image = productImage;
+      }
+      if (typeof productIsFreeDelivery === 'boolean' && cartItem.isFreeDelivery !== productIsFreeDelivery) {
+        updates.isFreeDelivery = productIsFreeDelivery;
+      }
+
+      // Update prices
+      let priceData: PriceData | null = null;
       if (hasVariants && cartItem.sku) {
         // Find matching variant by SKU
         const variant = variants.find((v) => v.sku === cartItem.sku);
         if (variant) {
-          const priceData = calculatePriceData(variant.finalPrice, variant.discountedPrice);
-          if (priceData && typeof priceData.price === 'number') {
-            // Only update if price changed
-            if (cartItem.price !== priceData.price || 
-                cartItem.basePrice !== priceData.basePrice || 
-                cartItem.discountedPrice !== priceData.discountedPrice) {
-              updateCartItemPrice(
-                {
-                  productId: cartItem.productId,
-                  slug: cartItem.slug,
-                  name: cartItem.name,
-                  image: cartItem.image,
-                  price: cartItem.price,
-                  sku: cartItem.sku,
-                  selectedOptions: cartItem.selectedOptions,
-                },
-                {
-                  price: priceData.price,
-                  basePrice: priceData.basePrice,
-                  discountedPrice: priceData.discountedPrice,
-                }
-              );
-            }
-          }
+          priceData = calculatePriceData(variant.finalPrice, variant.discountedPrice);
         }
       } else {
         // Product-level price (no variants)
-        const priceData = calculatePriceData(product?.price, product?.discountedPrice);
-        if (priceData && typeof priceData.price === 'number') {
-          // Only update if price changed
-          if (cartItem.price !== priceData.price || 
-              cartItem.basePrice !== priceData.basePrice || 
-              cartItem.discountedPrice !== priceData.discountedPrice) {
-            updateCartItemPrice(
-              {
-                productId: cartItem.productId,
-                slug: cartItem.slug,
-                name: cartItem.name,
-                image: cartItem.image,
-                price: cartItem.price,
-                sku: cartItem.sku,
-                selectedOptions: cartItem.selectedOptions,
-              },
-              {
-                price: priceData.price,
-                basePrice: priceData.basePrice,
-                discountedPrice: priceData.discountedPrice,
-              }
-            );
-          }
+        priceData = calculatePriceData(product?.price, product?.discountedPrice);
+      }
+
+      if (priceData && typeof priceData.price === 'number') {
+        // Only update if price changed
+        if (cartItem.price !== priceData.price || 
+            cartItem.basePrice !== priceData.basePrice || 
+            cartItem.discountedPrice !== priceData.discountedPrice) {
+          updates.price = priceData.price;
+          updates.basePrice = priceData.basePrice;
+          updates.discountedPrice = priceData.discountedPrice;
         }
+      }
+
+      // Apply updates if any
+      if (Object.keys(updates).length > 0) {
+        updateCartProductInfo(productId, updates);
       }
     });
 
@@ -144,63 +154,60 @@ export function useSyncProductPrices(productId: string | undefined, product: Pro
     wishlistItems.forEach((wishlistItem) => {
       if (wishlistItem.productId !== productId) return;
 
+      // Prepare updates object
+      const updates: {
+        name?: string;
+        slug?: string;
+        image?: string;
+        price?: number;
+        basePrice?: number;
+        discountedPrice?: number;
+        isFreeDelivery?: boolean;
+      } = {};
+
+      // Update product info (name, slug, image) if changed
+      if (productName && wishlistItem.name !== productName) {
+        updates.name = productName;
+      }
+      if (productSlug && wishlistItem.slug !== productSlug) {
+        updates.slug = productSlug;
+      }
+      if (productImage && wishlistItem.image !== productImage) {
+        updates.image = productImage;
+      }
+      if (typeof productIsFreeDelivery === 'boolean' && wishlistItem.isFreeDelivery !== productIsFreeDelivery) {
+        updates.isFreeDelivery = productIsFreeDelivery;
+      }
+
+      // Update prices
+      let priceData: PriceData | null = null;
       if (hasVariants && wishlistItem.sku) {
         // Find matching variant by SKU
         const variant = variants.find((v) => v.sku === wishlistItem.sku);
         if (variant) {
-          const priceData = calculatePriceData(variant.finalPrice, variant.discountedPrice);
-          if (priceData && typeof priceData.price === 'number') {
-            // Only update if price changed
-            if (wishlistItem.price !== priceData.price || 
-                wishlistItem.basePrice !== priceData.basePrice || 
-                wishlistItem.discountedPrice !== priceData.discountedPrice) {
-              updateWishlistItemPrice(
-                {
-                  productId: wishlistItem.productId,
-                  slug: wishlistItem.slug,
-                  name: wishlistItem.name,
-                  image: wishlistItem.image,
-                  price: wishlistItem.price,
-                  sku: wishlistItem.sku,
-                  selectedOptions: wishlistItem.selectedOptions,
-                },
-                {
-                  price: priceData.price,
-                  basePrice: priceData.basePrice,
-                  discountedPrice: priceData.discountedPrice,
-                }
-              );
-            }
-          }
+          priceData = calculatePriceData(variant.finalPrice, variant.discountedPrice);
         }
       } else {
         // Product-level price (no variants)
-        const priceData = calculatePriceData(product?.price, product?.discountedPrice);
-        if (priceData && typeof priceData.price === 'number') {
-          // Only update if price changed
-          if (wishlistItem.price !== priceData.price || 
-              wishlistItem.basePrice !== priceData.basePrice || 
-              wishlistItem.discountedPrice !== priceData.discountedPrice) {
-            updateWishlistItemPrice(
-              {
-                productId: wishlistItem.productId,
-                slug: wishlistItem.slug,
-                name: wishlistItem.name,
-                image: wishlistItem.image,
-                price: wishlistItem.price,
-                sku: wishlistItem.sku,
-                selectedOptions: wishlistItem.selectedOptions,
-              },
-              {
-                price: priceData.price,
-                basePrice: priceData.basePrice,
-                discountedPrice: priceData.discountedPrice,
-              }
-            );
-          }
+        priceData = calculatePriceData(product?.price, product?.discountedPrice);
+      }
+
+      if (priceData && typeof priceData.price === 'number') {
+        // Only update if price changed
+        if (wishlistItem.price !== priceData.price || 
+            wishlistItem.basePrice !== priceData.basePrice || 
+            wishlistItem.discountedPrice !== priceData.discountedPrice) {
+          updates.price = priceData.price;
+          updates.basePrice = priceData.basePrice;
+          updates.discountedPrice = priceData.discountedPrice;
         }
       }
+
+      // Apply updates if any
+      if (Object.keys(updates).length > 0) {
+        updateWishlistProductInfo(productId, updates);
+      }
     });
-  }, [productId, product, cartItems, wishlistItems, updateCartItemPrice, updateWishlistItemPrice]);
+  }, [productId, product, cartItems, wishlistItems, updateCartProductInfo, updateWishlistProductInfo]);
 }
 
