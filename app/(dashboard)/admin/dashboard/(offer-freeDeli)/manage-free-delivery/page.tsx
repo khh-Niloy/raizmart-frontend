@@ -11,6 +11,8 @@ import {
   useGetProductsQuery,
   useToggleFreeDeliveryMutation,
 } from "@/app/redux/features/product/product.api";
+import { useLocalCart } from "@/hooks/useLocalCart";
+import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 
 interface ProductItem {
   _id: string;
@@ -29,6 +31,8 @@ export default function ManageFreeDeliveryPage() {
   } = useGetProductsQuery(undefined);
   const [toggleFreeDelivery, { isLoading: isToggling }] =
     useToggleFreeDeliveryMutation();
+  const { updateProductInfo: updateCartProductInfo } = useLocalCart();
+  const { updateProductInfo: updateWishlistProductInfo } = useLocalWishlist();
 
   // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
   const products: ProductItem[] = Array.isArray(productsData) ? productsData : [];
@@ -63,6 +67,8 @@ export default function ManageFreeDeliveryPage() {
         isFreeDelivery: true,
       }).unwrap();
       setSelectedIds((prev) => new Set(prev).add(product._id));
+      updateCartProductInfo(product._id, { isFreeDelivery: true });
+      updateWishlistProductInfo(product._id, { isFreeDelivery: true });
       toast.success("Set as free delivery");
     } catch {
       toast.error("Failed to set free delivery");
@@ -80,6 +86,8 @@ export default function ManageFreeDeliveryPage() {
         next.delete(product._id);
         return next;
       });
+      updateCartProductInfo(product._id, { isFreeDelivery: false });
+      updateWishlistProductInfo(product._id, { isFreeDelivery: false });
       toast.success("Removed from free delivery");
     } catch {
       toast.error("Failed to update free delivery");

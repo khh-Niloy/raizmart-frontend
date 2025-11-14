@@ -12,6 +12,7 @@ export type WishlistItem = {
   discountedPrice?: number; // discounted price (same as price if discount exists)
   sku?: string;
   selectedOptions?: Record<string, string>;
+  isFreeDelivery?: boolean;
 };
 
 export type LocalWishlist = {
@@ -129,7 +130,27 @@ export function useLocalWishlist() {
     persist(next);
   }, [state.items, persist]);
 
-  return { items: state.items, count, toggle, remove, clear, has, updateItemPrice, updatePricesForProduct };
+  const updateProductInfo = useCallback((
+    productId: string,
+    updates: {
+      name?: string;
+      slug?: string;
+      image?: string;
+      price?: number;
+      basePrice?: number;
+      discountedPrice?: number;
+      isFreeDelivery?: boolean;
+    }
+  ) => {
+    const next = state.items.map((it) =>
+      it.productId === productId
+        ? { ...it, ...updates }
+        : it
+    );
+    persist(next);
+  }, [state.items, persist]);
+
+  return { items: state.items, count, toggle, remove, clear, has, updateItemPrice, updatePricesForProduct, updateProductInfo };
 }
 
 
