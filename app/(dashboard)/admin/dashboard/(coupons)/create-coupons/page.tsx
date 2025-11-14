@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useCreateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
  
@@ -81,6 +83,7 @@ interface CouponFormInput {
 }
 
 export default function CreateCouponsPage() {
+  const router = useRouter();
   const [createCoupon, { isLoading }] = useCreateCouponMutation();
 
   const { register, handleSubmit, control, formState: { errors }, reset, watch, setValue, clearErrors } = useForm<CouponFormInput>({
@@ -137,6 +140,7 @@ export default function CreateCouponsPage() {
       await createCoupon(payload).unwrap();
       toast.success("Coupon created successfully");
       reset();
+      router.push("/admin/dashboard/all-coupons");
     } catch (e) {
       toast.error("Failed to create coupon");
       console.error(e);
@@ -209,14 +213,36 @@ export default function CreateCouponsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Start Date *</Label>
-                <Input type="datetime-local" {...register("startDate")} />
+                <Controller
+                  control={control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select date"
+                      dateLabel="Start Date *"
+                      timeLabel="Time"
+                    />
+                  )}
+                />
                 {errors.startDate && <p className="text-sm text-red-600">{errors.startDate.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label>End Date *</Label>
-                <Input type="datetime-local" {...register("endDate")} />
+                <Controller
+                  control={control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select date"
+                      dateLabel="End Date *"
+                      timeLabel="Time"
+                    />
+                  )}
+                />
                 {errors.endDate && <p className="text-sm text-red-600">{errors.endDate.message}</p>}
               </div>
 
