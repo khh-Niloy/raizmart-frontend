@@ -37,6 +37,7 @@ import {
   UseFormSetValue,
 } from "react-hook-form";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Dynamically import Tiptap to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
@@ -927,8 +928,13 @@ export default function EditProductPage() {
                         <Input
                           {...field}
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_ACCEPT}
                           onChange={(e) => {
+                            const isValid = validateImageFileChange(e);
+                            if (!isValid) {
+                              onChange(undefined);
+                              return;
+                            }
                             const file = e.target.files?.[0];
                             onChange(file);
                           }}
@@ -1532,13 +1538,17 @@ export default function EditProductPage() {
                 </div>
               )}
 
-              <input
+            <input
                 id="gallery-images-input"
                 type="file"
                 multiple
-                accept="image/*"
+              accept={IMAGE_ACCEPT}
                 className="hidden"
                 onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  return;
+                }
                   const files = Array.from(e.target.files || []);
                   const current = (watch("galleryImages") as unknown as File[]) || [];
                   setValue("galleryImages", [...current, ...files] as File[], { shouldDirty: true, shouldValidate: false });
@@ -2011,9 +2021,13 @@ function AttributeValueManager({
               id={`color-images-${attrIndex}-${valueIndex}`}
               type="file"
               multiple
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="hidden"
               onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  return;
+                }
                 const files = Array.from(e.target.files || []);
                 const currentImages =
                   watch(

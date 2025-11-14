@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useGetCategoriesQuery, useCreateSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Parent categories will be fetched from API
 
@@ -38,6 +39,7 @@ export default function CreateSubCategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubCategoryFormData>({
     resolver: zodResolver(subCategorySchema),
     defaultValues: {
@@ -101,8 +103,15 @@ export default function CreateSubCategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register('image')}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (

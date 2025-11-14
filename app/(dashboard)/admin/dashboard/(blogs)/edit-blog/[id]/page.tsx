@@ -23,6 +23,7 @@ import {
   useUpdateBlogMutation,
 } from "@/app/redux/features/blog-category/blog-category.api";
 import { useParams, useRouter } from "next/navigation";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Form validation schema - all fields optional for edit
 const blogSchema = z.object({
@@ -474,13 +475,17 @@ export default function EditBlogPage() {
             <Input
               id="image"
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               ref={fileInputRef}
               onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  setValue("image", undefined);
+                  return;
+                }
                 const file = e.target.files?.[0];
                 setValue("image", file);
-                setCurrentImage(undefined); // Clear existing image preview
-                // Allow re-selecting the same file by clearing the input value
+                setCurrentImage(undefined);
                 e.currentTarget.value = "";
               }}
             />

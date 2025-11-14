@@ -23,6 +23,7 @@ import {
   useUpdateOfferMutation,
 } from "@/app/redux/features/offer/offer.api";
 import Link from "next/link";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Schema: All fields optional for easy updates
 const updateOfferSchema = z.object({
@@ -266,8 +267,15 @@ export default function EditOfferPage() {
               <Label>Image (Optional - upload new or keep existing)</Label>
               <Input
                 type="file"
-                accept="image/*"
-                onChange={(e) => handleImageChange(e.target.files?.[0])}
+                accept={IMAGE_ACCEPT}
+                onChange={(e) => {
+                  const isValid = validateImageFileChange(e);
+                  if (!isValid) {
+                    handleImageChange(undefined);
+                    return;
+                  }
+                  handleImageChange(e.target.files?.[0]);
+                }}
               />
               {preview && (
                 <div className="space-y-2">
