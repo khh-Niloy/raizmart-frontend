@@ -124,14 +124,14 @@ export default function FeaturedProducts() {
               Explore top-rated picks refreshed weekly with unbeatable pricing and benefits.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2">
+          {/* <div className="hidden md:flex items-center gap-2">
             <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(-400)}>
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(400)}>
               <ChevronRight className="w-5 h-5" />
             </Button>
-          </div>
+          </div> */}
         </header>
 
         <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
