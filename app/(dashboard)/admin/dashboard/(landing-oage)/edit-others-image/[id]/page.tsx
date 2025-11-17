@@ -32,9 +32,7 @@ const othersImageUpdateSchema = z.object({
     .refine((value) => !value || /^https?:\/\/.+/i.test(value), {
       message: "Provide a valid URL starting with http:// or https://",
     }),
-  status: z.enum(["active", "inactive"], {
-    required_error: "Status is required",
-  }),
+  status: z.enum(["active", "inactive"] as const),
 });
 
 type OthersImageUpdateForm = z.infer<typeof othersImageUpdateSchema>;
