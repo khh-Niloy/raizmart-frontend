@@ -2,11 +2,12 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useGetOthersImagesQuery, useDeleteOthersImageMutation } from '@/app/redux/features/other-images/other-images.api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Trash2, ExternalLink, Image as ImageIcon, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -133,7 +134,17 @@ export default function AllOtherImagesPage() {
                 )}
 
                 {/* Actions */}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Link href={`/admin/dashboard/edit-others-image/${othersImage._id}`} className="flex">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Link>
                   <Button
                     variant="destructive"
                     size="sm"

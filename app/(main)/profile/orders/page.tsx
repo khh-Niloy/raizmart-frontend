@@ -51,7 +51,7 @@ interface Order {
     phone?: string;
     email?: string;
     address?: string;
-    upazila?: string;
+    thana?: string;
     district?: string;
     division?: string;
   };
@@ -398,7 +398,7 @@ export default function OrdersPage() {
                         {selectedOrder?.customer?.address}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {selectedOrder?.customer?.upazila},{" "}
+                        {selectedOrder?.customer?.thana},{" "}
                         {selectedOrder?.customer?.district},{" "}
                         {selectedOrder?.customer?.division}
                       </p>

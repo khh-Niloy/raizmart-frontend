@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const [division, setDivision] = React.useState("");
   const [note, setNote] = React.useState("");
   const [district, setDistrict] = React.useState("");
-  const [upazila, setUpazila] = React.useState("");
+  const [thana, setThana] = React.useState("");
   const [postCode, setPostCode] = React.useState("");
   const [createOrder, { isLoading: creatingOrder }] = useCreateOrderMutation();
   const hasOpenedAuthRef = React.useRef(false);
@@ -55,6 +55,84 @@ export default function CheckoutPage() {
     "Mymensingh",
   ];
 
+  const districtOptionsByDivision: Record<string, string[]> = {
+    Dhaka: [
+      "Dhaka",
+      "Faridpur",
+      "Gazipur",
+      "Gopalganj",
+      "Kishoreganj",
+      "Madaripur",
+      "Manikganj",
+      "Munshiganj",
+      "Narayanganj",
+      "Narsingdi",
+      "Rajbari",
+      "Shariatpur",
+      "Tangail",
+    ],
+    Chattogram: [
+      "Bandarban",
+      "Brahmanbaria",
+      "Chandpur",
+      "Chattogram",
+      "Cumilla",
+      "Cox's Bazar",
+      "Feni",
+      "Khagrachari",
+      "Lakshmipur",
+      "Noakhali",
+      "Rangamati",
+    ],
+    Rajshahi: [
+      "Bogura",
+      "Chapainawabganj",
+      "Joypurhat",
+      "Naogaon",
+      "Natore",
+      "Pabna",
+      "Rajshahi",
+      "Sirajganj",
+    ],
+    Khulna: [
+      "Bagerhat",
+      "Chuadanga",
+      "Jashore",
+      "Jhenaidah",
+      "Khulna",
+      "Kushtia",
+      "Magura",
+      "Meherpur",
+      "Narail",
+      "Satkhira",
+    ],
+    Barishal: [
+      "Barguna",
+      "Barishal",
+      "Bhola",
+      "Jhalokathi",
+      "Patuakhali",
+      "Pirojpur",
+    ],
+    Sylhet: ["Habiganj", "Moulvibazar", "Sunamganj", "Sylhet"],
+    Rangpur: [
+      "Dinajpur",
+      "Gaibandha",
+      "Kurigram",
+      "Lalmonirhat",
+      "Nilphamari",
+      "Panchagarh",
+      "Rangpur",
+      "Thakurgaon",
+    ],
+    Mymensingh: ["Jamalpur", "Mymensingh", "Netrokona", "Sherpur"],
+  };
+
+  const currentDistrictOptions = React.useMemo(() => {
+    if (!division) return [];
+    return districtOptionsByDivision[division] || [];
+  }, [division]);
+
   // Coupon handling
   const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
   const [couponCode, setCouponCode] = React.useState("");
@@ -64,7 +142,7 @@ export default function CheckoutPage() {
     discountValue?: number;
   }
 
-  console.log(items);
+  // console.log(items);
 
   const [appliedCoupon, setAppliedCoupon] = React.useState<Coupon | null>(null);
   const [justApplied, setJustApplied] = React.useState(false);
@@ -200,7 +278,7 @@ export default function CheckoutPage() {
               )}
             </div>
             <div>
-              <label className="text-sm text-gray-700">Email *</label>
+              <label className="text-sm text-gray-700">Email (optional)</label>
               <input
                 className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.email ? "border-red-500" : ""}`}
                 placeholder="Enter Email"
@@ -248,7 +326,7 @@ export default function CheckoutPage() {
                 onValueChange={(val) => {
                   setDivision(val);
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
                   if (validationErrors.division) {
                     setValidationErrors(prev => {
                       const newErrors = { ...prev };
@@ -273,12 +351,11 @@ export default function CheckoutPage() {
             </div>
             <div>
               <label className="text-sm text-gray-700">District *</label>
-              <input
-                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.district ? "border-red-500" : ""}`}
-                placeholder="Enter your district"
+              <Select
                 value={district}
-                onChange={(e) => {
-                  setDistrict(e.target.value);
+                onValueChange={(value) => {
+                  setDistrict(value);
+                  setThana("");
                   if (validationErrors.district) {
                     setValidationErrors(prev => {
                       const newErrors = { ...prev };
@@ -287,30 +364,40 @@ export default function CheckoutPage() {
                     });
                   }
                 }}
-              />
+                disabled={!division}
+              >
+                <SelectTrigger className={`mt-1 w-full rounded-xl ${validationErrors.district ? "border-red-500" : ""}`} disabled={!division}>
+                  <SelectValue placeholder={division ? "Select your district" : "Select division first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentDistrictOptions.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {validationErrors.district && (
                 <p className="text-xs text-red-600 mt-1">{validationErrors.district}</p>
               )}
             </div>
             <div>
-              <label className="text-sm text-gray-700">Upazila *</label>
+              <label className="text-sm text-gray-700">Thana *</label>
               <input
-                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.upazila ? "border-red-500" : ""}`}
-                placeholder="Enter your upazila"
-                value={upazila}
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.thana ? "border-red-500" : ""}`}
+                placeholder="Enter your thana"
+                value={thana}
                 onChange={(e) => {
-                  setUpazila(e.target.value);
-                  if (validationErrors.upazila) {
+                  setThana(e.target.value);
+                  if (validationErrors.thana) {
                     setValidationErrors(prev => {
                       const newErrors = { ...prev };
-                      delete newErrors.upazila;
+                      delete newErrors.thana;
                       return newErrors;
                     });
                   }
                 }}
               />
-              {validationErrors.upazila && (
-                <p className="text-xs text-red-600 mt-1">{validationErrors.upazila}</p>
+              {validationErrors.thana && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.thana}</p>
               )}
             </div>
             <div>
@@ -512,10 +599,8 @@ export default function CheckoutPage() {
                 errors.fullName = "Full name is required";
               }
               
-              // Email OR Phone must be provided (at least one)
-              if (!email.trim() && !phone.trim()) {
-                errors.email = "Email or phone number is required";
-                errors.phone = "Email or phone number is required";
+              if (!phone.trim()) {
+                errors.phone = "Phone number is required";
               }
               
               if (!division) {
@@ -526,8 +611,8 @@ export default function CheckoutPage() {
                 errors.district = "District is required";
               }
               
-              if (!upazila) {
-                errors.upazila = "Upazila is required";
+              if (!thana) {
+                errors.thana = "Thana is required";
               }
               
               if (!address.trim()) {
@@ -544,14 +629,15 @@ export default function CheckoutPage() {
               // Clear any previous errors
               setValidationErrors({});
               
+              const normalizedEmail = email.trim() || undefined;
               const payload = {
                 customer: {
                   fullName,
-                  email,
+                  email: normalizedEmail,
                   phone,
                   division,
                   district,
-                  upazila,
+                  thana,
                   postCode,
                   address,
                   note,
@@ -580,6 +666,7 @@ export default function CheckoutPage() {
                   data?: unknown;
                   [key: string]: unknown;
                 }
+                console.log("payload", payload);
 
                 const res = await createOrder(payload).unwrap() as OrderResponse;
                 if (res?.success) {
@@ -597,7 +684,7 @@ export default function CheckoutPage() {
                   setAddress("");
                   setDivision("");
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
                   setPostCode("");
                   setNote("");
                   router.push("/profile/orders");
@@ -615,7 +702,7 @@ export default function CheckoutPage() {
                   setAddress("");
                   setDivision("");
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
                   setPostCode("");
                   setNote("");
                   router.push("/profile/orders");
