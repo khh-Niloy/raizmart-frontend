@@ -101,7 +101,7 @@ export default function BrandProducts() {
               special financing options.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2">
+          {/* <div className="hidden md:flex items-center gap-2">
             <Button
               variant="outline"
               size="icon"
@@ -118,7 +118,7 @@ export default function BrandProducts() {
             >
               <ChevronRight className="w-5 h-5" />
             </Button>
-          </div>
+          </div> */}
         </header>
 
         {/* Brand toggles */}

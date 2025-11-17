@@ -113,14 +113,14 @@ export default function TrendingProducts() {
               See what shoppers are loving right now across categories.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2">
+          {/* <div className="hidden md:flex items-center gap-2">
             <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(-400)}>
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(400)}>
               <ChevronRight className="w-5 h-5" />
             </Button>
-          </div>
+          </div> */}
         </header>
 
         <div ref={scrollRef} className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -186,14 +186,14 @@ export default function TrendingProducts() {
           })}
         </div>
 
-        <div className="mt-6 flex items-center justify-center gap-3 md:hidden">
+        {/* <div className="mt-6 flex items-center justify-center gap-3 md:hidden">
           <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(-300)}>
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <Button variant="outline" size="icon" className="rounded-full" onClick={() => scrollBy(300)}>
             <ChevronRight className="w-5 h-5" />
           </Button>
-        </div>
+        </div> */}
       </div>
     </section>
   );
