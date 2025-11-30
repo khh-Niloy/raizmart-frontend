@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { ChevronDown } from "lucide-react";
 import {
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
@@ -29,6 +30,7 @@ export default function AdminAllOrdersPage() {
 
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
   const allParams = useMemo(
     () => ({
@@ -286,421 +288,504 @@ export default function AdminAllOrdersPage() {
             [key: string]: unknown;
           }
 
-            return orders?.map((o: Order, idx: number) => (
-            <div key={o._id}>
-              <div
-                className={`rounded-md border mb-4 overflow-hidden ${
-                  idx % 2 === 0 ? "bg-background" : "bg-muted/10"
-                }`}
-              >
-              {/* Colored separator without extra padding */}
-              {/* <div className="h-10 rounded-b-sm  w-full bg-[#02C1BE]" /> */}
+            const toggleOrder = (orderId: string) => {
+              setExpandedOrders((prev) => {
+                const newSet = new Set(prev);
+                if (newSet.has(orderId)) {
+                  newSet.delete(orderId);
+                } else {
+                  newSet.add(orderId);
+                }
+                return newSet;
+              });
+            };
 
-              {/* Header */}
-              <div 
-              className={`flex items-center justify-between px-4 py-3  ${
-                idx % 2 === 0 ? "bg-muted/10" : "bg-muted/10"
-              }`}>
-                <div className="flex items-center flex-wrap gap-2">
-                  <span className="text-lg md:text-xl font-extrabold tracking-tight">
-                    Order {idx + 1}
-                  </span>
-                  <div className="font-semibold tracking-wide">
-                    {o.order_slug}
-                  </div>
-                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    {o.status}
-                  </span>
-                  {o?.couponCode ? (
-                    <Badge variant="secondary">
-                      Coupon used
-                      {typeof o.couponCode === "string" && o.couponCode.trim()
-                        ? `: ${o.couponCode}`
-                        : ""}
-                    </Badge>
-                  ) : null}
-                  {o?.delivery?.method ? (
-                    <Badge variant="outline">
-                      {o.delivery.method}
-                      {o?.delivery?.division ? ` • ${o.delivery.division}` : ""}
-                    </Badge>
-                  ) : null}
-                  <Badge variant="outline">
-                    Items: {Array.isArray(o.items) ? o.items.length : 0}
-                  </Badge>
-                </div>
-                {o.createdAt && (
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(o.createdAt).toLocaleString()}
-                  </div>
-                )}
-              </div>
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Order ID</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Customer</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Status</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Grand Total</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Date</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders?.map((o: Order, idx: number) => {
+                      const isExpanded = expandedOrders.has(o._id);
+                      const customerName = o?.customer?.fullName || o?.userId?.name || "-";
+                      const grandTotal = o?.humanTotals?.["grand total"] 
+                        || `৳ ${o?.totals?.grandTotal ?? 0}`;
+                      const orderDate = o.createdAt 
+                        ? new Date(o.createdAt).toLocaleString() 
+                        : "-";
 
-              {/* Body */}
-              <div className="grid grid-cols-12 gap-6 px-4 py-4 text-sm">
-                <div className="col-span-12 md:col-span-4 space-y-1.5">
-                  <div className="text-xs text-muted-foreground">Customer</div>
-                  <div className="font-medium">
-                    {o?.customer?.fullName || o?.userId?.name || "-"}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {o?.customer?.email || o?.userId?.email || "-"}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {o?.userId?.phone || o?.customer?.phone || "-"}
-                  </div>
-                </div>
-                <div className="col-span-12 md:col-span-4 space-y-2">
-                  <div className="text-xs text-muted-foreground">Totals</div>
-                  {o?.humanTotals ? (
-                    <div className="divide-y rounded-md border bg-background">
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Regular</span>
-                        <span className="font-medium">
-                          {o.humanTotals["regular price"]}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">
-                          Product discount
-                        </span>
-                        <span>{o.humanTotals["total product discount"]}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">
-                          After discount
-                        </span>
-                        <span className="font-medium">
-                          {o.humanTotals["after discount price"]}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Coupon</span>
-                        <span>{o.humanTotals["coupon discount"]}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">
-                          After coupon
-                        </span>
-                        <span className="font-medium">
-                          {o.humanTotals["after coupon discount"]}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Shipping</span>
-                        <span>{o.humanTotals["shipping"]}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
-                        <span className="font-medium">Grand total</span>
-                        <span className="font-semibold">
-                          {o.humanTotals["grand total"]}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="divide-y rounded-md border bg-background">
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>৳ {o?.totals?.subtotal ?? 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Discount</span>
-                        <span>৳ {o?.totals?.discountTotal ?? 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2">
-                        <span className="text-muted-foreground">Shipping</span>
-                        <span>৳ {o?.totals?.shippingTotal ?? 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
-                        <span className="font-medium">Grand total</span>
-                        <span className="font-semibold">
-                          ৳ {o?.totals?.grandTotal ?? 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="col-span-12 md:col-span-4 space-y-1.5">
-                  <div className="text-xs text-muted-foreground">Delivery</div>
-                  <div>
-                    Method:{" "}
-                    <span className="font-medium">
-                      {o?.delivery?.method || "-"}
-                    </span>
-                  </div>
-                  <div>
-                    Division:{" "}
-                    <span className="font-medium">
-                      {o?.delivery?.division || "-"}
-                    </span>
-                  </div>
-                  <div>
-                    Charge:{" "}
-                    <span className="font-medium">
-                      ৳ {o?.delivery?.charge ?? 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Items */}
-              <div className="px-4 pb-4">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                  Items
-                </div>
-                {Array.isArray(o.items) && o.items.length > 0 ? (
-                  <div className="space-y-3">
-                    {o.items.map((it: OrderItem, idx: number) => (
-                      <div
-                        key={idx}
-                        className="rounded-md border bg-background p-3"
-                      >
-                        <div className="grid grid-cols-12 gap-4">
-                          <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
-                            {it.images?.[0] ||
-                            it.productDetails?.images?.[0] ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={
-                                  it.images?.[0] ||
-                                  it.productDetails?.images?.[0]
-                                }
-                                alt={
-                                  (typeof it.productName === 'string' ? it.productName : '') ||
-                                  (typeof it.productDetails?.name === 'string' ? it.productDetails.name : '') ||
-                                  "product"
-                                }
-                                className="h-12 w-12 rounded object-cover border"
-                              />
-                            ) : (
-                              <div className="h-12 w-12 rounded bg-muted" />
-                            )}
-                            <div className="space-y-0.5">
-                              <div className="font-medium">
-                                {(typeof it.productName === 'string' ? it.productName : '') ||
-                                 it.productDetails?.name ||
-                                 'Product'}
+                      return (
+                        <>
+                          <tr
+                            key={o._id}
+                            className={`border-b transition-colors ${
+                              idx % 2 === 0 ? "bg-background" : "bg-muted/10"
+                            } hover:bg-muted/20`}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="font-semibold">{o.order_slug || `Order ${idx + 1}`}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium">{customerName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {o?.customer?.email || o?.userId?.email || ""}
                               </div>
-                              {(() => {
-                                const skuValue = it.sku;
-                                if (skuValue && (typeof skuValue === 'string' || typeof skuValue === 'number')) {
-                                  return (
-                                    <div className="text-muted-foreground text-xs">
-                                      SKU: {String(skuValue)}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              <div className="text-muted-foreground text-xs">
-                                Slug:{" "}
-                                {(typeof it.productSlug === 'string' ? it.productSlug : '') ||
-                                 (typeof it.productDetails?.slug === 'string' ? it.productDetails.slug : '') ||
-                                 'N/A'}
-                              </div>
-                            </div>
-                          </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                {o.status || "-"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold">{grandTotal}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-muted-foreground">{orderDate}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => toggleOrder(o._id)}
+                              >
+                                <ChevronDown
+                                  className={`h-4 w-4 transition-transform ${
+                                    isExpanded ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </Button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr>
+                              <td colSpan={6} className="px-0">
+                                <div
+                                  className={`rounded-md border-t overflow-hidden ${
+                                    idx % 2 === 0 ? "bg-background" : "bg-muted/10"
+                                  }`}
+                                >
 
-                          {/* Pricing block */}
-                          <div className="col-span-12 md:col-span-4">
-                            <div className="divide-y rounded-md border">
-                              {it.humanPricing ? (
-                                <>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Qty
-                                    </span>
-                                    <span className="font-medium">
-                                      {it.humanPricing["quantity"] ??
-                                        it.quantity}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Product price
-                                    </span>
-                                    <span>
-                                      {it.humanPricing["product real price"]}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Discount
-                                    </span>
-                                    <span>
-                                      {it.humanPricing["discount x %"]}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      After discount unit
-                                    </span>
-                                    <span className="font-medium">
-                                      {
-                                        it.humanPricing[
-                                          "after discount product price"
-                                        ]
-                                      }
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Qty × unit = total
-                                    </span>
-                                    <span>
-                                      {
-                                        it.humanPricing[
-                                          "quantity x final unit = line total"
-                                        ]
-                                      }
-                                    </span>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Qty
-                                    </span>
-                                    <span className="font-medium">
-                                      {it.quantity}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Unit original
-                                    </span>
-                                    <span>৳ {typeof it.unitPriceOriginal === 'number' || typeof it.unitPriceOriginal === 'string' 
-                                      ? it.unitPriceOriginal 
-                                      : it.price || 0}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Unit final
-                                    </span>
-                                    <span className="font-medium">
-                                      ৳ {typeof it.unitPriceFinal === 'number' || typeof it.unitPriceFinal === 'string' 
-                                        ? it.unitPriceFinal 
-                                        : it.price || 0}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Discount %
-                                    </span>
-                                    <span>{typeof it.unitDiscountPct === 'number' || typeof it.unitDiscountPct === 'string' 
-                                      ? it.unitDiscountPct 
-                                      : 0}%</span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Line totals */}
-                          <div className="col-span-12 md:col-span-3">
-                            <div className="divide-y rounded-md border">
-                              {it.humanPricing ? (
-                                <>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Regular
-                                    </span>
-                                    <span>
-                                      {it.humanPricing["regular price"]}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Product discount
-                                    </span>
-                                    <span>
-                                      {
-                                        it.humanPricing[
-                                          "total product discount"
-                                        ]
-                                      }
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
-                                    <span className="font-medium">
-                                      After discount
-                                    </span>
-                                    <span className="font-semibold">
-                                      {it.humanPricing["after discount price"]}
-                                    </span>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Line subtotal
-                                    </span>
-                                    <span>৳ {typeof it.lineSubtotal === 'number' || typeof it.lineSubtotal === 'string' 
-                                      ? it.lineSubtotal 
-                                      : 0}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2">
-                                    <span className="text-muted-foreground">
-                                      Line discount
-                                    </span>
-                                    <span>৳ {typeof it.lineDiscount === 'number' || typeof it.lineDiscount === 'string' 
-                                      ? it.lineDiscount 
-                                      : 0}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
-                                    <span className="font-medium">
-                                      Line total
-                                    </span>
-                                    <span className="font-semibold">
-                                      ৳ {typeof it.lineTotal === 'number' || typeof it.lineTotal === 'string' 
-                                        ? it.lineTotal 
-                                        : 0}
-                                    </span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Attributes */}
-                          <div className="col-span-12">
-                            <div className="flex flex-wrap gap-1">
-                              {Array.isArray(it.attributes) &&
-                              it.attributes.length > 0 ? (
-                                it.attributes.map((a: OrderItemAttribute, ai: number) => (
-                                  <span
-                                    key={ai}
-                                    className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs"
+                                  {/* Header */}
+                                  <div 
+                                    className={`flex items-center justify-between px-4 py-3 ${
+                                      idx % 2 === 0 ? "bg-muted/10" : "bg-muted/10"
+                                    }`}
                                   >
-                                    {a.attributeName || a.attributeLabel}:{" "}
-                                    {a.attributeLabel || a.attributeValue}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-muted-foreground text-xs">
-                                  No attributes
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    No items for this order.
-                  </div>
-                )}
+                                    <div className="flex items-center flex-wrap gap-2">
+                                      <span className="text-lg md:text-xl font-extrabold tracking-tight">
+                                        Order {idx + 1}
+                                      </span>
+                                      <div className="font-semibold tracking-wide">
+                                        {o.order_slug}
+                                      </div>
+                                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                        {o.status}
+                                      </span>
+                                      {o?.couponCode ? (
+                                        <Badge variant="secondary">
+                                          Coupon used
+                                          {typeof o.couponCode === "string" && o.couponCode.trim()
+                                            ? `: ${o.couponCode}`
+                                            : ""}
+                                        </Badge>
+                                      ) : null}
+                                      {o?.delivery?.method ? (
+                                        <Badge variant="outline">
+                                          {o.delivery.method}
+                                          {o?.delivery?.division ? ` • ${o.delivery.division}` : ""}
+                                        </Badge>
+                                      ) : null}
+                                      <Badge variant="outline">
+                                        Items: {Array.isArray(o.items) ? o.items.length : 0}
+                                      </Badge>
+                                    </div>
+                                    {o.createdAt && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {new Date(o.createdAt).toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Body */}
+                                  <div className="grid grid-cols-12 gap-6 px-4 py-4 text-sm">
+                                    <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                      <div className="text-xs text-muted-foreground">Customer</div>
+                                      <div className="font-medium">
+                                        {o?.customer?.fullName || o?.userId?.name || "-"}
+                                      </div>
+                                      <div className="text-muted-foreground">
+                                        {o?.customer?.email || o?.userId?.email || "-"}
+                                      </div>
+                                      <div className="text-muted-foreground">
+                                        {o?.userId?.phone || o?.customer?.phone || "-"}
+                                      </div>
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4 space-y-2">
+                                      <div className="text-xs text-muted-foreground">Totals</div>
+                                      {o?.humanTotals ? (
+                                        <div className="divide-y rounded-md border bg-background">
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Regular</span>
+                                            <span className="font-medium">
+                                              {o.humanTotals["regular price"]}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">
+                                              Product discount
+                                            </span>
+                                            <span>{o.humanTotals["total product discount"]}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">
+                                              After discount
+                                            </span>
+                                            <span className="font-medium">
+                                              {o.humanTotals["after discount price"]}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Coupon</span>
+                                            <span>{o.humanTotals["coupon discount"]}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">
+                                              After coupon
+                                            </span>
+                                            <span className="font-medium">
+                                              {o.humanTotals["after coupon discount"]}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Shipping</span>
+                                            <span>{o.humanTotals["shipping"]}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                            <span className="font-medium">Grand total</span>
+                                            <span className="font-semibold">
+                                              {o.humanTotals["grand total"]}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="divide-y rounded-md border bg-background">
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Subtotal</span>
+                                            <span>৳ {o?.totals?.subtotal ?? 0}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Discount</span>
+                                            <span>৳ {o?.totals?.discountTotal ?? 0}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2">
+                                            <span className="text-muted-foreground">Shipping</span>
+                                            <span>৳ {o?.totals?.shippingTotal ?? 0}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                            <span className="font-medium">Grand total</span>
+                                            <span className="font-semibold">
+                                              ৳ {o?.totals?.grandTotal ?? 0}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                      <div className="text-xs text-muted-foreground">Delivery</div>
+                                      <div>
+                                        Method:{" "}
+                                        <span className="font-medium">
+                                          {o?.delivery?.method || "-"}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        Division:{" "}
+                                        <span className="font-medium">
+                                          {o?.delivery?.division || "-"}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        Charge:{" "}
+                                        <span className="font-medium">
+                                          ৳ {o?.delivery?.charge ?? 0}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Items */}
+                                  <div className="px-4 pb-4">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                                      Items
+                                    </div>
+                                    {Array.isArray(o.items) && o.items.length > 0 ? (
+                                      <div className="space-y-3">
+                                        {o.items.map((it: OrderItem, itemIdx: number) => (
+                                          <div
+                                            key={itemIdx}
+                                            className="rounded-md border bg-background p-3"
+                                          >
+                                            <div className="grid grid-cols-12 gap-4">
+                                              <div className="col-span-12 md:col-span-5 flex gap-3 items-start">
+                                                {it.images?.[0] ||
+                                                it.productDetails?.images?.[0] ? (
+                                                  // eslint-disable-next-line @next/next/no-img-element
+                                                  <img
+                                                    src={
+                                                      it.images?.[0] ||
+                                                      it.productDetails?.images?.[0]
+                                                    }
+                                                    alt={
+                                                      (typeof it.productName === 'string' ? it.productName : '') ||
+                                                      (typeof it.productDetails?.name === 'string' ? it.productDetails.name : '') ||
+                                                      "product"
+                                                    }
+                                                    className="h-12 w-12 rounded object-cover border"
+                                                  />
+                                                ) : (
+                                                  <div className="h-12 w-12 rounded bg-muted" />
+                                                )}
+                                                <div className="space-y-0.5">
+                                                  <div className="font-medium">
+                                                    {(typeof it.productName === 'string' ? it.productName : '') ||
+                                                     it.productDetails?.name ||
+                                                     'Product'}
+                                                  </div>
+                                                  {(() => {
+                                                    const skuValue = it.sku;
+                                                    if (skuValue && (typeof skuValue === 'string' || typeof skuValue === 'number')) {
+                                                      return (
+                                                        <div className="text-muted-foreground text-xs">
+                                                          SKU: {String(skuValue)}
+                                                        </div>
+                                                      );
+                                                    }
+                                                    return null;
+                                                  })()}
+                                                  <div className="text-muted-foreground text-xs">
+                                                    Slug:{" "}
+                                                    {(typeof it.productSlug === 'string' ? it.productSlug : '') ||
+                                                     (typeof it.productDetails?.slug === 'string' ? it.productDetails.slug : '') ||
+                                                     'N/A'}
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              {/* Pricing block */}
+                                              <div className="col-span-12 md:col-span-4">
+                                                <div className="divide-y rounded-md border">
+                                                  {it.humanPricing ? (
+                                                    <>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Qty
+                                                        </span>
+                                                        <span className="font-medium">
+                                                          {it.humanPricing["quantity"] ??
+                                                            it.quantity}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Product price
+                                                        </span>
+                                                        <span>
+                                                          {it.humanPricing["product real price"]}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Discount
+                                                        </span>
+                                                        <span>
+                                                          {it.humanPricing["discount x %"]}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          After discount unit
+                                                        </span>
+                                                        <span className="font-medium">
+                                                          {
+                                                            it.humanPricing[
+                                                              "after discount product price"
+                                                            ]
+                                                          }
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Qty × unit = total
+                                                        </span>
+                                                        <span>
+                                                          {
+                                                            it.humanPricing[
+                                                              "quantity x final unit = line total"
+                                                            ]
+                                                          }
+                                                        </span>
+                                                      </div>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Qty
+                                                        </span>
+                                                        <span className="font-medium">
+                                                          {it.quantity}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Unit original
+                                                        </span>
+                                                        <span>৳ {typeof it.unitPriceOriginal === 'number' || typeof it.unitPriceOriginal === 'string' 
+                                                          ? it.unitPriceOriginal 
+                                                          : it.price || 0}</span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Unit final
+                                                        </span>
+                                                        <span className="font-medium">
+                                                          ৳ {typeof it.unitPriceFinal === 'number' || typeof it.unitPriceFinal === 'string' 
+                                                            ? it.unitPriceFinal 
+                                                            : it.price || 0}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Discount %
+                                                        </span>
+                                                        <span>{typeof it.unitDiscountPct === 'number' || typeof it.unitDiscountPct === 'string' 
+                                                          ? it.unitDiscountPct 
+                                                          : 0}%</span>
+                                                      </div>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              {/* Line totals */}
+                                              <div className="col-span-12 md:col-span-3">
+                                                <div className="divide-y rounded-md border">
+                                                  {it.humanPricing ? (
+                                                    <>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Regular
+                                                        </span>
+                                                        <span>
+                                                          {it.humanPricing["regular price"]}
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Product discount
+                                                        </span>
+                                                        <span>
+                                                          {
+                                                            it.humanPricing[
+                                                              "total product discount"
+                                                            ]
+                                                          }
+                                                        </span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                                        <span className="font-medium">
+                                                          After discount
+                                                        </span>
+                                                        <span className="font-semibold">
+                                                          {it.humanPricing["after discount price"]}
+                                                        </span>
+                                                      </div>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Line subtotal
+                                                        </span>
+                                                        <span>৳ {typeof it.lineSubtotal === 'number' || typeof it.lineSubtotal === 'string' 
+                                                          ? it.lineSubtotal 
+                                                          : 0}</span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2">
+                                                        <span className="text-muted-foreground">
+                                                          Line discount
+                                                        </span>
+                                                        <span>৳ {typeof it.lineDiscount === 'number' || typeof it.lineDiscount === 'string' 
+                                                          ? it.lineDiscount 
+                                                          : 0}</span>
+                                                      </div>
+                                                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+                                                        <span className="font-medium">
+                                                          Line total
+                                                        </span>
+                                                        <span className="font-semibold">
+                                                          ৳ {typeof it.lineTotal === 'number' || typeof it.lineTotal === 'string' 
+                                                            ? it.lineTotal 
+                                                            : 0}
+                                                        </span>
+                                                      </div>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              {/* Attributes */}
+                                              <div className="col-span-12">
+                                                <div className="flex flex-wrap gap-1">
+                                                  {Array.isArray(it.attributes) &&
+                                                  it.attributes.length > 0 ? (
+                                                    it.attributes.map((a: OrderItemAttribute, ai: number) => (
+                                                      <span
+                                                        key={ai}
+                                                        className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs"
+                                                      >
+                                                        {a.attributeName || a.attributeLabel}:{" "}
+                                                        {a.attributeLabel || a.attributeValue}
+                                                      </span>
+                                                    ))
+                                                  ) : (
+                                                    <span className="text-muted-foreground text-xs">
+                                                      No attributes
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">
+                                        No items for this order.
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              </div>
-              {idx < orders.length - 1 && (
-                <div className="h-[50px] w-full" />
-              )}
-            </div>
-          ));
+            );
           })()}
         </div>
       </Card>
