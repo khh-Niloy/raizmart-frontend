@@ -40,7 +40,7 @@ export default function Footer() {
                 <Mail className="w-5 h-5 text-[#02C1BE] mt-0.5" />
                 <div>
                   <p className="text-sm text-gray-500">Email Address</p>
-                  raizmart@gmail.com
+                  support@raizmart.com
                 </div>
               </div>
             </div>
@@ -195,10 +195,10 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-center sm:text-left">
             <span>Support:</span>
             <a
-              href="mailto:raizmart@gmail.com"
+              href="mailto:support@raizmart.com"
               className="text-gray-500 hover:text-[#02C1BE] transition-colors break-all sm:break-normal"
             >
-              raizmart@gmail.com
+              support@raizmart.com
             </a>
           </div>
         </div>

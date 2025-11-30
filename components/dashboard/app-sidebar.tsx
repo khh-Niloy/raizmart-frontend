@@ -38,6 +38,10 @@ const data = {
           title: "Stock",
           url: "/admin/dashboard/stock",
         },
+        {
+          title: "Order Summary",
+          url: "/admin/dashboard/order-summary",
+        },
       ],
     },
     {
@@ -49,6 +53,14 @@ const data = {
         {
           title: "All Orders",
           url: "/admin/dashboard/all-orders",
+        },
+        {
+          title: "User Order Summary",
+          url: "/admin/dashboard/user-order-summary",
+        },
+        {
+          title: "Top Customers",
+          url: "/admin/dashboard/top-customers",
         },
       ],
     },
