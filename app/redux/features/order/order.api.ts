@@ -37,6 +37,40 @@ interface SearchOrdersResponse {
   meta: OrderMeta;
 }
 
+export interface UserOrderSummaryProduct {
+  productId?: string;
+  productName?: string;
+  productSlug?: string;
+  sku?: string;
+  images?: string[];
+  attributes?: Array<{
+    attributeName?: string;
+    attributeLabel?: string;
+  }>;
+  totalQuantity: number;
+  totalAmount: number;
+}
+
+export interface UserOrderSummary {
+  user?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    picture?: string;
+    role?: string;
+    createdAt?: string;
+  };
+  totalSpent: number;
+  orderedProducts: UserOrderSummaryProduct[];
+  orderHistory?: Array<{
+    orderId?: string;
+    orderSlug?: string;
+    createdAt?: string;
+    grandTotal?: number;
+  }>;
+}
+
 export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMyOrders: builder.query<Order[], void>({
@@ -143,6 +177,41 @@ export const orderApi = baseApi.injectEndpoints({
         }
       },
     }),
+    getUsersOrderSummary: builder.query<
+      UserOrderSummary[],
+      {
+        top?: number;
+        period?: "day" | "week" | "month";
+        startDate?: string;
+        endDate?: string;
+      } | void
+    >({
+      query: (args) => ({
+        url: "/user/order-summary",
+        method: "GET",
+        params:
+          args && typeof args === "object"
+            ? Object.entries(args).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== null && value !== "") {
+                  acc[key] = value;
+                }
+                return acc;
+              }, {} as Record<string, unknown>)
+            : undefined,
+      }),
+      transformResponse: (response: unknown): UserOrderSummary[] => {
+        const wrapped = response as { data?: UserOrderSummary[] } | UserOrderSummary[];
+        if (Array.isArray(wrapped)) {
+          return wrapped;
+        }
+        if (wrapped && typeof wrapped === "object" && "data" in wrapped) {
+          const data = (wrapped as { data?: UserOrderSummary[] }).data;
+          return Array.isArray(data) ? data : [];
+        }
+        return [];
+      },
+      providesTags: ["ORDERS"],
+    }),
   }),
 });
 
@@ -154,6 +223,7 @@ export const {
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
   useLazyDownloadOrdersPDFQuery,
+  useGetUsersOrderSummaryQuery,
 } = orderApi;
 
 

@@ -4,6 +4,36 @@ interface ApiResponse<T> {
   data?: T;
 }
 
+export interface ProductVariantOrderSummary {
+  sku?: string;
+  attributes?: Array<{
+    attributeName?: string;
+    attributeLabel?: string;
+  }>;
+  totalQuantity: number;
+  totalOrders: number;
+  customers: Array<{
+    name?: string;
+    email?: string;
+    phone?: string;
+  }>;
+}
+
+export interface ProductOrderSummary {
+  _id?: string;
+  productName?: string;
+  productSlug?: string;
+  images?: string[];
+  totalQuantity: number;
+  totalOrders: number;
+  variants: ProductVariantOrderSummary[];
+  customers: Array<{
+    name?: string;
+    email?: string;
+    phone?: string;
+  }>;
+}
+
 export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create Product
@@ -184,6 +214,40 @@ export const productApi = baseApi.injectEndpoints({
       },
       providesTags: ["PRODUCTS"],
     }),
+    getProductOrderSummary: builder.query<
+      ProductOrderSummary[],
+      {
+        productId?: string;
+        limit?: number;
+        period?: "day" | "week" | "month";
+        startDate?: string;
+        endDate?: string;
+      } | void
+    >({
+      query: (params) => ({
+        url: "/products/order-summary",
+        method: "GET",
+        params: params
+          ? Object.entries(params).reduce((acc, [key, value]) => {
+              if (value !== undefined && value !== null && value !== "") {
+                acc[key] = value;
+              }
+              return acc;
+            }, {} as Record<string, unknown>)
+          : undefined,
+      }),
+      transformResponse: (response: unknown): ProductOrderSummary[] => {
+        const apiResponse = response as ApiResponse<ProductOrderSummary[]> | ProductOrderSummary[];
+        if (Array.isArray(apiResponse)) {
+          return apiResponse;
+        }
+        if (apiResponse && "data" in apiResponse) {
+          return Array.isArray(apiResponse.data) ? apiResponse.data : [];
+        }
+        return [];
+      },
+      providesTags: ["PRODUCTS"],
+    }),
   }),
 })
 
@@ -202,4 +266,5 @@ export const {
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,
   useGetAllProductsStockQuery,
+  useGetProductOrderSummaryQuery,
 } = productApi

@@ -37,9 +37,11 @@ export default function ProductDetailBySlug({
     images?: string[];
     video?: string;
     video_url?: string;
-    descriptionImage?: string;
-    description_image?: string;
+    descriptionImages?: string[];
+    descriptionImage?: string; // Keep for backward compatibility
+    description_image?: string; // Keep for backward compatibility
     isFreeDelivery?: boolean;
+    isWarrantyAvailable?: boolean;
     category?: string | { slug?: string; name?: string; [key: string]: unknown };
     subCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
     subSubCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
@@ -389,13 +391,19 @@ export default function ProductDetailBySlug({
     return "";
   }, [product?.description]);
 
-  // Extract video and descriptionImage from product
+  // Extract video and descriptionImages from product
   const videoUrl = React.useMemo(() => {
     return product?.video || product?.video_url || "";
   }, [product]);
 
-  const descriptionImageUrl = React.useMemo(() => {
-    return product?.descriptionImage || product?.description_image || "";
+  const descriptionImages = React.useMemo(() => {
+    // Support new descriptionImages array and backward compatibility with single descriptionImage
+    if (product?.descriptionImages && Array.isArray(product.descriptionImages)) {
+      return product.descriptionImages;
+    }
+    // Fallback to old single image fields
+    const singleImage = product?.descriptionImage || product?.description_image;
+    return singleImage ? [singleImage] : [];
   }, [product]);
 
   const videoId = React.useMemo(() => {
@@ -413,7 +421,7 @@ export default function ProductDetailBySlug({
     return textOnly.length > 0;
   }, [descriptionHtml]);
   const hasVideo = React.useMemo(() => !!videoId, [videoId]);
-  const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
+  const hasDescriptionImages = React.useMemo(() => descriptionImages.length > 0, [descriptionImages]);
 
   // Loading state
   if (isLoading) {
@@ -887,9 +895,11 @@ export default function ProductDetailBySlug({
           })()}
 
           {/* Small details */}
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
-            Enjoy 1-year official warranty support plus expert assistance from our customer care team.
-          </div>
+          {product?.isWarrantyAvailable === true && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
+              Enjoy 6 month warranty support plus expert assistance from our customer care team.
+            </div>
+          )}
         </div>
       </div>
       {/* Product details sections */}
@@ -904,7 +914,7 @@ export default function ProductDetailBySlug({
               Specification
             </button>
           )}
-          {(hasDescription || hasDescriptionImage || hasVideo) && (
+          {(hasDescription || hasDescriptionImages || hasVideo) && (
             <button
               type="button"
               className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
@@ -922,13 +932,15 @@ export default function ProductDetailBySlug({
               Video
             </button>
           )}
-          <button
-            type="button"
-            className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
-            onClick={() => scrollToWithOffset(warrantyRef.current)}
-          >
-            Warranty
-          </button>
+          {product?.isWarrantyAvailable === true && (
+            <button
+              type="button"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+              onClick={() => scrollToWithOffset(warrantyRef.current)}
+            >
+              Warranty
+            </button>
+          )}
         </div>
         {/* Specification */}
         {hasSpecs && (
@@ -954,19 +966,23 @@ export default function ProductDetailBySlug({
         )}
 
         {/* Description */}
-        {(hasDescription || hasDescriptionImage || hasVideo) && (
+        {(hasDescription || hasDescriptionImages || hasVideo) && (
           <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={descRef} id="description">
             <h2 className="text-2xl font-semibold text-slate-900">Description</h2>
             <div className="space-y-6">
-              {/* Description Image */}
-              {hasDescriptionImage && (
-                <div className="w-full">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={descriptionImageUrl}
-                    alt="Product description"
-                    className="h-auto w-xl mt-5 rounded-2xl object-cover shadow"
-                  />
+              {/* Description Images */}
+              {hasDescriptionImages && (
+                <div className="w-full space-y-4">
+                  {descriptionImages.map((imgUrl, index) => (
+                    <div key={index} className="w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imgUrl}
+                        alt={`Product description ${index + 1}`}
+                        className="h-auto w-full mt-5 rounded-2xl object-cover shadow"
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -1020,16 +1036,18 @@ export default function ProductDetailBySlug({
         )}
 
         {/* Warranty */}
-        <div
-          ref={warrantyRef}
-          id="warranty"
-          className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
-        >
-          <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
-          <p className="mt-3 text-sm text-slate-600">
-            1-year official warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
-          </p>
-        </div>
+        {product?.isWarrantyAvailable === true && (
+          <div
+            ref={warrantyRef}
+            id="warranty"
+            className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
+          >
+            <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
+            <p className="mt-3 text-sm text-slate-600">
+              6 month warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
+            </p>
+          </div>
+        )}
       </div>
       {/* Related Products by category */}
       {hasCategoryData && !isRelatedError && (
