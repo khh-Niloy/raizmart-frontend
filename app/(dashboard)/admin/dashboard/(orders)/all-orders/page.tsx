@@ -8,9 +8,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
   useLazyDownloadOrdersPDFQuery,
+  useUpdateOrderStatusMutation,
 } from "@/app/redux/features/order/order.api";
 
 const formatDateInput = (d?: Date | string) => {
@@ -54,11 +61,12 @@ export default function AdminAllOrdersPage() {
     isFetching: isFetchingSearch,
     refetch: refetchSearch,
   } = useSearchOrdersByUserAdminQuery(
-    { searchTerm, sort },
+    { searchTerm, sort, status: status || undefined },
     { skip: !isSearching || !searchTerm.trim() }
   );
 
   const [downloadPDF, { isLoading: isDownloadingPDF }] = useLazyDownloadOrdersPDFQuery();
+  const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation();
 
   useEffect(() => {
     if (isSearching) {
@@ -162,8 +170,13 @@ export default function AdminAllOrdersPage() {
               onChange={(e) => setStatus(e.target.value)}
             >
               <option value="">All</option>
-              <option value="REQUESTED">REQUESTED</option>
-              <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="hold">Hold</option>
+              <option value="cancel">Cancel</option>
+              <option value="dispatch">Dispatch</option>
+              <option value="delivered">Delivered</option>
+              <option value="return">Return</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -300,6 +313,71 @@ export default function AdminAllOrdersPage() {
               });
             };
 
+            const getStatusColor = (status?: string) => {
+              const s = (status || "").toLowerCase();
+              switch (s) {
+                case "pending":
+                  return "bg-yellow-50 text-yellow-700";
+                case "approved":
+                  return "bg-blue-50 text-blue-700";
+                case "hold":
+                  return "bg-orange-50 text-orange-700";
+                case "cancel":
+                  return "bg-red-50 text-red-700";
+                case "dispatch":
+                  return "bg-purple-50 text-purple-700";
+                case "delivered":
+                  return "bg-green-50 text-green-700";
+                case "return":
+                  return "bg-gray-50 text-gray-700";
+                default:
+                  return "bg-gray-50 text-gray-700";
+              }
+            };
+
+            // Define allowed status transitions (must match backend logic)
+            const getAllowedTransitions = (currentStatus?: string): string[] => {
+              const status = (currentStatus || "").toLowerCase();
+              const allowedTransitions: Record<string, string[]> = {
+                pending: ["approved", "hold", "cancel"],
+                approved: ["dispatch", "hold", "cancel"],
+                hold: ["approved", "cancel"],
+                dispatch: ["delivered", "return"],
+                delivered: ["return"],
+                cancel: [], // Final state - no transitions allowed
+                return: [], // Final state - no transitions allowed
+              };
+              return allowedTransitions[status] || [];
+            };
+
+            const handleStatusChange = async (orderId: string, newStatus: string) => {
+              try {
+                await updateOrderStatus({ orderId, status: newStatus }).unwrap();
+                refresh();
+              } catch (error: any) {
+                const errorMessage = error?.data?.message || error?.message || "Failed to update order status";
+                alert(errorMessage);
+                console.error(error);
+              }
+            };
+
+            // Get status options for a specific order based on current status
+            const getStatusOptionsForOrder = (currentStatus?: string) => {
+              const allowed = getAllowedTransitions(currentStatus);
+              const allStatuses = [
+                { value: "pending", label: "Pending" },
+                { value: "approved", label: "Approved" },
+                { value: "hold", label: "Hold" },
+                { value: "cancel", label: "Cancel" },
+                { value: "dispatch", label: "Dispatch" },
+                { value: "delivered", label: "Delivered" },
+                { value: "return", label: "Return" },
+              ];
+              
+              // Return only allowed transitions
+              return allStatuses.filter((status) => allowed.includes(status.value));
+            };
+
             return (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -341,7 +419,7 @@ export default function AdminAllOrdersPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${getStatusColor(o.status)}`}>
                                 {o.status || "-"}
                               </span>
                             </td>
@@ -352,18 +430,58 @@ export default function AdminAllOrdersPage() {
                               <div className="text-sm text-muted-foreground">{orderDate}</div>
                             </td>
                             <td className="px-4 py-3">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => toggleOrder(o._id)}
-                              >
-                                <ChevronDown
-                                  className={`h-4 w-4 transition-transform ${
-                                    isExpanded ? "rotate-180" : ""
-                                  }`}
-                                />
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                {(() => {
+                                  const allowedOptions = getStatusOptionsForOrder(o.status);
+                                  const isFinalState = allowedOptions.length === 0;
+                                  
+                                  return (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 text-xs"
+                                          disabled={isUpdatingStatus || isFinalState}
+                                        >
+                                          {isFinalState ? "Final State" : "Change Status"}
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      {!isFinalState && (
+                                        <DropdownMenuContent align="end">
+                                          {allowedOptions.length > 0 ? (
+                                            allowedOptions.map((option) => (
+                                              <DropdownMenuItem
+                                                key={option.value}
+                                                onClick={() => handleStatusChange(o._id, option.value)}
+                                                disabled={isUpdatingStatus}
+                                              >
+                                                {option.label}
+                                              </DropdownMenuItem>
+                                            ))
+                                          ) : (
+                                            <DropdownMenuItem disabled>
+                                              No available transitions
+                                            </DropdownMenuItem>
+                                          )}
+                                        </DropdownMenuContent>
+                                      )}
+                                    </DropdownMenu>
+                                  );
+                                })()}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => toggleOrder(o._id)}
+                                >
+                                  <ChevronDown
+                                    className={`h-4 w-4 transition-transform ${
+                                      isExpanded ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                           {isExpanded && (
@@ -388,7 +506,7 @@ export default function AdminAllOrdersPage() {
                                       <div className="font-semibold tracking-wide">
                                         {o.order_slug}
                                       </div>
-                                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${getStatusColor(o.status)}`}>
                                         {o.status}
                                       </span>
                                       {o?.couponCode ? (
