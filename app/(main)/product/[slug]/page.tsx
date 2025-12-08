@@ -81,6 +81,7 @@ export default function ProductDetailBySlug({
   }
 
   const product = ((data as ProductResponse)?.data ?? data ?? null) as ProductData | null;
+  const brandName = (product?.brand as { name?: string } | null | undefined)?.name;
   console.log(product);
 
   // Sync cart and wishlist prices when product data changes
@@ -461,12 +462,12 @@ export default function ProductDetailBySlug({
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
-              {(product.brand as { name?: string }).name && (
+              {brandName && (
                 <Link 
-                  href={`/brands/${(product.brand as { name?: string }).name}`}
+                  href={`/brands/${brandName}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/30 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
                 >
-                  Brand: {(product.brand as { name?: string }).name}
+                  Brand: {brandName}
                 </Link>
               )}
             </div>

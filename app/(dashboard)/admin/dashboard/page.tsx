@@ -7,7 +7,7 @@ export default function DashboardPage() {
   const { data: userInfo } = useUserInfoQuery(undefined);
   const router = useRouter();
   useEffect(() => {
-    if (userInfo && userInfo.role === "ADMIN") {
+    if (userInfo && (userInfo.role === "ADMIN" || userInfo.role === "MASTER_ADMIN")) {
       router.push("/admin/dashboard/all-product");
     }
   }, [userInfo, router]);

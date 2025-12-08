@@ -93,6 +93,7 @@ export default function OrdersPage() {
       case "delivered":
         return "text-green-600 bg-green-100";
       case "dispatch":
+      case "sent_with_pathao":
       case "shipped":
         return "text-blue-600 bg-blue-100";
       case "pending":
@@ -106,7 +107,7 @@ export default function OrdersPage() {
       case "cancel":
       case "cancelled":
         return "text-red-700 bg-red-100";
-      case "return":
+      case "returned":
         return "text-gray-600 bg-gray-100";
       default:
         return "text-gray-600 bg-gray-100";
@@ -122,7 +123,7 @@ export default function OrdersPage() {
     ).length;
     const processing = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();
-      return ["processing", "pending", "approved", "dispatch", "requested", "confirmed", "shipped"].includes(s);
+      return ["processing", "pending", "approved", "dispatch", "sent_with_pathao", "requested", "confirmed", "shipped"].includes(s);
     }).length;
     const cancelled = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();

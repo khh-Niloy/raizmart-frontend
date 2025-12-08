@@ -222,6 +222,7 @@ export const productApi = baseApi.injectEndpoints({
         period?: "day" | "week" | "month";
         startDate?: string;
         endDate?: string;
+        status?: string;
       } | void
     >({
       query: (params) => ({
