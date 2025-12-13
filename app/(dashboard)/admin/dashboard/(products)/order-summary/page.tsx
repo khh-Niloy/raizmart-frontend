@@ -43,7 +43,7 @@ export default function ProductOrderSummaryPage() {
       : undefined
   );
 
-  const products = data ?? [];
+  const products = useMemo(() => data ?? [], [data]);
   const isBusy = isLoading || isFetching;
 
   const filteredProducts = useMemo(() => {

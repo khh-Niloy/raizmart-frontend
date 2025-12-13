@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,10 +53,10 @@ export default function FeaturedCategoryPage() {
   const [deleteFeaturedItem, { isLoading: isDeleting }] = useDeleteFeaturedItemMutation();
 
   // Ensure data is arrays
-  const categoriesArray: CategoryItem[] = Array.isArray(allCategories) ? allCategories : [];
-  const subcategoriesArray: CategoryItem[] = Array.isArray(allSubcategories) ? allSubcategories : [];
-  const subSubcategoriesArray: CategoryItem[] = Array.isArray(allSubSubcategories) ? allSubSubcategories : [];
-  const featuredItemsArray: FeaturedItem[] = Array.isArray(featuredItems) ? featuredItems : [];
+  const categoriesArray: CategoryItem[] = useMemo(() => Array.isArray(allCategories) ? allCategories : [], [allCategories]);
+  const subcategoriesArray: CategoryItem[] = useMemo(() => Array.isArray(allSubcategories) ? allSubcategories : [], [allSubcategories]);
+  const subSubcategoriesArray: CategoryItem[] = useMemo(() => Array.isArray(allSubSubcategories) ? allSubSubcategories : [], [allSubSubcategories]);
+  const featuredItemsArray: FeaturedItem[] = useMemo(() => Array.isArray(featuredItems) ? featuredItems : [], [featuredItems]);
 
   // Search functionality
   useEffect(() => {

@@ -149,7 +149,7 @@ export default function BlogDetailPage({
   }
 
   // Ensure data is an array (transformResponse already extracts data, so allBlogsResp should be the array)
-  const allBlogs: Blog[] = Array.isArray(allBlogsResp) ? allBlogsResp : [];
+  const allBlogs: Blog[] = React.useMemo(() => Array.isArray(allBlogsResp) ? allBlogsResp : [], [allBlogsResp]);
 
   // Find the blog ID from the slug
   const blogFromSlug = React.useMemo(() => {

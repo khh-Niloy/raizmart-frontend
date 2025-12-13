@@ -2,8 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -77,10 +75,6 @@ export default function BrandProducts() {
   const items = allItems.filter(
     (product: Product) => product.status === "active"
   );
-
-  const listRef = React.useRef<HTMLDivElement | null>(null);
-  const scrollBy = (delta: number) =>
-    listRef.current?.scrollBy({ left: delta, behavior: "smooth" });
 
   return (
     <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 h-full">

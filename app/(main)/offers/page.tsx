@@ -101,7 +101,7 @@ interface Offer {
 export default function OffersPage() {
   const { data, isLoading, isError } = useGetAllOffersQuery(undefined);
   const [updateOffer] = useUpdateOfferMutation();
-  const offers = (data?.data || []) as Offer[];
+  const offers = React.useMemo(() => (data?.data || []) as Offer[], [data?.data]);
 
   // Helper function to check if offer is expired
   const isOfferExpired = (endAt: string | undefined): boolean => {

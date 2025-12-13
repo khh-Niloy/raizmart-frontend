@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useCallback } from "react";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
 import { useGetProductBySlugQuery, useGetProductsBySlugsQuery } from "@/app/redux/features/product/product.api";
@@ -137,7 +137,7 @@ export default function ProductDetailBySlug({
   );
 
   // Prepare attributes/options
-  const attributes = (product?.attributes ?? []) as Array<{
+  const attributes = React.useMemo(() => (product?.attributes ?? []) as Array<{
     name: string;
     type: string;
     values: Array<{
@@ -147,8 +147,8 @@ export default function ProductDetailBySlug({
       images?: string[];
       isDefault?: boolean;
     }>;
-  }>;
-  const variants = (product?.variants ?? []) as Array<{
+  }>, [product?.attributes]);
+  const variants = React.useMemo(() => (product?.variants ?? []) as Array<{
     sku: string;
     finalPrice: number;
     stock: number;
@@ -159,7 +159,7 @@ export default function ProductDetailBySlug({
       attributeValue: string;
       attributeLabel: string;
     }>;
-  }>;
+  }>, [product?.variants]);
 
   const [selectedByName, setSelectedByName] = React.useState<
     Record<string, string>
@@ -186,7 +186,7 @@ export default function ProductDetailBySlug({
       });
       setSelectedByName(newSelections);
     }
-  }, [product?._id]);
+  }, [product?._id, attributes]);
   const [activeImage, setActiveImage] = React.useState<string | undefined>(
     undefined
   );
@@ -324,7 +324,7 @@ export default function ProductDetailBySlug({
   }
 
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
-  const renderTiptapToHTML = (node: TipTapNode | null | undefined): string => {
+  const renderTiptapToHTML = useCallback((node: TipTapNode | null | undefined): string => {
     if (!node) return "";
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -375,7 +375,7 @@ export default function ProductDetailBySlug({
       default:
         return renderChildren(node.content);
     }
-  };
+  }, []);
 
   // Render TipTap JSON description to HTML
   const descriptionHtml = React.useMemo(() => {
@@ -390,7 +390,7 @@ export default function ProductDetailBySlug({
     }
     if (typeof desc === "string") return desc; // assume already HTML
     return "";
-  }, [product?.description]);
+  }, [product?.description, renderTiptapToHTML]);
 
   // Extract video and descriptionImages from product
   const videoUrl = React.useMemo(() => {
@@ -758,7 +758,8 @@ export default function ProductDetailBySlug({
                     isTBA: false 
                   };
                 }
-              }, [selectedVariant, variants, product]);
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+              }, [selectedByName, variants, product]);
 
               // Variant-wise stock handling
               const stockInfo = React.useMemo(() => {
@@ -771,7 +772,8 @@ export default function ProductDetailBySlug({
                   hasVariants,
                   stockCount: Number.isFinite(stockCount) ? Math.max(0, stockCount) : 0,
                 };
-              }, [selectedVariant, variants, product]);
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+              }, [selectedByName, variants, product]);
 
               const inStock = stockInfo.stockCount > 0;
               const maxQty = stockInfo.stockCount || 0;

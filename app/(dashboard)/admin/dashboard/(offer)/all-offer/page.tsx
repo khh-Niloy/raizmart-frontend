@@ -27,7 +27,7 @@ interface Offer {
 
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
-  const allOffers: Offer[] = (data?.data as Offer[]) || [];
+  const allOffers: Offer[] = React.useMemo(() => (data?.data as Offer[]) || [], [data?.data]);
   const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
 

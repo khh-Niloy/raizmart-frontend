@@ -9,9 +9,6 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  Gift,
-  ArrowLeftRight,
-  ShoppingCart,
 } from "lucide-react";
 import NavbarPofile from "./NavbarCompo/NavbarPofile";
 import MegaMenu from "./MegaMenu";
@@ -487,7 +484,7 @@ export default function Navbar() {
               <div className="py-4">
                 {/* Navigation Routes */}
                 <div className="px-3 mb-2">
-                  {navbarLinks.map((link, index) => {
+                  {navbarLinks.map((link) => {
                     // Special handling for Orders link
                     if (link.href === "/profile/orders") {
                       return (

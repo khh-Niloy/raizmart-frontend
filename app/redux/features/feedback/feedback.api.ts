@@ -8,12 +8,6 @@ interface CreateFeedbackPayload {
   details: string;
 }
 
-interface ApiResponse<T> {
-  success?: boolean;
-  message?: string;
-  data?: T;
-}
-
 export const feedbackApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createFeedback: builder.mutation({

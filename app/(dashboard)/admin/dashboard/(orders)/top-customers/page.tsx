@@ -31,7 +31,7 @@ export default function AdminTopCustomersPage() {
     refetch,
   } = useGetUsersOrderSummaryQuery({ top: 10 });
 
-  const customers = data ?? [];
+  const customers = useMemo(() => data ?? [], [data]);
   const isBusy = isLoading || isFetching;
 
   const totals = useMemo(() => {
