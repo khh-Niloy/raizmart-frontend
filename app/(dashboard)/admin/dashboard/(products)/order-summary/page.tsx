@@ -24,6 +24,7 @@ export default function ProductOrderSummaryPage() {
   const [period, setPeriod] = useState<"" | "day" | "week" | "month">("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
 
   // const numericLimit = Number(limit);
   // const queryLimit =
@@ -31,12 +32,13 @@ export default function ProductOrderSummaryPage() {
   const queryLimit = undefined; // Limit selector is disabled
 
   const { data, isLoading, isFetching, refetch } = useGetProductOrderSummaryQuery(
-    queryLimit || period || startDate || endDate
+    queryLimit || period || startDate || endDate || status
       ? {
           ...(queryLimit ? { limit: queryLimit } : {}),
           ...(period ? { period } : {}),
           ...(startDate ? { startDate } : {}),
           ...(endDate ? { endDate } : {}),
+          ...(status ? { status } : {}),
         }
       : undefined
   );
@@ -143,6 +145,35 @@ export default function ProductOrderSummaryPage() {
             Refresh
           </Button>
         </div>
+      </div>
+
+      {/* Status Tabs (order status filter) */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "", label: "All" },
+          { value: "pending", label: "Pending" },
+          { value: "approved", label: "Approved" },
+          { value: "hold", label: "Hold" },
+          { value: "cancel", label: "Cancel" },
+          { value: "sent_with_pathao", label: "Sent with Pathao" },
+          { value: "dispatch", label: "Dispatch" },
+          { value: "delivered", label: "Delivered" },
+          { value: "returned", label: "Returned" },
+        ].map((tab) => (
+          <Button
+            key={tab.value || "all"}
+            variant={status === tab.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatus(tab.value)}
+            className={
+              status === tab.value
+                ? "bg-primary text-primary-foreground"
+                : ""
+            }
+          >
+            {tab.label}
+          </Button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

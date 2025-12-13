@@ -30,6 +30,7 @@ import {
   useGetProductByIdQuery,
   useUpdateProductMutation,
 } from "@/app/redux/features/product/product.api";
+import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import {
   Control,
   FieldErrors,
@@ -395,6 +396,10 @@ interface VariantListProps {
 export default function EditProductPage() {
   const params = useParams();
   const productId = params.id as string;
+
+  // Current admin user info (to control permissions)
+  const { data: userInfo } = useUserInfoQuery(undefined);
+  const isMasterAdmin = userInfo?.role === "MASTER_ADMIN";
 
   const { data: product, isLoading: isProductLoading } =
     useGetProductByIdQuery(productId);
@@ -1540,7 +1545,7 @@ export default function EditProductPage() {
               )}
             </div>
 
-            {/* Product Attributes Section */}
+            {/* Product Attributes Section (visible to all admins) */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -1576,25 +1581,29 @@ export default function EditProductPage() {
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
                     canRemove={attributeFields.length > 0}
-                  existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
+                    existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Manual Variant Creation */}
-            <VariantCreator
-              attributes={watch("attributes")}
-              onAddVariant={(variant) => appendManualVariant(variant)}
-            />
+            {/* Manual Variant Creation (MASTER_ADMIN only) */}
+            {isMasterAdmin ? (
+              <VariantCreator
+                attributes={watch("attributes")}
+                onAddVariant={(variant) => appendManualVariant(variant)}
+              />
+            ) : null}
 
-            {/* Variant List */}
-            <VariantList
-              variants={manualVariantFields}
-              onEditVariant={updateManualVariant}
-              onDeleteVariant={removeManualVariant}
-              attributes={watch("attributes")}
-            />
+            {/* Variant List (MASTER_ADMIN only) */}
+            {isMasterAdmin ? (
+              <VariantList
+                variants={manualVariantFields}
+                onEditVariant={updateManualVariant}
+                onDeleteVariant={removeManualVariant}
+                attributes={watch("attributes")}
+              />
+            ) : null}
 
             {/* Gallery Images */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1678,7 +1687,7 @@ export default function EditProductPage() {
               </div>
             </div>
 
-            {/* Simple Pricing (no attributes/variants) */}
+            {/* Simple Pricing (no attributes/variants) - visible to all admins */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

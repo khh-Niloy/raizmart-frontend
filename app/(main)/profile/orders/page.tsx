@@ -88,19 +88,27 @@ export default function OrdersPage() {
   }, [userInfo, isLoadingUser, openAuth]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Delivered":
+    const s = status.toLowerCase();
+    switch (s) {
+      case "delivered":
         return "text-green-600 bg-green-100";
-      case "Shipped":
+      case "dispatch":
+      case "sent_with_pathao":
+      case "shipped":
         return "text-blue-600 bg-blue-100";
-      case "Processing":
+      case "pending":
+      case "processing":
         return "text-yellow-600 bg-yellow-100";
-      case "REQUESTED":
-        return "text-yellow-700 bg-yellow-100";
-      case "CONFIRMED":
+      case "approved":
+      case "confirmed":
         return "text-blue-700 bg-blue-100";
-      case "CANCELLED":
+      case "hold":
+        return "text-orange-600 bg-orange-100";
+      case "cancel":
+      case "cancelled":
         return "text-red-700 bg-red-100";
+      case "returned":
+        return "text-gray-600 bg-gray-100";
       default:
         return "text-gray-600 bg-gray-100";
     }
@@ -115,11 +123,12 @@ export default function OrdersPage() {
     ).length;
     const processing = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();
-      return ["processing", "requested", "confirmed", "shipped"].includes(s);
+      return ["processing", "pending", "approved", "dispatch", "sent_with_pathao", "requested", "confirmed", "shipped"].includes(s);
     }).length;
-    const cancelled = orders.filter(
-      (o: Order) => String(o?.status).toLowerCase() === "cancelled"
-    ).length;
+    const cancelled = orders.filter((o: Order) => {
+      const s = String(o?.status).toLowerCase();
+      return ["cancel", "cancelled"].includes(s);
+    }).length;
     return {
       total: orders.length,
       delivered,

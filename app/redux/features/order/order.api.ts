@@ -136,7 +136,7 @@ export const orderApi = baseApi.injectEndpoints({
     // Admin: Search orders by user info (kept as before)
     searchOrdersByUserAdmin: builder.query<
       SearchOrdersResponse,
-      { searchTerm: string; page?: number; limit?: number; sort?: string }
+      { searchTerm: string; page?: number; limit?: number; sort?: string; status?: string }
     >({
       query: (params) => ({
         url: "/orders/search",
@@ -212,6 +212,18 @@ export const orderApi = baseApi.injectEndpoints({
       },
       providesTags: ["ORDERS"],
     }),
+    // Admin: Update order status
+    updateOrderStatus: builder.mutation<
+      { success: boolean; data?: Order },
+      { orderId: string; status: string }
+    >({
+      query: ({ orderId, status }) => ({
+        url: `/orders/${orderId}/status`,
+        method: "PATCH",
+        data: { status },
+      }),
+      invalidatesTags: ["ORDERS"],
+    }),
   }),
 });
 
@@ -224,6 +236,7 @@ export const {
   useSearchOrdersByUserAdminQuery,
   useLazyDownloadOrdersPDFQuery,
   useGetUsersOrderSummaryQuery,
+  useUpdateOrderStatusMutation,
 } = orderApi;
 
 

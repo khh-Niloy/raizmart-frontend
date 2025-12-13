@@ -167,7 +167,7 @@ export default function Navbar() {
   };
 
   const navbarLinks =
-    userInfo?.role === "ADMIN"
+    userInfo?.role === "ADMIN" || userInfo?.role === "MASTER_ADMIN"
       ? [
           ...initialNavbarLinks,
           { label: "Dashboard", href: "/admin/dashboard" },
