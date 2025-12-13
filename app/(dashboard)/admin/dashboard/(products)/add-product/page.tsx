@@ -571,8 +571,8 @@ export default function AddProductPage() {
   // Ensure data is an array (transformResponse already extracts data, so responses should be the arrays)
   const brands: Brand[] = Array.isArray(brandsResp) ? brandsResp : [];
   const categories: Category[] = Array.isArray(categoriesResp) ? categoriesResp : [];
-  const allSubcategories: Subcategory[] = Array.isArray(subcategoriesResp) ? subcategoriesResp : [];
-  const allSubSubcategories: SubSubcategory[] = Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [];
+  const allSubcategories: Subcategory[] = React.useMemo(() => Array.isArray(subcategoriesResp) ? subcategoriesResp : [], [subcategoriesResp]);
+  const allSubSubcategories: SubSubcategory[] = React.useMemo(() => Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [], [subSubcategoriesResp]);
 
   // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export default function FeaturedProductPage() {
   const [toggleFeatured, { isLoading: isToggling }] = useToggleFeaturedMutation();
 
   // Ensure data is an array (transformResponse already extracts data, so allProducts should be the array)
-  const productsArray: Product[] = Array.isArray(allProducts) ? allProducts : [];
+  const productsArray: Product[] = useMemo(() => Array.isArray(allProducts) ? allProducts : [], [allProducts]);
 
   // Search functionality
   useEffect(() => {

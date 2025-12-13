@@ -2,9 +2,7 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useGetTrendingProductsQuery } from "@/app/redux/features/product/product.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,7 +44,6 @@ export default function TrendingProducts() {
   const items = allItems.filter((product: Product) => product.status === "active");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const scrollBy = (delta: number) => scrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
 
   if (isLoading) {
     return (

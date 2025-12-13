@@ -15,7 +15,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home, LayoutDashboard, Tag, Star, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon, UserIcon, UsersIcon } from "lucide-react";
+import { Home, LayoutDashboard, Tag, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon, UsersIcon } from "lucide-react";
 
 // This is sample data.
 const data = {

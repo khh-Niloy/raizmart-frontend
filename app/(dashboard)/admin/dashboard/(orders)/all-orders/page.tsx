@@ -391,11 +391,13 @@ export default function AdminAllOrdersPage() {
                   status: newStatus,
                 }).unwrap();
                 refresh();
-              } catch (error: any) {
+              } catch (error: unknown) {
                 const errorMessage =
-                  error?.data?.message ||
-                  error?.message ||
-                  "Failed to update order status";
+                  error && typeof error === "object" && "data" in error
+                    ? (error as { data?: { message?: string } }).data?.message
+                    : error && typeof error === "object" && "message" in error
+                    ? (error as { message?: string }).message
+                    : "Failed to update order status";
                 alert(errorMessage);
                 console.error(error);
               }

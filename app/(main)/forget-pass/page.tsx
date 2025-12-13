@@ -48,7 +48,6 @@ export default function ForgetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0); // in seconds
-  const [lastOTPSentTime, setLastOTPSentTime] = useState<number | null>(null);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [createOTP, { isLoading: isCreatingOTP }] =
@@ -88,7 +87,6 @@ export default function ForgetPasswordPage() {
         const remaining = 120 - elapsed; // 2 minutes = 120 seconds
         if (remaining > 0) {
           setResendCooldown(remaining);
-          setLastOTPSentTime(storedTimestamp);
         } else {
           sessionStorage.removeItem("lastOTPSentTime");
         }
@@ -108,7 +106,6 @@ export default function ForgetPasswordPage() {
       setEmail(emailInput);
       toast.success("OTP sent");
       const now = Date.now();
-      setLastOTPSentTime(now);
       sessionStorage.setItem("lastOTPSentTime", now.toString());
       setResendCooldown(120); // 2 minutes cooldown
       setStep("otp");
@@ -235,7 +232,6 @@ export default function ForgetPasswordPage() {
       toast.success("OTP resent successfully");
       setOtp(Array(6).fill(""));
       const now = Date.now();
-      setLastOTPSentTime(now);
       sessionStorage.setItem("lastOTPSentTime", now.toString());
       setResendCooldown(120); // 2 minutes cooldown
     } catch (error: unknown) {

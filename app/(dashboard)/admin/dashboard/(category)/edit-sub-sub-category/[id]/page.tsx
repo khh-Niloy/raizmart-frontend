@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useGetSubcategoriesQuery, useGetSubSubcategoriesQuery, useUpdateSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";

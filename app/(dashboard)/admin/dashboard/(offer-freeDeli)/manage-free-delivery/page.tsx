@@ -35,7 +35,7 @@ export default function ManageFreeDeliveryPage() {
   const { updateProductInfo: updateWishlistProductInfo } = useLocalWishlist();
 
   // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
-  const products: ProductItem[] = Array.isArray(productsData) ? productsData : [];
+  const products: ProductItem[] = useMemo(() => Array.isArray(productsData) ? productsData : [], [productsData]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
