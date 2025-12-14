@@ -3,18 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import {
-  useGetBrandsQuery,
-  useGetBrandProductsQuery,
-} from "@/app/redux/features/brand/brand.api";
-
-interface Brand {
-  _id: string;
-  name?: string;
-  title?: string;
-  [key: string]: unknown;
-}
+import { useGetBrandProductsQuery } from "@/app/redux/features/product/product.api";
+import { ProductCardSkeleton } from "@/components/ui/loading";
 
 interface Product {
   _id: string;
@@ -42,35 +32,28 @@ interface Product {
 
 interface ProductsResponse {
   items?: Product[];
-  data?: {
+  data?: Product[] | {
     items?: Product[];
   };
 }
 
 export default function BrandProducts() {
-  const { data: brandsData, isLoading: brandsLoading } =
-    useGetBrandsQuery(undefined);
-
-  const brands: Brand[] = React.useMemo(() => {
-    return (brandsData || []) as Brand[];
-  }, [brandsData]);
-
-  const [active, setActive] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!active && brands?.length) {
-      setActive(brands[0]?.name || brands[0]?.title || brands[0]?._id || null);
+  const { data, isLoading, isError } = useGetBrandProductsQuery(undefined);
+  const response = data as Product[] | ProductsResponse | undefined;
+  let allItems: Product[] = [];
+  if (Array.isArray(response)) {
+    allItems = response;
+  } else if (response) {
+    if (Array.isArray(response.items)) {
+      allItems = response.items;
+    } else if (response.data) {
+      if (Array.isArray(response.data)) {
+        allItems = response.data;
+      } else if (Array.isArray(response.data.items)) {
+        allItems = response.data.items;
+      }
     }
-  }, [brands, active]);
-
-  const { data: productsResp, isLoading: productsLoading } =
-    useGetBrandProductsQuery(
-      { brand: active || "", page: 1, limit: 12, sort: "newest" },
-      { skip: !active }
-    );
-
-  const response = productsResp as ProductsResponse | undefined;
-  const allItems: Product[] = response?.items || response?.data?.items || [];
+  }
   // Filter to show only active products
   const items = allItems.filter(
     (product: Product) => product.status === "active"
@@ -115,51 +98,19 @@ export default function BrandProducts() {
           </div> */}
         </header>
 
-        {/* Brand toggles */}
-        <div className="grid grid-cols-10 gap-3 overflow-x-auto no-scrollbar pb-3 mb-6">
-          {brandsLoading &&
-            Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={`brand-skeleton-${i}`}
-                className="h-10 w-28 rounded-full bg-gray-100 animate-pulse"
-              />
-            ))}
-          {!brandsLoading && !brands.length && (
-            <div className="text-sm text-slate-500">
-              No brands available at the moment.
-            </div>
-          )}
-          {brands?.map((b: Brand) => {
-            const label = b?.name || b?.title || String(b?._id);
-            const selected = active === label;
-            return (
-              <button
-                key={label}
-                onClick={() => setActive(label)}
-                className={cn(
-                  "px-5 h-10 rounded-full border transition whitespace-nowrap text-sm font-medium",
-                  selected
-                    ? "bg-[#02C1BE] text-white border-[#02C1BE] shadow-lg"
-                    : "bg-white text-slate-600 border-gray-200 hover:border-[#02C1BE]/60 hover:text-slate-900"
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Product list */}
-        {productsLoading ? (
+        {isLoading ? (
           <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="h-64 rounded-2xl bg-gray-100 animate-pulse"
-              />
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-inner"
+              >
+                <ProductCardSkeleton />
+              </div>
             ))}
           </div>
-        ) : items?.length ? (
+        ) : isError ? null : items?.length ? (
           <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
             {items.map((product: Product) => {
               const colorAttr = Array.isArray(product?.attributes)
@@ -272,7 +223,7 @@ export default function BrandProducts() {
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 p-10 text-center text-gray-500">
-            No products found for this brand selection.
+            No brand products available at the moment. Check back soon!
           </div>
         )}
       </div>

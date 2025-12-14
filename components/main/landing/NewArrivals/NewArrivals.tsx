@@ -97,11 +97,11 @@ export default function NewArrivals() {
                   Arrivals
                 </span>
               </h2>
-              <p className="mt-2 text-sm text-slate-600 max-w-2xl">Fresh products land every week—check back soon for the latest drops.</p>
+              <p className="mt-2 text-sm text-slate-600 max-w-2xl">Discover the freshest additions curated by our team.</p>
             </div>
           </div>
           <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 p-10 text-center text-gray-500">
-            No new arrivals in the last 7 days.
+            No new arrivals available at the moment. Check back soon!
           </div>
         </div>
       </section>
@@ -121,7 +121,7 @@ export default function NewArrivals() {
               </span>
             </h2>
             <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-              Discover the freshest additions curated from the past seven days.
+              Discover the freshest additions curated by our team.
             </p>
           </div>
           {/* <div className="hidden md:flex items-center gap-2">

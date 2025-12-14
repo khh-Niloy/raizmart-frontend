@@ -451,7 +451,7 @@ export default function ProductDetailBySlug({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f3fffe] via-white to-white">
-      <main className="mx-auto flex w-[90%] mx-auto flex-col gap-12 px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+      <main className="mx-auto flex w-[90%] mx-auto flex-col gap-5 px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
         <header className="flex flex-col gap-3 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] sm:p-7">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -474,7 +474,7 @@ export default function ProductDetailBySlug({
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
         {/* Left: Gallery with vertical thumbnails on desktop */}
         <div className="flex flex-col gap-5 rounded-3xl border border-white/70 bg-white/95 p-4 shadow-[0_25px_80px_-60px_rgba(5,150,145,0.4)]">
           {/* Local styles for slide animations */}
@@ -494,7 +494,7 @@ export default function ProductDetailBySlug({
             }
           `}</style>
           <div
-            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 sm:aspect-[4/5] lg:aspect-[5/6]"
+            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 sm:aspect-square lg:aspect-square"
             onMouseMove={handleZoomMove}
           >
             {activeImage ? (
