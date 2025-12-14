@@ -116,7 +116,7 @@ export default function BrandProducts() {
         </header>
 
         {/* Brand toggles */}
-        <div className="flex flex-nowrap gap-3 overflow-x-auto no-scrollbar pb-3 mb-6">
+        <div className="grid grid-cols-10 gap-3 overflow-x-auto no-scrollbar pb-3 mb-6">
           {brandsLoading &&
             Array.from({ length: 4 }).map((_, i) => (
               <div
