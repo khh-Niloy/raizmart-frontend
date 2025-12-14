@@ -7,9 +7,18 @@ import { useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-catego
 import { BlogCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, ArrowRight, BookOpen } from "lucide-react";
+import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 
 export default function BlogPage() {
-  const { data, isLoading, isError } = useGetBlogsQuery(undefined);
+  const [page, setPage] = React.useState(1);
+  const [limit] = React.useState(10);
+  
+  const { data, isLoading, isError } = useGetBlogsQuery({
+    page,
+    limit,
+    sort: "newest",
+    status: "active",
+  });
   interface Blog {
     _id?: string;
     id?: string;
@@ -32,8 +41,10 @@ export default function BlogPage() {
     [key: string]: unknown;
   }
 
-  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
-  const blogs: Blog[] = Array.isArray(data) ? data : [];
+  // Handle new paginated response format { items, meta }
+  const blogsData = data as { items?: Blog[]; meta?: { page: number; pages: number; total: number; limit: number } } | Blog[] | undefined;
+  const blogs: Blog[] = blogsData && 'items' in blogsData ? (blogsData.items || []) : (Array.isArray(blogsData) ? blogsData : []);
+  const meta = blogsData && 'meta' in blogsData ? blogsData.meta : { page: 1, pages: 1, total: blogs.length, limit };
 
   if (isLoading) {
     return (
@@ -71,10 +82,8 @@ export default function BlogPage() {
     );
   }
 
-  // Filter only active blogs
-  const activeBlogs = blogs.filter(
-    (blog) => blog.status === "active" || !blog.status
-  );
+  // Blogs are already filtered by status="active" in the query, no need to filter again
+  const activeBlogs = blogs;
 
   return (
     <div className="min-h-screen bg-slate-50 pt-10">
@@ -214,6 +223,18 @@ export default function BlogPage() {
                     </Link>
                   );
                 })}
+              </div>
+            )}
+            
+            {/* Pagination */}
+            {meta && meta.pages > 1 && (
+              <div className="mt-10">
+                <PaginationButtons
+                  meta={meta}
+                  updateParams={(updates) => {
+                    if (updates.page) setPage(updates.page);
+                  }}
+                />
               </div>
             )}
           </div>

@@ -12,7 +12,7 @@ export default function PaginationButtons({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-gray-100 bg-white shadow-sm px-4 sm:px-8 py-4 sm:py-6">
       <div className="text-sm text-gray-600">
-        Showing page {meta.page} of {meta.pages} ({meta.total} products)
+        Showing page {meta.page} of {meta.pages} ({meta.total} {meta.total === 1 ? 'item' : 'items'})
       </div>
       <div className="flex items-center gap-2">
         <Button

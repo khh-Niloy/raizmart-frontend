@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import Link from "next/link";
+import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 
 interface Product {
   _id: string;
@@ -114,14 +115,23 @@ export default function AllProductPage() {
   >("all");
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
 
   const {
-    data: productsData,
+    data: productsResponse,
     isLoading,
-  } = useGetProductsQuery(undefined);
+  } = useGetProductsQuery({
+    page,
+    limit,
+    sort: "newest",
+    status: statusFilter !== "all" ? statusFilter : undefined,
+  });
   
-  // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
-  const products: Product[] = Array.isArray(productsData) ? productsData : [];
+  // Handle new paginated response format { items, meta }
+  const productsData = productsResponse as { items?: Product[]; meta?: { page: number; pages: number; total: number; limit: number } } | Product[] | undefined;
+  const products: Product[] = productsData && 'items' in productsData ? (productsData.items || []) : (Array.isArray(productsData) ? productsData : []);
+  const meta = productsData && 'meta' in productsData ? productsData.meta : { page: 1, pages: 1, total: products.length, limit };
   const [toggleFeatured, { isLoading: isTogglingFeatured }] =
     useToggleFeaturedMutation();
   const [toggleTrending, { isLoading: isTogglingTrending }] =
@@ -672,6 +682,18 @@ export default function AllProductPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {meta && meta.pages > 1 && (
+            <div className="mt-6">
+              <PaginationButtons
+                meta={meta}
+                updateParams={(updates) => {
+                  if (updates.page) setPage(updates.page);
+                }}
+              />
             </div>
           )}
         </div>
