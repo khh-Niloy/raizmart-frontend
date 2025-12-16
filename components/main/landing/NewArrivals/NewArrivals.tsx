@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useGetNewArrivalsQuery } from "@/app/redux/features/product/product.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 interface Product {
   _id: string;
@@ -97,11 +98,11 @@ export default function NewArrivals() {
                   Arrivals
                 </span>
               </h2>
-              <p className="mt-2 text-sm text-slate-600 max-w-2xl">Fresh products land every week—check back soon for the latest drops.</p>
+              <p className="mt-2 text-sm text-slate-600 max-w-2xl">Discover the freshest additions curated by our team.</p>
             </div>
           </div>
           <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 p-10 text-center text-gray-500">
-            No new arrivals in the last 7 days.
+            No new arrivals available at the moment. Check back soon!
           </div>
         </div>
       </section>
@@ -121,7 +122,7 @@ export default function NewArrivals() {
               </span>
             </h2>
             <p className="mt-2 text-sm text-slate-600 max-w-2xl">
-              Discover the freshest additions curated from the past seven days.
+              Discover the freshest additions curated by our team.
             </p>
           </div>
           {/* <div className="hidden md:flex items-center gap-2">
@@ -141,8 +142,9 @@ export default function NewArrivals() {
               (a: AttributeType) =>
                 a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
             );
-            const primaryImage =
-              colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";
+            const primaryImage = resolveImageUrl(
+              colorAttr?.values?.[0]?.images?.[0] || pickProductImage(product)
+            );
             const variant = (product?.variants || [])[0];
 
             const basePrice = variant?.finalPrice || product?.price || 0;

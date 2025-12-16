@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,9 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useGetCouponByIdQuery, useUpdateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
+
+const DateTimePicker = dynamic(
+  () => import("@/components/ui/date-time-picker").then((m) => m.DateTimePicker),
+  { ssr: false }
+);
 
 // Schema with all fields optional for easy partial updates
 const couponSchema = z

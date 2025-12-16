@@ -6,6 +6,8 @@ import {
   useToggleFeaturedMutation,
   useUpdateProductMutation,
   useToggleTrendingMutation,
+  useToggleNewArrivalMutation,
+  useToggleBrandProductMutation,
   useDeleteProductMutation,
 } from "@/app/redux/features/product/product.api";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,8 @@ import {
   TrendingUp,
   TrendingDown,
   Trash2,
+  Sparkles,
+  Store,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import Link from "next/link";
+import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 
 interface Product {
   _id: string;
@@ -94,6 +99,8 @@ interface Product {
   status: "active" | "inactive";
   isFeatured: boolean;
   isTrending?: boolean;
+  isNewArrival?: boolean;
+  isBrandProduct?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,18 +115,31 @@ export default function AllProductPage() {
   >("all");
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
 
   const {
-    data: productsData,
+    data: productsResponse,
     isLoading,
-  } = useGetProductsQuery(undefined);
+  } = useGetProductsQuery({
+    page,
+    limit,
+    sort: "newest",
+    status: statusFilter !== "all" ? statusFilter : undefined,
+  });
   
-  // Ensure data is an array (transformResponse already extracts data, so productsData should be the array)
-  const products: Product[] = Array.isArray(productsData) ? productsData : [];
+  // Handle new paginated response format { items, meta }
+  const productsData = productsResponse as { items?: Product[]; meta?: { page: number; pages: number; total: number; limit: number } } | Product[] | undefined;
+  const products: Product[] = productsData && 'items' in productsData ? (productsData.items || []) : (Array.isArray(productsData) ? productsData : []);
+  const meta = productsData && 'meta' in productsData ? productsData.meta : { page: 1, pages: 1, total: products.length, limit };
   const [toggleFeatured, { isLoading: isTogglingFeatured }] =
     useToggleFeaturedMutation();
   const [toggleTrending, { isLoading: isTogglingTrending }] =
     useToggleTrendingMutation();
+  const [toggleNewArrival, { isLoading: isTogglingNewArrival }] =
+    useToggleNewArrivalMutation();
+  const [toggleBrandProduct, { isLoading: isTogglingBrandProduct }] =
+    useToggleBrandProductMutation();
   const [updateProduct, { isLoading: isUpdatingStatus }] =
     useUpdateProductMutation();
   const [deleteProduct, { isLoading: isDeleting }] =
@@ -173,6 +193,40 @@ export default function AllProductPage() {
       );
     } catch {
       toast.error("Failed to update trending status");
+    }
+  };
+
+  const handleToggleNewArrival = async (
+    productId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      await toggleNewArrival({
+        id: productId,
+        isNewArrival: !currentStatus,
+      }).unwrap();
+      toast.success(
+        `Product ${!currentStatus ? "added to" : "removed from"} new arrivals`
+      );
+    } catch {
+      toast.error("Failed to update new arrival status");
+    }
+  };
+
+  const handleToggleBrandProduct = async (
+    productId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      await toggleBrandProduct({
+        id: productId,
+        isBrandProduct: !currentStatus,
+      }).unwrap();
+      toast.success(
+        `Product ${!currentStatus ? "added to" : "removed from"} brand products`
+      );
+    } catch {
+      toast.error("Failed to update brand product status");
     }
   };
 
@@ -420,6 +474,24 @@ export default function AllProductPage() {
                               Trending
                             </Badge>
                           )}
+                          {product.isNewArrival && (
+                            <Badge
+                              variant="outline"
+                              className="text-purple-600 border-purple-600"
+                            >
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              New Arrival
+                            </Badge>
+                          )}
+                          {product.isBrandProduct && (
+                            <Badge
+                              variant="outline"
+                              className="text-blue-600 border-blue-600"
+                            >
+                              <Store className="h-3 w-3 mr-1" />
+                              Brand Product
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <DropdownMenu>
@@ -477,6 +549,48 @@ export default function AllProductPage() {
                               <>
                                 <TrendingUp className="h-4 w-4 mr-2" />
                                 Add to Trending
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleToggleNewArrival(
+                                product._id,
+                                !!product.isNewArrival
+                              )
+                            }
+                            disabled={isTogglingNewArrival}
+                          >
+                            {product.isNewArrival ? (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Remove from New Arrival
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Add to New Arrival
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleToggleBrandProduct(
+                                product._id,
+                                !!product.isBrandProduct
+                              )
+                            }
+                            disabled={isTogglingBrandProduct}
+                          >
+                            {product.isBrandProduct ? (
+                              <>
+                                <Store className="h-4 w-4 mr-2" />
+                                Remove from Brand Product
+                              </>
+                            ) : (
+                              <>
+                                <Store className="h-4 w-4 mr-2" />
+                                Add to Brand Product
                               </>
                             )}
                           </DropdownMenuItem>
@@ -568,6 +682,18 @@ export default function AllProductPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {meta && meta.pages > 1 && (
+            <div className="mt-6">
+              <PaginationButtons
+                meta={meta}
+                updateParams={(updates) => {
+                  if (updates.page) setPage(updates.page);
+                }}
+              />
             </div>
           )}
         </div>

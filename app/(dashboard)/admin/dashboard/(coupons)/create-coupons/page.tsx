@@ -1,6 +1,7 @@
-"use client";
+ "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,9 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useCreateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
+
+const DateTimePicker = dynamic(
+  () => import("@/components/ui/date-time-picker").then((m) => m.DateTimePicker),
+  { ssr: false }
+);
  
  
 

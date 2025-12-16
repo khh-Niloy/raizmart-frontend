@@ -45,9 +45,11 @@ export default function Navbar() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const MIN_QUERY = 2;
+
   // Debounced search effect
   useEffect(() => {
-    if (!isSearchOpen || !searchQuery.trim()) {
+    if (!isSearchOpen || searchQuery.trim().length < MIN_QUERY) {
       setSearchItems([]);
       setSearchMeta({ total: 0, page: 1, limit: 12, pages: 1 });
       if (searchAbortRef.current) searchAbortRef.current.abort();
@@ -98,8 +100,14 @@ export default function Navbar() {
 
   // Fetch categories for mobile menu
   const { data: categories, isLoading: categoriesLoading } =
-    useGetCategoriesQuery(undefined);
-  const { data: subSubcategories } = useGetSubSubcategoriesQuery(undefined);
+    useGetCategoriesQuery(undefined, {
+      refetchOnFocus: false,
+      refetchOnReconnect: false,
+    });
+  const { data: subSubcategories } = useGetSubSubcategoriesQuery(undefined, {
+    refetchOnFocus: false,
+    refetchOnReconnect: false,
+  });
 
   interface Category {
     _id: string;
