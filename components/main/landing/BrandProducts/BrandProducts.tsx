@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useGetBrandProductsQuery } from "@/app/redux/features/product/product.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 interface Product {
   _id: string;
@@ -123,14 +124,9 @@ export default function BrandProducts() {
                   )
                 : undefined;
 
-              const primaryImage =
-                colorAttr?.values?.[0]?.images?.[0] &&
-                typeof colorAttr?.values?.[0]?.images?.[0] === "string"
-                  ? colorAttr.values[0].images[0]
-                  : Array.isArray(product?.images) &&
-                    typeof product.images[0] === "string"
-                  ? product.images[0]
-                  : "/next.svg";
+              const primaryImage = resolveImageUrl(
+                (colorAttr?.values?.[0]?.images?.[0] as string | undefined) || pickProductImage(product)
+              );
 
               const variant = Array.isArray(product?.variants)
                 ? product.variants[0]
@@ -177,11 +173,7 @@ export default function BrandProducts() {
 
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={
-                        typeof primaryImage === "string"
-                          ? primaryImage
-                          : "/next.svg"
-                      }
+                      src={typeof primaryImage === "string" ? primaryImage : "/next.svg"}
                       alt={String(product.name)}
                       className="w-full h-48 object-contain"
                     />

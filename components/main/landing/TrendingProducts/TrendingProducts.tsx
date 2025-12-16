@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useGetTrendingProductsQuery } from "@/app/redux/features/product/product.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 interface Product {
   _id: string;
@@ -37,6 +38,7 @@ interface ProductsResponse {
 
 export default function TrendingProducts() {
   const { data, isLoading, isError } = useGetTrendingProductsQuery(undefined);
+  console.log(data);
   const response = data as Product[] | ProductsResponse | undefined;
   const allItems: Product[] = Array.isArray(response)
     ? response
@@ -127,8 +129,9 @@ export default function TrendingProducts() {
               (a: AttributeType) =>
                 a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
             );
-            const primaryImage =
-              colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";
+            const primaryImage = resolveImageUrl(
+              colorAttr?.values?.[0]?.images?.[0] || pickProductImage(product)
+            );
             const variant = (product?.variants || [])[0];
 
             const basePrice = variant?.finalPrice || product?.price || 0;

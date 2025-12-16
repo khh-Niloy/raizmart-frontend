@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useGetFeaturedProductsQuery } from "@/app/redux/features/product/product.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 interface Product {
   _id: string;
@@ -140,8 +141,9 @@ export default function FeaturedProducts() {
             const colorAttr = (product?.attributes || []).find(
               (a: AttributeType) => a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
             );
-            const primaryImage =
-              colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";
+            const primaryImage = resolveImageUrl(
+              colorAttr?.values?.[0]?.images?.[0] || pickProductImage(product)
+            );
             const variant = (product?.variants || [])[0];
             
             // Calculate discount information

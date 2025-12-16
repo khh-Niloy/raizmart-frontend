@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 import { paginationValues } from "@/utility/paginationValues";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 export default function CategoryListing({
   params,
@@ -37,6 +38,7 @@ export default function CategoryListing({
     limit,
     sort,
   });
+  console.log(data);
 
   const updateParams = (updates: { page?: number; sort?: string }) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -139,10 +141,9 @@ export default function CategoryListing({
         a.type?.toLowerCase?.() === "color" ||
         a.name?.toLowerCase?.() === "color"
     );
-    const primaryImage =
-      colorAttr?.values?.[0]?.images?.[0] ||
-      product?.images?.[0] ||
-      "/next.svg";
+    const primaryImage = resolveImageUrl(
+      colorAttr?.values?.[0]?.images?.[0] || pickProductImage(product)
+    );
     const variant = (product?.variants || [])[0];
 
     // Calculate price with discount support

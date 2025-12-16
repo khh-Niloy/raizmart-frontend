@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import dynamic from "next/dynamic";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,10 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import TiptapEditor from '@/components/ui/tiptap-editor';
 import { toast } from 'sonner';
 import { useGetBlogCategoriesQuery, useCreateBlogMutation } from '@/app/redux/features/blog-category/blog-category.api';
 import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
+
+const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
+  ssr: false,
+  loading: () => <div className="min-h-[200px] rounded-md border border-dashed border-gray-200 bg-gray-50 animate-pulse" />,
+});
 
 // Form validation schema
 const blogSchema = z.object({

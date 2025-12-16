@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 import { paginationValues } from "@/utility/paginationValues";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 export default function SubSubcategoryListing({ params }: { params: Promise<{ category: string; subcategory: string; subsubcategory: string }> }) {
   const resolvedParams = React.use(params);
@@ -132,8 +133,9 @@ export default function SubSubcategoryListing({ params }: { params: Promise<{ ca
     const colorAttr = (product?.attributes || []).find(
       (a: AttributeType) => a.type?.toLowerCase?.() === "color" || a.name?.toLowerCase?.() === "color"
     );
-    const primaryImage =
-      colorAttr?.values?.[0]?.images?.[0] || product?.images?.[0] || "/next.svg";
+    const primaryImage = resolveImageUrl(
+      colorAttr?.values?.[0]?.images?.[0] || pickProductImage(product)
+    );
     const variant = (product?.variants || [])[0];
     
     // Calculate price with discount support

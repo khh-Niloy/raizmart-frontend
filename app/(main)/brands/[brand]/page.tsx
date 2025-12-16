@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 import { paginationValues } from "@/utility/paginationValues";
+import { resolveImageUrl, pickProductImage } from "@/lib/utils";
 
 export default function BrandListing({ params }: { params: Promise<{ brand: string }> }) {
   const resolved = React.use(params);
@@ -118,10 +119,9 @@ export default function BrandListing({ params }: { params: Promise<{ brand: stri
     const colorAttr = (product?.attributes || []).find(
       (a: AttributeType) => a?.type?.toLowerCase?.() === "color" || a?.name?.toLowerCase?.() === "color"
     );
-    const primaryImage: string =
-      (colorAttr?.values?.[0]?.images?.[0] as string | undefined) || 
-      (product?.images?.[0] as string | undefined) || 
-      "/next.svg";
+    const primaryImage: string = resolveImageUrl(
+      (colorAttr?.values?.[0]?.images?.[0] as string | undefined) || pickProductImage(product)
+    );
     const variant = (product?.variants || [])[0];
     
     const basePrice = variant?.finalPrice || product?.price || 0;
