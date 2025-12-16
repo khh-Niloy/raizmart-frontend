@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useGetSubcategoriesQuery, useCreateSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema
 const subSubCategorySchema = z.object({
@@ -36,6 +37,7 @@ export default function CreateSubSubCategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubSubCategoryFormData>({
     resolver: zodResolver(subSubCategorySchema),
     defaultValues: {
@@ -56,7 +58,10 @@ export default function CreateSubSubCategoryPage() {
       const res = await createSubSubcategory(formData).unwrap();
       console.log("Sub-sub-category created:", res);
       toast.success("Sub-sub-category created successfully!");
-      reset();
+      reset({
+        name: "",
+        subcategory: "",
+      });
     } catch (error) {
       console.error("Create sub-sub-category failed:", error);
       toast.error("Failed to create sub-sub-category. Please try again.");
@@ -96,8 +101,15 @@ export default function CreateSubSubCategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register('image')}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (
@@ -114,7 +126,14 @@ export default function CreateSubSubCategoryPage() {
                 control={control}
                 name="subcategory"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubcategoriesLoading}>
+                  <Select
+                    key={field.value || "empty"}
+                    value={field.value || undefined}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                    }}
+                    disabled={isSubcategoriesLoading}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={isSubcategoriesLoading ? "Loading sub-categories..." : "Select a parent sub-category"} />
                     </SelectTrigger>

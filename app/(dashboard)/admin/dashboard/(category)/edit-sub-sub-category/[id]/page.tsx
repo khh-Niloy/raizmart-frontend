@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,10 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useGetSubcategoriesQuery, useGetSubSubcategoriesQuery, useUpdateSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema
 const subSubCategorySchema = z.object({
@@ -43,6 +44,7 @@ export default function EditSubSubCategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubSubCategoryFormData>({
     resolver: zodResolver(subSubCategorySchema),
     defaultValues: {
@@ -92,10 +94,11 @@ export default function EditSubSubCategoryPage() {
             subcategory: subVal,
             isActive: currentSubSubCategory.isActive ?? true
           });
+          setValue("subcategory", subVal, { shouldValidate: false });
         }
       }
     }
-  }, [subSubCategoriesResponse, subcategoriesResponse, subSubCategoryId, reset]);
+  }, [subSubCategoriesResponse, subcategoriesResponse, subSubCategoryId, reset, setValue]);
 
   const onSubmit = async (data: SubSubCategoryFormData) => {
     try {
@@ -140,11 +143,12 @@ export default function EditSubSubCategoryPage() {
                 )}
               </div>
               {!!currentImage && (
-                <div className="flex-shrink-0 ml-2">
-                  <img
+                <div className="flex-shrink-0 ml-2 relative h-14 w-14">
+                  <Image
                     src={currentImage?.startsWith?.("http") ? currentImage : "/" + currentImage?.replace?.(/^\/*/, "")}
                     alt="Current Sub-sub-category"
-                    className="h-14 w-14 rounded border border-gray-200 object-contain"
+                    fill
+                    className="rounded border border-gray-200 object-contain"
                   />
                 </div>
               )}
@@ -157,8 +161,15 @@ export default function EditSubSubCategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register("image")}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (
@@ -175,7 +186,13 @@ export default function EditSubSubCategoryPage() {
                 control={control}
                 name="subcategory"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isSubcategoriesLoading}>
+                  <Select
+                    key={`${field.value || "empty"}-${(Array.isArray(subcategoriesResponse) ? subcategoriesResponse.length : 0)}`}
+                    onValueChange={field.onChange}
+                    value={field.value || undefined}
+                    defaultValue={field.value || undefined}
+                    disabled={isSubcategoriesLoading}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={isSubcategoriesLoading ? "Loading sub-categories..." : "Select a parent sub-category"} />
                     </SelectTrigger>
@@ -195,7 +212,7 @@ export default function EditSubSubCategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="isActive" className="text-sm font-medium text-gray-700">
                 Status
               </Label>
@@ -215,7 +232,7 @@ export default function EditSubSubCategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import TiptapEditor from '@/components/ui/tiptap-editor';
 import { toast } from 'sonner';
 import { useGetBlogCategoriesQuery, useCreateBlogMutation } from '@/app/redux/features/blog-category/blog-category.api';
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Form validation schema
 const blogSchema = z.object({
@@ -180,13 +181,17 @@ export default function AddBlogPage() {
             <Input
               id="thumbnail"
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               ref={fileInputRef}
               onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  setValue("thumbnail", undefined);
+                  return;
+                }
                 const file = e.target.files?.[0];
-                setValue('thumbnail', file);
-                // Allow re-selecting the same file by clearing the input value
-                e.currentTarget.value = '';
+                setValue("thumbnail", file);
+                e.currentTarget.value = "";
               }}
             />
             {thumbnail && (
@@ -204,6 +209,7 @@ export default function AddBlogPage() {
           </div>
           {thumbnail && (
             <div className="mt-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={URL.createObjectURL(thumbnail)}
                 alt="Thumbnail preview"

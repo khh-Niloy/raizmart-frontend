@@ -1,5 +1,16 @@
 import { baseApi } from "../../baseApi"
 
+interface ApiResponse<T> {
+  data?: T;
+}
+
+interface UpdateOthersImagePayload {
+  id: string;
+  image?: File;
+  redirectUrl?: string;
+  status?: string;
+}
+
 export const othersImagesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Get all others images
@@ -9,6 +20,10 @@ export const othersImagesApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["OTHERS_IMAGES"],
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
     }),
     
     // Create others images (bulk upload)
@@ -44,6 +59,32 @@ export const othersImagesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["OTHERS_IMAGES"],
     }),
+
+    // Update others image
+    updateOthersImage: builder.mutation({
+      query: ({ id, image, redirectUrl, status }: UpdateOthersImagePayload) => {
+        const formData = new FormData();
+
+        if (image) {
+          formData.append("image", image);
+        }
+
+        if (redirectUrl !== undefined) {
+          formData.append("redirectUrl", redirectUrl);
+        }
+
+        if (status !== undefined) {
+          formData.append("status", status);
+        }
+
+        return {
+          url: `/others-images/${id}`,
+          method: "PATCH",
+          data: formData,
+        };
+      },
+      invalidatesTags: ["OTHERS_IMAGES"],
+    }),
   }),
 })
 
@@ -51,4 +92,5 @@ export const {
   useGetOthersImagesQuery,
   useCreateOthersImagesMutation,
   useDeleteOthersImageMutation,
+  useUpdateOthersImageMutation,
 } = othersImagesApi

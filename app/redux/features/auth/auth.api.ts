@@ -17,9 +17,29 @@ interface ChangePasswordPayload {
   newPassword: string;
 }
 
+interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface OTPPayload {
   email: string;
   otp: string;
+}
+
+interface ForgetPasswordCreateOTPPayload {
+  email: string;
+}
+
+interface ForgetPasswordVerifyOTPPayload {
+  email: string;
+  otp: string;
+}
+
+interface ResetPasswordPayload {
+  email: string;
+  newPassword: string;
 }
 
 interface UserInfo {
@@ -28,6 +48,28 @@ interface UserInfo {
   email: string;
   phone?: string;
   role?: string;
+}
+
+interface CreateAdminPayload {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
+interface UpdateRolePayload {
+  email: string;
+  role: string;
+}
+
+interface AdminUser {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ApiResponse<T> {
@@ -91,8 +133,80 @@ export const authApi = baseApi.injectEndpoints({
                 method: "POST",
             }),
             invalidatesTags: ["USER"],
+        }),
+        forgetPasswordCreateOTP: builder.mutation({
+            query: (payload: ForgetPasswordCreateOTPPayload)=>({
+                url: "/forget-password/create-otp",
+                method: "POST",
+                data: payload
+            })
+        }),
+        forgetPasswordVerifyOTP: builder.mutation({
+            query: (payload: ForgetPasswordVerifyOTPPayload)=>({
+                url: "/forget-password/verify-otp",
+                method: "POST",
+                data: payload
+            })
+        }),
+        resetPassword: builder.mutation({
+            query: (payload: ResetPasswordPayload)=>({
+                url: "/auth/reset-password",
+                method: "POST",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
+        }),
+        updateUser: builder.mutation({
+            query: (payload: UpdateUserPayload)=>({
+                url: "/user/me",
+                method: "PATCH",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
+        }),
+        getAllAdmins: builder.query<AdminUser[], void>({
+            query: ()=>({
+                url: "/user/admins",
+                method: "GET",
+            }),
+            transformResponse: (response: unknown): AdminUser[] => {
+                const apiResponse = response as ApiResponse<AdminUser[]>;
+                return apiResponse.data ?? [];
+            },
+            providesTags: ["USER"],
+        }),
+        createAdmin: builder.mutation({
+            query: (payload: CreateAdminPayload)=>({
+                url: "/user/create-admin",
+                method: "POST",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
+        }),
+        updateRole: builder.mutation({
+            query: (payload: UpdateRolePayload)=>({
+                url: "/user/update-role",
+                method: "PATCH",
+                data: payload
+            }),
+            invalidatesTags: ["USER"],
         })
     })
 })
 
-export const { useRegisterMutation, useLoginMutation, useChangePasswordMutation, useSendOTPMutation, useVerifyOTPMutation, useUserInfoQuery, useUseLogoutMutation } = authApi
+export const { 
+    useRegisterMutation, 
+    useLoginMutation, 
+    useChangePasswordMutation, 
+    useSendOTPMutation, 
+    useVerifyOTPMutation, 
+    useUserInfoQuery, 
+    useUseLogoutMutation,
+    useForgetPasswordCreateOTPMutation,
+    useForgetPasswordVerifyOTPMutation,
+    useResetPasswordMutation,
+    useUpdateUserMutation,
+    useGetAllAdminsQuery,
+    useCreateAdminMutation,
+    useUpdateRoleMutation
+} = authApi

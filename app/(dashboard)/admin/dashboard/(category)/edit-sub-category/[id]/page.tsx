@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import {
   useGetCategoriesQuery,
   useGetSubcategoriesQuery,
@@ -22,6 +22,7 @@ import {
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema
 const subcategorySchema = z.object({
@@ -50,6 +51,7 @@ export default function EditSubcategoryPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<SubcategoryFormData>({
     resolver: zodResolver(subcategorySchema),
     defaultValues: {
@@ -105,10 +107,11 @@ export default function EditSubcategoryPage() {
             category: catValue,
             isActive: currentSubcategory.isActive ?? true,
           });
+          setValue("category", catValue, { shouldValidate: false });
         }
       }
     }
-  }, [subcategoriesResponse, categoriesResponse, subcategoryId, reset]);
+  }, [subcategoriesResponse, categoriesResponse, subcategoryId, reset, setValue]);
 
   const onSubmit = async (data: SubcategoryFormData) => {
     try {
@@ -173,11 +176,12 @@ export default function EditSubcategoryPage() {
               </div>
             </div>
             {!!currentImage && (
-              <div className="flex-shrink-0 my-5">
-                <img
+              <div className="flex-shrink-0 my-5 relative h-14 w-14">
+                <Image
                   src={currentImage}
                   alt="Current Sub-category"
-                  className="h-14 w-14 rounded border border-gray-200 object-contain"
+                  fill
+                  className="rounded border border-gray-200 object-contain"
                 />
               </div>
             )}
@@ -192,8 +196,15 @@ export default function EditSubcategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register("image")}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (
@@ -216,8 +227,10 @@ export default function EditSubcategoryPage() {
                 name="category"
                 render={({ field }) => (
                   <Select
+                    key={`${field.value || "empty"}-${(Array.isArray(categoriesResponse) ? categoriesResponse.length : 0)}`}
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value || undefined}
+                    defaultValue={field.value || undefined}
                     disabled={isCategoriesLoading}
                   >
                     <SelectTrigger className="w-full">
@@ -252,7 +265,7 @@ export default function EditSubcategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label
                 htmlFor="isActive"
                 className="text-sm font-medium text-gray-700"
@@ -275,7 +288,7 @@ export default function EditSubcategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">

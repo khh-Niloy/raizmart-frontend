@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   useGetAllOffersQuery,
   useUpdateOfferMutation,
 } from "@/app/redux/features/offer/offer.api";
-import { Image as ImageIcon, Tag, Clock, ExternalLink } from "lucide-react";
+import { Tag, Clock, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
@@ -100,7 +101,7 @@ interface Offer {
 export default function OffersPage() {
   const { data, isLoading, isError } = useGetAllOffersQuery(undefined);
   const [updateOffer] = useUpdateOfferMutation();
-  const offers = (data?.data || []) as Offer[];
+  const offers = React.useMemo(() => (data?.data || []) as Offer[], [data?.data]);
 
   // Helper function to check if offer is expired
   const isOfferExpired = (endAt: string | undefined): boolean => {
@@ -254,27 +255,30 @@ export default function OffersPage() {
                       }`}
                     >
                       {/* Image Container */}
-                      <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-                        <img
-                          src={offer.imageUrl}
-                          alt={offer.imageUrl ?? "Special offer"}
-                          className={`w-full h-full object-cover transition-transform duration-500 ${
-                            expired ? "" : "group-hover:scale-110"
-                          }`}
-                        />
+                      {offer.imageUrl && (
+                        <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+                          <Image
+                            src={offer.imageUrl}
+                            alt="Special offer"
+                            fill
+                            className={`object-cover transition-transform duration-500 ${
+                              expired ? "" : "group-hover:scale-110"
+                            }`}
+                          />
 
-                        {/* Expired Badge - Overlay on Image (only if expired) */}
-                        {offer.endAt && expired && (
-                          <div className="absolute top-4 left-4 right-4 z-10">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-red-500/95 backdrop-blur-sm px-4 py-2 shadow-lg border border-red-400">
-                              <Clock className="h-4 w-4 text-white" />
-                              <span className="text-sm font-bold text-white">
-                                Expired
-                              </span>
+                          {/* Expired Badge - Overlay on Image (only if expired) */}
+                          {offer.endAt && expired && (
+                            <div className="absolute top-4 left-4 right-4 z-10">
+                              <div className="inline-flex items-center gap-2 rounded-full bg-red-500/95 backdrop-blur-sm px-4 py-2 shadow-lg border border-red-400">
+                                <Clock className="h-4 w-4 text-white" />
+                                <span className="text-sm font-bold text-white">
+                                  Expired
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Content Section */}
                       <div className="flex flex-col flex-1 p-6">

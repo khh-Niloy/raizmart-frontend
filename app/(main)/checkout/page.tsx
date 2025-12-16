@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import { Wallet, Truck } from "lucide-react";
-import { CouponResponse, useGetCouponsQuery } from "@/app/redux/features/coupon/coupon.api";
+import { useValidateCouponMutation } from "@/app/redux/features/coupon/coupon.api";
 import { toast } from "sonner";
 import { useCreateOrderMutation } from "@/app/redux/features/order/order.api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { Badge } from "@/components/ui/badge";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -27,10 +28,11 @@ export default function CheckoutPage() {
   const [division, setDivision] = React.useState("");
   const [note, setNote] = React.useState("");
   const [district, setDistrict] = React.useState("");
-  const [upazila, setUpazila] = React.useState("");
+  const [thana, setThana] = React.useState("");
   const [postCode, setPostCode] = React.useState("");
   const [createOrder, { isLoading: creatingOrder }] = useCreateOrderMutation();
   const hasOpenedAuthRef = React.useRef(false);
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
   
   React.useEffect(() => {
     // Only open auth modal once when page loads if user is not logged in
@@ -53,53 +55,121 @@ export default function CheckoutPage() {
     "Mymensingh",
   ];
 
-  const districtByDivision: Record<string, string[]> = {
-    Dhaka: ["Dhaka", "Gazipur", "Narayanganj"],
-    Chattogram: ["Chattogram", "Cox's Bazar"],
-    Rajshahi: ["Rajshahi"],
-    Khulna: ["Khulna"],
-    Barishal: ["Barishal"],
-    Sylhet: ["Sylhet"],
-    Rangpur: ["Rangpur"],
-    Mymensingh: ["Mymensingh"],
-  };
-
-  const upazilaByDistrict: Record<string, string[]> = {
-    Dhaka: ["Dhanmondi", "Gulshan", "Mirpur"],
-    Gazipur: ["Gazipur Sadar"],
-    Narayanganj: ["Narayanganj Sadar"],
-    Chattogram: ["Kotwali", "Pahartali"],
-    "Cox's Bazar": ["Cox's Bazar Sadar"],
-    Rajshahi: ["Rajshahi Sadar"],
-    Khulna: ["Khulna Sadar"],
-    Barishal: ["Barishal Sadar"],
-    Sylhet: ["Sylhet Sadar"],
-    Rangpur: ["Rangpur Sadar"],
-    Mymensingh: ["Mymensingh Sadar"],
-  };
-
-  const deliveryCharge = React.useMemo(() => {
-    if (!division) return 0;
-    return division === "Dhaka" ? 60 : 120;
+  const currentDistrictOptions = React.useMemo(() => {
+    const districtOptionsByDivision: Record<string, string[]> = {
+      Dhaka: [
+        "Dhaka",
+        "Faridpur",
+        "Gazipur",
+        "Gopalganj",
+        "Kishoreganj",
+        "Madaripur",
+        "Manikganj",
+        "Munshiganj",
+        "Narayanganj",
+        "Narsingdi",
+        "Rajbari",
+        "Shariatpur",
+        "Tangail",
+      ],
+      Chattogram: [
+        "Bandarban",
+        "Brahmanbaria",
+        "Chandpur",
+        "Chattogram",
+        "Cumilla",
+        "Cox's Bazar",
+        "Feni",
+        "Khagrachari",
+        "Lakshmipur",
+        "Noakhali",
+        "Rangamati",
+      ],
+      Rajshahi: [
+        "Bogura",
+        "Chapainawabganj",
+        "Joypurhat",
+        "Naogaon",
+        "Natore",
+        "Pabna",
+        "Rajshahi",
+        "Sirajganj",
+      ],
+      Khulna: [
+        "Bagerhat",
+        "Chuadanga",
+        "Jashore",
+        "Jhenaidah",
+        "Khulna",
+        "Kushtia",
+        "Magura",
+        "Meherpur",
+        "Narail",
+        "Satkhira",
+      ],
+      Barishal: [
+        "Barguna",
+        "Barishal",
+        "Bhola",
+        "Jhalokathi",
+        "Patuakhali",
+        "Pirojpur",
+      ],
+      Sylhet: ["Habiganj", "Moulvibazar", "Sunamganj", "Sylhet"],
+      Rangpur: [
+        "Dinajpur",
+        "Gaibandha",
+        "Kurigram",
+        "Lalmonirhat",
+        "Nilphamari",
+        "Panchagarh",
+        "Rangpur",
+        "Thakurgaon",
+      ],
+      Mymensingh: ["Jamalpur", "Mymensingh", "Netrokona", "Sherpur"],
+    };
+    if (!division) return [];
+    return districtOptionsByDivision[division] || [];
   }, [division]);
 
   // Coupon handling
-  const { data: coupons } = useGetCouponsQuery(undefined);
+  const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
   const [couponCode, setCouponCode] = React.useState("");
   interface Coupon {
-    _id?: string;
-    code?: string;
-    discountType?: string;
+    code: string;
+    discountType: string;
     discountValue?: number;
-    [key: string]: unknown;
   }
+
+  // console.log(items);
 
   const [appliedCoupon, setAppliedCoupon] = React.useState<Coupon | null>(null);
   const [justApplied, setJustApplied] = React.useState(false);
 
+  // Calculate delivery charge - free if FREE_DELIVERY coupon is applied OR if any product has isFreeDelivery
+  const deliveryCharge = React.useMemo(() => {
+    // If FREE_DELIVERY coupon is applied, delivery is free
+    if (appliedCoupon?.discountType === "FREE_DELIVERY") {
+      return 0;
+    }
+    // If any product in cart has isFreeDelivery set to true, delivery is free
+    const hasFreeDeliveryProduct = items.some((item) => item.isFreeDelivery === true);
+    if (hasFreeDeliveryProduct) {
+      return 0;
+    }
+    if (!division) return 0;
+    return division === "Dhaka" ? 60 : 120;
+  }, [division, appliedCoupon, items]);
+
   const computeDiscountForCoupon = React.useCallback((coupon: Coupon | null) => {
     if (!coupon) return 0;
     const type = (coupon.discountType || "").toString().toUpperCase();
+    
+    // FREE_DELIVERY doesn't provide product discount, only free delivery
+    if (type === "FREE_DELIVERY") {
+      return 0;
+    }
+    
     const value = Number(coupon.discountValue ?? 0);
     if (Number.isNaN(value) || value <= 0) return 0;
     if (type === "PERCENT") {
@@ -114,39 +184,47 @@ export default function CheckoutPage() {
     return computeDiscountForCoupon(appliedCoupon);
   }, [appliedCoupon, computeDiscountForCoupon]);
 
-  const handleApplyCoupon = () => {
-    const code = couponCode; // exact text & casing
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
     if (!code) {
       setAppliedCoupon(null);
       toast.error("Enter a coupon code");
       return;
     }
-    const list = Array.isArray(coupons) ? coupons : [];
-    const found = list.find((c: CouponResponse | Coupon) => (c?.code ?? "") === code);
-    if (!found) {
+
+    try {
+      const result = await validateCoupon(code).unwrap();
+      if (result) {
+        const coupon: Coupon = {
+          code,
+          discountType: result.discountType,
+          discountValue: result.discountValue,
+        };
+        setAppliedCoupon(coupon);
+        const saved = computeDiscountForCoupon(coupon);
+        setJustApplied(true);
+        window.setTimeout(() => setJustApplied(false), 1200);
+        
+        // Show different message for FREE_DELIVERY
+        if (result.discountType === "FREE_DELIVERY") {
+          toast.success(`🎉 Free Delivery Applied!`, {
+            description: `Your delivery charge will be free`,
+          });
+        } else {
+          toast.success(`🎉 Coupon applied!`, {
+            description: `You saved ৳ ${saved.toFixed(2)}`,
+          });
+        }
+      } else {
+        setAppliedCoupon(null);
+        toast.error("Invalid coupon code");
+      }
+    } catch (error: unknown) {
       setAppliedCoupon(null);
-      toast.error("Invalid coupon code");
-      return;
+      const errorData = error as { data?: { message?: string }; message?: string };
+      const message = errorData?.data?.message || errorData?.message || "Invalid coupon code";
+      toast.error(message);
     }
-    // Validate active and date range if present
-    const isActive = Boolean(found.isActive ?? true);
-    const now = Date.now();
-    const starts = found.startDate ? new Date(found.startDate).getTime() : undefined;
-    const ends = found.endDate ? new Date(found.endDate).getTime() : undefined;
-    const withinStart = starts === undefined || (Number.isFinite(starts) && now >= starts);
-    const withinEnd = ends === undefined || (Number.isFinite(ends) && now <= ends);
-    if (!isActive || !withinStart || !withinEnd) {
-      setAppliedCoupon(null);
-      toast.error("Coupon is not active or has expired");
-      return;
-    }
-    setAppliedCoupon(found as Coupon);
-    const saved = computeDiscountForCoupon(found as Coupon);
-    setJustApplied(true);
-    window.setTimeout(() => setJustApplied(false), 1200);
-    toast.success(`🎉 Coupon applied!`, {
-      description: `You saved ৳ ${saved.toFixed(2)}`,
-    });
   };
 
   const handleRemoveCoupon = () => {
@@ -168,7 +246,7 @@ export default function CheckoutPage() {
         <Link href="/" className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer">&lt; Back</Link>
         <h1 className="text-3xl font-semibold mt-2">Checkout &amp; Confirm Order</h1>
         <div className="mt-3 bg-orange-100 text-orange-700 text-sm rounded-xl px-4 py-3 inline-block">
-          অর্ডার সংক্রান্ত যেকোনো প্রয়োজনে কথা বলুন আমাদের কাস্টমার সার্ভিস প্রতিনিধি সাথে - 09678148148
+          অর্ডার সংক্রান্ত যেকোনো প্রয়োজনে কথা বলুন আমাদের কাস্টমার সার্ভিস প্রতিনিধির সাথে - 01601560955
         </div>
       </div>
 
@@ -180,29 +258,65 @@ export default function CheckoutPage() {
             <div>
               <label className="text-sm text-gray-700">Full Name *</label>
               <input
-                className="mt-1 w-full border rounded-xl px-3 py-2"
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.fullName ? "border-red-500" : ""}`}
                 placeholder="Enter full name"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  if (validationErrors.fullName) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.fullName;
+                      return newErrors;
+                    });
+                  }
+                }}
               />
+              {validationErrors.fullName && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.fullName}</p>
+              )}
             </div>
             <div>
-              <label className="text-sm text-gray-700">Email</label>
+              <label className="text-sm text-gray-700">Email (optional)</label>
               <input
-                className="mt-1 w-full border rounded-xl px-3 py-2"
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.email ? "border-red-500" : ""}`}
                 placeholder="Enter Email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (validationErrors.email) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.email;
+                      return newErrors;
+                    });
+                  }
+                }}
               />
+              {validationErrors.email && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.email}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-700">Phone Number *</label>
               <input
-                className="mt-1 w-full border rounded-xl px-3 py-2"
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.phone ? "border-red-500" : ""}`}
                 placeholder="Enter phone number"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (validationErrors.phone) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.phone;
+                      return newErrors;
+                    });
+                  }
+                }}
               />
+              {validationErrors.phone && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.phone}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-700">Division *</label>
@@ -211,10 +325,17 @@ export default function CheckoutPage() {
                 onValueChange={(val) => {
                   setDivision(val);
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
+                  if (validationErrors.division) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.division;
+                      return newErrors;
+                    });
+                  }
                 }}
               >
-                <SelectTrigger className="mt-1 w-full rounded-xl">
+                <SelectTrigger className={`mt-1 w-full rounded-xl ${validationErrors.division ? "border-red-500" : ""}`}>
                   <SelectValue placeholder="Select your division" />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,43 +344,60 @@ export default function CheckoutPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.division && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.division}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-700">District *</label>
               <Select
                 value={district}
-                onValueChange={(val) => {
-                  setDistrict(val);
-                  setUpazila("");
+                onValueChange={(value) => {
+                  setDistrict(value);
+                  setThana("");
+                  if (validationErrors.district) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.district;
+                      return newErrors;
+                    });
+                  }
                 }}
                 disabled={!division}
               >
-                <SelectTrigger className="mt-1 w-full rounded-xl">
-                  <SelectValue placeholder="Select your district" />
+                <SelectTrigger className={`mt-1 w-full rounded-xl ${validationErrors.district ? "border-red-500" : ""}`} disabled={!division}>
+                  <SelectValue placeholder={division ? "Select your district" : "Select division first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(districtByDivision[division] || []).map((d) => (
+                  {currentDistrictOptions.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.district && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.district}</p>
+              )}
             </div>
             <div>
-              <label className="text-sm text-gray-700">Upazila *</label>
-              <Select
-                value={upazila}
-                onValueChange={(val) => setUpazila(val)}
-                disabled={!district}
-              >
-                <SelectTrigger className="mt-1 w-full rounded-xl">
-                  <SelectValue placeholder="Select your upazila" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(upazilaByDistrict[district] || []).map((u) => (
-                    <SelectItem key={u} value={u}>{u}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm text-gray-700">Thana *</label>
+              <input
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.thana ? "border-red-500" : ""}`}
+                placeholder="Enter your thana"
+                value={thana}
+                onChange={(e) => {
+                  setThana(e.target.value);
+                  if (validationErrors.thana) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.thana;
+                      return newErrors;
+                    });
+                  }
+                }}
+              />
+              {validationErrors.thana && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.thana}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-700">Post Code</label>
@@ -273,11 +411,23 @@ export default function CheckoutPage() {
             <div>
               <label className="text-sm text-gray-700">Address *</label>
               <input
-                className="mt-1 w-full border rounded-xl px-3 py-2"
+                className={`mt-1 w-full border rounded-xl px-3 py-2 ${validationErrors.address ? "border-red-500" : ""}`}
                 placeholder="For ex: House: 23, Road: 24, Block: B"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  if (validationErrors.address) {
+                    setValidationErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.address;
+                      return newErrors;
+                    });
+                  }
+                }}
               />
+              {validationErrors.address && (
+                <p className="text-xs text-red-600 mt-1">{validationErrors.address}</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <label className="text-sm text-gray-700">Order Note</label>
@@ -341,16 +491,23 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-semibold">Order Summary</h2>
           <div className="mt-4 space-y-4">
             {items.map((it) => (
-              <div key={`${it.productId}-${it.sku || ""}`} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div key={`${it.productId}-${it.sku || ""}`} className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.image || "/next.svg"} alt={it.name} className="w-12 h-12 object-contain rounded-md border" />
-                  <div>
-                    <div className="text-sm font-medium">{it.name}</div>
-                    <div className="text-xs text-gray-500">{it.quantity} quantity</div>
+                  <img src={it.image || "/next.svg"} alt={it.name} className="w-12 h-12 object-contain rounded-md border flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900">{it.name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-xs text-gray-500">{it.quantity} quantity</div>
+                      {it.isFreeDelivery === true && (
+                        <Badge className="bg-emerald-600 text-white border-transparent text-[10px] px-1.5 py-0.5 font-medium">
+                          Free Delivery
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="text-sm">৳ {(it.price * it.quantity).toFixed(2)}</div>
+                <div className="text-sm font-medium text-gray-900 flex-shrink-0">৳ {(it.price * it.quantity).toFixed(2)}</div>
               </div>
             ))}
           </div>
@@ -374,16 +531,21 @@ export default function CheckoutPage() {
                 </button>
               ) : (
                 <button
-                  className="px-4 py-2 rounded-full bg-[#111] hover:bg-black text-white text-sm cursor-pointer"
+                  className="px-4 py-2 rounded-full bg-[#111] hover:bg-black text-white text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleApplyCoupon}
+                  disabled={isValidatingCoupon}
                 >
-                  Apply
+                  {isValidatingCoupon ? "Validating..." : "Apply"}
                 </button>
               )}
             </div>
             {appliedCoupon && (
               <div className="mt-2 text-xs text-green-600">
-                Applied: {appliedCoupon.code} — {appliedCoupon.discountType === "PERCENT" ? `${appliedCoupon.discountValue}%` : `৳ ${Number(appliedCoupon.discountValue).toFixed(2)}`} off · You save ৳ {discount.toFixed(2)}
+                {appliedCoupon.discountType === "FREE_DELIVERY" ? (
+                  <span>✅ Applied: {appliedCoupon.code} — Free Delivery</span>
+                ) : (
+                  <span>Applied: {appliedCoupon.code} — {appliedCoupon.discountType === "PERCENT" ? `${appliedCoupon.discountValue}%` : `৳ ${Number(appliedCoupon.discountValue).toFixed(2)}`} off · You save ৳ {discount.toFixed(2)}</span>
+                )}
               </div>
             )}
           </div>
@@ -395,7 +557,16 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Delivery</span>
-              <span className="flex items-center gap-1">৳ {deliveryCharge.toFixed(2)}</span>
+              {appliedCoupon?.discountType === "FREE_DELIVERY" || items.some((item) => item.isFreeDelivery === true) ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-green-600 font-semibold">Free</span>
+                  {division && (
+                    <span className="text-xs text-gray-400 line-through">৳ {division === "Dhaka" ? "60.00" : "120.00"}</span>
+                  )}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">৳ {deliveryCharge.toFixed(2)}</span>
+              )}
             </div>
             <div className={`flex justify-between ${justApplied ? "bg-green-50 text-green-700 rounded-xl px-3 py-2 transition-colors" : ""}`}>
               <span className="text-gray-600">Discount</span>
@@ -420,14 +591,52 @@ export default function CheckoutPage() {
             className={`mt-4 w-full h-12 rounded-full text-white font-semibold ${items.length === 0 || !agree ? "bg-[#02C1BE]/50" : "bg-[#02C1BE] hover:bg-[#02C1BE]/80"}`}
             disabled={items.length === 0 || !agree || creatingOrder}
             onClick={async () => {
+              // Validate all required fields
+              const errors: Record<string, string> = {};
+              
+              if (!fullName.trim()) {
+                errors.fullName = "Full name is required";
+              }
+              
+              if (!phone.trim()) {
+                errors.phone = "Phone number is required";
+              }
+              
+              if (!division) {
+                errors.division = "Division is required";
+              }
+              
+              if (!district) {
+                errors.district = "District is required";
+              }
+              
+              if (!thana) {
+                errors.thana = "Thana is required";
+              }
+              
+              if (!address.trim()) {
+                errors.address = "Address is required";
+              }
+              
+              // If there are validation errors, show them and return
+              if (Object.keys(errors).length > 0) {
+                setValidationErrors(errors);
+                toast.error("Please fill in all required fields");
+                return;
+              }
+              
+              // Clear any previous errors
+              setValidationErrors({});
+              
+              const normalizedEmail = email.trim() || undefined;
               const payload = {
                 customer: {
                   fullName,
-                  email,
+                  email: normalizedEmail,
                   phone,
                   division,
                   district,
-                  upazila,
+                  thana,
                   postCode,
                   address,
                   note,
@@ -456,6 +665,7 @@ export default function CheckoutPage() {
                   data?: unknown;
                   [key: string]: unknown;
                 }
+                console.log("payload", payload);
 
                 const res = await createOrder(payload).unwrap() as OrderResponse;
                 if (res?.success) {
@@ -473,7 +683,7 @@ export default function CheckoutPage() {
                   setAddress("");
                   setDivision("");
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
                   setPostCode("");
                   setNote("");
                   router.push("/profile/orders");
@@ -491,7 +701,7 @@ export default function CheckoutPage() {
                   setAddress("");
                   setDivision("");
                   setDistrict("");
-                  setUpazila("");
+                  setThana("");
                   setPostCode("");
                   setNote("");
                   router.push("/profile/orders");

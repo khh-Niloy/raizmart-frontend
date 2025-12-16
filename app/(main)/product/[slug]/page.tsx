@@ -1,12 +1,13 @@
 "use client";
-import React from "react";
+import React, { useCallback } from "react";
 import { useLocalCart } from "@/hooks/useLocalCart";
 import { useLocalWishlist } from "@/hooks/useLocalWishlist";
-import { useGetProductBySlugQuery } from "@/app/redux/features/product/product.api";
+import { useGetProductBySlugQuery, useGetProductsBySlugsQuery } from "@/app/redux/features/product/product.api";
 import { useSyncProductPrices } from "@/hooks/useSyncProductPrices";
 import Link from "next/link";
-import { ProductDetailSkeleton, PageLoader } from "@/components/ui/loading";
+import { ProductDetailSkeleton } from "@/components/ui/loading";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { toast } from "sonner";
 
 // Helper function to extract YouTube video ID from URL
 const getYouTubeVideoId = (url: string): string | null => {
@@ -36,8 +37,14 @@ export default function ProductDetailBySlug({
     images?: string[];
     video?: string;
     video_url?: string;
-    descriptionImage?: string;
-    description_image?: string;
+    descriptionImages?: string[];
+    descriptionImage?: string; // Keep for backward compatibility
+    description_image?: string; // Keep for backward compatibility
+    isFreeDelivery?: boolean;
+    isWarrantyAvailable?: boolean;
+    category?: string | { slug?: string; name?: string; [key: string]: unknown };
+    subCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
+    subSubCategory?: string | { slug?: string; name?: string; [key: string]: unknown };
     attributes?: Array<{
       name: string;
       type: string;
@@ -74,13 +81,63 @@ export default function ProductDetailBySlug({
   }
 
   const product = ((data as ProductResponse)?.data ?? data ?? null) as ProductData | null;
+  const brandName = (product?.brand as { name?: string } | null | undefined)?.name;
   console.log(product);
 
   // Sync cart and wishlist prices when product data changes
   useSyncProductPrices(product?._id, product as unknown as ProductData);
 
+  // Extract category information from product
+  // Category can be an object with slug/name or a string
+  const getCategorySlug = React.useMemo(() => {
+    try {
+      if (!product) return { categorySlug: undefined, subCategorySlug: undefined, subSubCategorySlug: undefined };
+      
+      const extractSlug = (cat: unknown): string | undefined => {
+        if (!cat) return undefined;
+        if (typeof cat === 'string') return cat;
+        if (typeof cat === 'object' && cat !== null) {
+          const obj = cat as { slug?: string; name?: string; [key: string]: unknown };
+          return obj.slug || obj.name;
+        }
+        return undefined;
+      };
+
+      return {
+        categorySlug: extractSlug(product.category),
+        subCategorySlug: extractSlug(product.subCategory),
+        subSubCategorySlug: extractSlug(product.subSubCategory),
+      };
+    } catch (error) {
+      // If category extraction fails, just return undefined values
+      console.warn('Error extracting category information:', error);
+      return { categorySlug: undefined, subCategorySlug: undefined, subSubCategorySlug: undefined };
+    }
+  }, [product]);
+
+  const { categorySlug, subCategorySlug, subSubCategorySlug } = getCategorySlug;
+
+  // Fetch related products by same category hierarchy (exclude current product)
+  // Only fetch if we have at least category or subcategory
+  const hasCategoryData = !!(categorySlug || subCategorySlug);
+  const {
+    data: relatedProductsData,
+    isLoading: isRelatedLoading,
+    isError: isRelatedError,
+  } = useGetProductsBySlugsQuery(
+    {
+      category: categorySlug,
+      subcategory: subCategorySlug,
+      subsubcategory: subSubCategorySlug,
+      page: 1,
+      limit: 12,
+      sort: "newest",
+    },
+    { skip: !product || !hasCategoryData }
+  );
+
   // Prepare attributes/options
-  const attributes = (product?.attributes ?? []) as Array<{
+  const attributes = React.useMemo(() => (product?.attributes ?? []) as Array<{
     name: string;
     type: string;
     values: Array<{
@@ -90,8 +147,8 @@ export default function ProductDetailBySlug({
       images?: string[];
       isDefault?: boolean;
     }>;
-  }>;
-  const variants = (product?.variants ?? []) as Array<{
+  }>, [product?.attributes]);
+  const variants = React.useMemo(() => (product?.variants ?? []) as Array<{
     sku: string;
     finalPrice: number;
     stock: number;
@@ -102,23 +159,12 @@ export default function ProductDetailBySlug({
       attributeValue: string;
       attributeLabel: string;
     }>;
-  }>;
-
-  // Build initial selections (prefer default flags, else first option)
-  const initialSelections = React.useMemo(() => {
-    const acc: Record<string, string> = {};
-    attributes.forEach((attr) => {
-      const def = attr.values.find((v) => v.isDefault) || attr.values[0];
-      if (def)
-        acc[attr.name] = (def as { attributeValue?: string }).attributeValue || def.value || def.label;
-    });
-    return acc;
-  }, [attributes]);
+  }>, [product?.variants]);
 
   const [selectedByName, setSelectedByName] = React.useState<
     Record<string, string>
   >(() => {
-    // Initialize state with initial selections directly
+    // Initialize state with initial selections (prefer default flags, else first option)
     const acc: Record<string, string> = {};
     attributes.forEach((attr) => {
       const def = attr.values.find((v) => v.isDefault) || attr.values[0];
@@ -140,7 +186,7 @@ export default function ProductDetailBySlug({
       });
       setSelectedByName(newSelections);
     }
-  }, [product?._id]);
+  }, [product?._id, attributes]);
   const [activeImage, setActiveImage] = React.useState<string | undefined>(
     undefined
   );
@@ -278,7 +324,7 @@ export default function ProductDetailBySlug({
   }
 
   // Minimal TipTap JSON -> HTML renderer (headings, paragraphs, lists, blockquote, code, hardBreak, marks)
-  const renderTiptapToHTML = (node: TipTapNode | null | undefined): string => {
+  const renderTiptapToHTML = useCallback((node: TipTapNode | null | undefined): string => {
     if (!node) return "";
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -329,7 +375,7 @@ export default function ProductDetailBySlug({
       default:
         return renderChildren(node.content);
     }
-  };
+  }, []);
 
   // Render TipTap JSON description to HTML
   const descriptionHtml = React.useMemo(() => {
@@ -344,15 +390,21 @@ export default function ProductDetailBySlug({
     }
     if (typeof desc === "string") return desc; // assume already HTML
     return "";
-  }, [product?.description]);
+  }, [product?.description, renderTiptapToHTML]);
 
-  // Extract video and descriptionImage from product
+  // Extract video and descriptionImages from product
   const videoUrl = React.useMemo(() => {
     return product?.video || product?.video_url || "";
   }, [product]);
 
-  const descriptionImageUrl = React.useMemo(() => {
-    return product?.descriptionImage || product?.description_image || "";
+  const descriptionImages = React.useMemo(() => {
+    // Support new descriptionImages array and backward compatibility with single descriptionImage
+    if (product?.descriptionImages && Array.isArray(product.descriptionImages)) {
+      return product.descriptionImages;
+    }
+    // Fallback to old single image fields
+    const singleImage = product?.descriptionImage || product?.description_image;
+    return singleImage ? [singleImage] : [];
   }, [product]);
 
   const videoId = React.useMemo(() => {
@@ -370,7 +422,7 @@ export default function ProductDetailBySlug({
     return textOnly.length > 0;
   }, [descriptionHtml]);
   const hasVideo = React.useMemo(() => !!videoId, [videoId]);
-  const hasDescriptionImage = React.useMemo(() => !!descriptionImageUrl, [descriptionImageUrl]);
+  const hasDescriptionImages = React.useMemo(() => descriptionImages.length > 0, [descriptionImages]);
 
   // Loading state
   if (isLoading) {
@@ -410,12 +462,12 @@ export default function ProductDetailBySlug({
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#02C1BE]">
-              {(product.brand as { name?: string }).name && (
+              {brandName && (
                 <Link 
-                  href={`/brands/${(product.brand as { name?: string }).name}`}
+                  href={`/brands/${brandName}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/30 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
                 >
-                  Brand: {(product.brand as { name?: string }).name}
+                  Brand: {brandName}
                 </Link>
               )}
             </div>
@@ -706,7 +758,33 @@ export default function ProductDetailBySlug({
                     isTBA: false 
                   };
                 }
-              }, [selectedVariant, variants, product]);
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+              }, [selectedByName, variants, product]);
+
+              // Variant-wise stock handling
+              const stockInfo = React.useMemo(() => {
+                const hasVariants = Array.isArray(variants) && variants.length > 0;
+                const sv = selectedVariant;
+                const stockCount = hasVariants
+                  ? Number(sv?.stock ?? 0)
+                  : Number((product as unknown as { stock?: number })?.stock ?? 0);
+                return {
+                  hasVariants,
+                  stockCount: Number.isFinite(stockCount) ? Math.max(0, stockCount) : 0,
+                };
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+              }, [selectedByName, variants, product]);
+
+              const inStock = stockInfo.stockCount > 0;
+              const maxQty = stockInfo.stockCount || 0;
+
+              // Ensure qty respects current stock when variant/product changes
+              React.useEffect(() => {
+                setQty((prev) => {
+                  if (!inStock) return 1; // keep UI simple when OOS
+                  return Math.min(Math.max(1, prev), maxQty);
+                });
+              }, [inStock, maxQty]);
 
               const matcher = {
                 productId: product?._id as string,
@@ -718,19 +796,23 @@ export default function ProductDetailBySlug({
                 discountedPrice: calculatePrice.discountedPrice,
                 sku: selectedVariant?.sku as string | undefined,
                 selectedOptions: selectedByName,
+                isFreeDelivery: product?.isFreeDelivery,
               };
 
-              const inCart = product && selectedVariant ? has(matcher) : false;
+              const hasVariants = Array.isArray(variants) && variants.length > 0;
+              const inCart = product && (hasVariants ? selectedVariant : true) ? has(matcher) : false;
               const inWishlist = product ? hasWish(matcher) : false;
 
-              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number';
+              const canAddToCart = !calculatePrice.isTBA && typeof calculatePrice.price === 'number' && inStock;
 
               const onAddToCart = () => {
-                if (!product || !selectedVariant || !canAddToCart) return;
+                if (!product || !canAddToCart) return;
+                // Only require selectedVariant if product has variants
+                if (hasVariants && !selectedVariant) return;
                 if (!ensureAuth()) return;
                 addItem({
                   ...matcher,
-                  quantity: qty,
+                  quantity: Math.min(qty, maxQty),
                 });
               };
 
@@ -755,13 +837,29 @@ export default function ProductDetailBySlug({
                     <button
                       className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      disabled={!inStock || qty <= 1}
                     >
                       -
                     </button>
-                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{qty}</div>
+                    <div className="px-4 text-sm font-semibold text-slate-800" aria-live="polite">{Math.min(qty, maxQty || 1)}</div>
                     <button
                       className="px-4 py-2 text-lg text-slate-500 transition hover:text-slate-900"
-                      onClick={() => setQty((q) => q + 1)}
+                      onClick={() => {
+                        if (!inStock) {
+                          toast.warning("Out of stock");
+                          return;
+                        }
+                        setQty((q) => {
+                          const next = q + 1;
+                          if (maxQty && next > maxQty) {
+                            toast.warning(
+                              `Only ${maxQty} ${maxQty > 1 ? "items" : "item"} available`
+                            );
+                            return maxQty;
+                          }
+                          return next;
+                        });
+                      }}
                     >
                       +
                     </button>
@@ -775,9 +873,15 @@ export default function ProductDetailBySlug({
                     }`}
                     onClick={!inCart && canAddToCart ? onAddToCart : undefined}
                     disabled={inCart || !canAddToCart}
-                    title={!canAddToCart ? "Price is TBA - Cannot add to cart" : undefined}
+                    title={
+                      !inStock
+                        ? "Out of stock - Cannot add to cart"
+                        : !canAddToCart
+                        ? "Price is TBA - Cannot add to cart"
+                        : undefined
+                    }
                   >
-                    {inCart ? "Added" : !canAddToCart ? "Price TBA" : "Add To Cart"}
+                    {inCart ? "Added" : !inStock ? "Unavailable" : !canAddToCart ? "Price TBA" : "Add To Cart"}
                   </button>
                   <button
                     className={`flex-1 sm:flex-none rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold transition ${inWishlist ? "cursor-not-allowed bg-slate-100 text-slate-400" : "hover:border-[#02C1BE]/40 hover:text-[#02C1BE]"}`}
@@ -794,9 +898,11 @@ export default function ProductDetailBySlug({
           })()}
 
           {/* Small details */}
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
-            Enjoy 1-year official warranty support plus expert assistance from our customer care team.
-          </div>
+          {product?.isWarrantyAvailable === true && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
+              Enjoy 6 month warranty support plus expert assistance from our customer care team.
+            </div>
+          )}
         </div>
       </div>
       {/* Product details sections */}
@@ -811,7 +917,7 @@ export default function ProductDetailBySlug({
               Specification
             </button>
           )}
-          {(hasDescription || hasDescriptionImage || hasVideo) && (
+          {(hasDescription || hasDescriptionImages || hasVideo) && (
             <button
               type="button"
               className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
@@ -829,13 +935,15 @@ export default function ProductDetailBySlug({
               Video
             </button>
           )}
-          <button
-            type="button"
-            className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
-            onClick={() => scrollToWithOffset(warrantyRef.current)}
-          >
-            Warranty
-          </button>
+          {product?.isWarrantyAvailable === true && (
+            <button
+              type="button"
+              className="rounded-full border border-[#02C1BE]/20 bg-white px-4 py-2 text-sm font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+              onClick={() => scrollToWithOffset(warrantyRef.current)}
+            >
+              Warranty
+            </button>
+          )}
         </div>
         {/* Specification */}
         {hasSpecs && (
@@ -861,19 +969,23 @@ export default function ProductDetailBySlug({
         )}
 
         {/* Description */}
-        {(hasDescription || hasDescriptionImage || hasVideo) && (
+        {(hasDescription || hasDescriptionImages || hasVideo) && (
           <div className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6" ref={descRef} id="description">
             <h2 className="text-2xl font-semibold text-slate-900">Description</h2>
             <div className="space-y-6">
-              {/* Description Image */}
-              {hasDescriptionImage && (
-                <div className="w-full">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={descriptionImageUrl}
-                    alt="Product description"
-                    className="h-auto w-xl mt-5 rounded-2xl object-cover shadow"
-                  />
+              {/* Description Images */}
+              {hasDescriptionImages && (
+                <div className="w-full space-y-4">
+                  {descriptionImages.map((imgUrl, index) => (
+                    <div key={index} className="w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imgUrl}
+                        alt={`Product description ${index + 1}`}
+                        className="h-auto w-full mt-5 rounded-2xl object-cover shadow"
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -927,17 +1039,125 @@ export default function ProductDetailBySlug({
         )}
 
         {/* Warranty */}
-        <div
-          ref={warrantyRef}
-          id="warranty"
-          className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
-        >
-          <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
-          <p className="mt-3 text-sm text-slate-600">
-            1-year official warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
-          </p>
-        </div>
+        {product?.isWarrantyAvailable === true && (
+          <div
+            ref={warrantyRef}
+            id="warranty"
+            className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6"
+          >
+            <h2 className="text-2xl font-semibold text-slate-900">Warranty</h2>
+            <p className="mt-3 text-sm text-slate-600">
+              6 month warranty support. Terms may vary by brand and region—our support team is ready to assist with any claims.
+            </p>
+          </div>
+        )}
       </div>
+      {/* Related Products by category */}
+      {hasCategoryData && !isRelatedError && (
+        <div className="mt-10 rounded-3xl border border-white/70 bg-white/95 p-5 shadow-[0_20px_80px_-70px_rgba(5,150,145,0.45)] sm:p-6">
+          <h2 className="text-2xl font-semibold text-slate-900">Related Products</h2>
+          {isRelatedLoading ? (
+            <div className="mt-4 text-sm text-slate-500">Loading related products…</div>
+          ) : (() => {
+            type Item = {
+              _id?: string;
+              name?: string;
+              slug?: string;
+              status?: string;
+              images?: string[];
+              variants?: Array<{ finalPrice?: number; discountedPrice?: number }>;
+              price?: number;
+              discountedPrice?: number;
+              attributes?: Array<{
+                type?: string;
+                name?: string;
+                values?: Array<{ images?: string[] }>;
+              }>;
+            };
+            interface RelatedProductsResponse {
+              items?: Item[];
+              [key: string]: unknown;
+            }
+            const response = (relatedProductsData as RelatedProductsResponse | Item[] | null | undefined) || {};
+            const items: Item[] = Array.isArray(response)
+              ? response
+              : (response.items as Item[]) || [];
+            const filtered = (items || [])
+              .filter((p) => p && p.status === "active")
+              .filter((p) => p._id !== product?._id)
+              .slice(0, 10);
+            if (!filtered.length) {
+              return (
+                <div className="mt-3 text-sm text-slate-500">
+                  No related products found.
+                </div>
+              );
+            }
+            const getPrimaryImage = (p: Item): string => {
+              const colorAttr = (p.attributes || []).find(
+                (a) =>
+                  a?.type?.toLowerCase?.() === "color" ||
+                  a?.name?.toLowerCase?.() === "color"
+              );
+              return (
+                (colorAttr?.values?.[0]?.images?.[0] as string | undefined) ||
+                (p.images?.[0] as string | undefined) ||
+                "/next.svg"
+              );
+            };
+            const getFinalPrice = (p: Item): { final?: number; base?: number } => {
+              const v = (p.variants || [])[0];
+              const base = (v?.finalPrice || p.price) as number | undefined;
+              const disc = (v?.discountedPrice || p.discountedPrice) as
+                | number
+                | undefined;
+              const final =
+                base && disc && disc < base ? disc : base ? base : undefined;
+              return { final, base };
+            };
+            return (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {filtered.map((rp) => {
+                  const img = getPrimaryImage(rp);
+                  const { final, base } = getFinalPrice(rp);
+                  const showStrike = !!(base && final && base > final);
+                  return (
+                    <Link
+                      key={rp._id}
+                      href={`/product/${rp.slug}`}
+                      className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_25px_70px_-60px_rgba(5,150,145,0.45)] transition hover:shadow-[0_25px_70px_-45px_rgba(5,150,145,0.55)]"
+                    >
+                      <div className="relative mb-3 h-40 w-full overflow-hidden rounded-xl bg-gray-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img}
+                          alt={rp.name || "Product"}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="line-clamp-2 min-h-[44px] text-sm font-medium text-gray-900">
+                        {rp.name}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        {typeof final === "number" && (
+                          <span className="text-base font-bold text-emerald-600">
+                            ৳ {final.toLocaleString()}
+                          </span>
+                        )}
+                        {showStrike && typeof base === "number" && (
+                          <span className="text-xs text-gray-400 line-through">
+                            ৳ {base.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       </main>
     </div>
   );

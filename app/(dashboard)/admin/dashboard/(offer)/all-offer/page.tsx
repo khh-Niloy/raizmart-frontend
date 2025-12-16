@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,7 @@ interface Offer {
 
 export default function AllOfferPage() {
   const { data, isLoading, error } = useGetAllOffersQuery(undefined);
-  const allOffers: Offer[] = (data?.data as Offer[]) || [];
+  const allOffers: Offer[] = React.useMemo(() => (data?.data as Offer[]) || [], [data?.data]);
   const [updateOffer, { isLoading: isUpdating }] = useUpdateOfferMutation();
   const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive">("all");
 
@@ -160,9 +161,11 @@ export default function AllOfferPage() {
                     </span>
                   </div>
                 </div>
-                <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-                  <img src={offer.imageUrl} alt="Offer preview" className="w-full h-full object-cover" />
-                </div>
+                {offer.imageUrl && (
+                  <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                    <Image src={offer.imageUrl} alt="Offer preview" fill className="object-cover" />
+                  </div>
+                )}
 
                 {offer.endAt && (
                   <div className="flex justify-center">

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateOthersImagesMutation } from "@/app/redux/features/other-images/other-images.api";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema for others images
 const othersImageSchema = z.object({
@@ -90,7 +91,7 @@ export default function CreateOthersImagesPage() {
       const redirectUrls = data.othersImages.map(others => others.redirectUrl || '');
 
       // Use RTK Query mutation
-      const result = await createOthersImages({
+      await createOthersImages({
         images,
         redirectUrls
       }).unwrap();
@@ -133,8 +134,13 @@ export default function CreateOthersImagesPage() {
                     <div className="flex-1">
                       <Input
                         type="file"
-                        accept="image/*"
+                        accept={IMAGE_ACCEPT}
                         onChange={(e) => {
+                          const isValid = validateImageFileChange(e);
+                          if (!isValid) {
+                            removeOthersImage(index);
+                            return;
+                          }
                           const file = e.target.files?.[0];
                           if (file) {
                             handleOthersImageUpload(index, file);
@@ -168,6 +174,7 @@ export default function CreateOthersImagesPage() {
                   <div className="space-y-2">
                     <Label>Preview</Label>
                     <div className="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={othersPreviewImages[index]}
                         alt="Preview"

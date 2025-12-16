@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +15,7 @@ import {
   useGetBrandsQuery,
   useUpdateBrandMutation,
 } from "@/app/redux/features/brand/brand.api";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 const brandSchema = z.object({
   name: z.string().min(1, "Brand name is required"),
@@ -35,6 +37,7 @@ export default function EditBrandPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<BrandFormData>({
     resolver: zodResolver(brandSchema),
   });
@@ -109,11 +112,14 @@ export default function EditBrandPage() {
             </div>
             {!!currentImage && (
               <div className="my-2 flex items-center">
-                <img
-                  src={currentImage?.startsWith?.('http') ? currentImage : '/' + currentImage?.replace?.(/^\/*/, '')}
-                  alt="Brand"
-                  className="h-14 w-14 rounded border border-gray-200 object-contain mr-2"
-                />
+                <div className="relative h-14 w-14 mr-2">
+                  <Image
+                    src={currentImage?.startsWith?.('http') ? currentImage : '/' + currentImage?.replace?.(/^\/*/, '')}
+                    alt="Brand"
+                    fill
+                    className="rounded border border-gray-200 object-contain"
+                  />
+                </div>
                 <span className="text-xs text-gray-600">Current Image</span>
               </div>
             )}
@@ -122,8 +128,15 @@ export default function EditBrandPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register("image")}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (

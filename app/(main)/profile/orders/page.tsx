@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Package, ChevronRight } from "lucide-react";
+import { Package, ChevronRight, FileText, Download } from "lucide-react";
 import { useGetMyOrdersQuery } from "@/app/redux/features/order/order.api";
 import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import { useAuthGate } from "@/hooks/useAuthGate";
@@ -51,7 +51,7 @@ interface Order {
     phone?: string;
     email?: string;
     address?: string;
-    upazila?: string;
+    thana?: string;
     district?: string;
     division?: string;
   };
@@ -62,6 +62,7 @@ interface Order {
     method?: string;
   };
   couponCode?: string;
+  invoiceUrl?: string | null;
   [key: string]: unknown;
 }
 
@@ -87,19 +88,27 @@ export default function OrdersPage() {
   }, [userInfo, isLoadingUser, openAuth]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Delivered":
+    const s = status.toLowerCase();
+    switch (s) {
+      case "delivered":
         return "text-green-600 bg-green-100";
-      case "Shipped":
+      case "dispatch":
+      case "sent_with_pathao":
+      case "shipped":
         return "text-blue-600 bg-blue-100";
-      case "Processing":
+      case "pending":
+      case "processing":
         return "text-yellow-600 bg-yellow-100";
-      case "REQUESTED":
-        return "text-yellow-700 bg-yellow-100";
-      case "CONFIRMED":
+      case "approved":
+      case "confirmed":
         return "text-blue-700 bg-blue-100";
-      case "CANCELLED":
+      case "hold":
+        return "text-orange-600 bg-orange-100";
+      case "cancel":
+      case "cancelled":
         return "text-red-700 bg-red-100";
+      case "returned":
+        return "text-gray-600 bg-gray-100";
       default:
         return "text-gray-600 bg-gray-100";
     }
@@ -114,11 +123,12 @@ export default function OrdersPage() {
     ).length;
     const processing = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();
-      return ["processing", "requested", "confirmed", "shipped"].includes(s);
+      return ["processing", "pending", "approved", "dispatch", "sent_with_pathao", "requested", "confirmed", "shipped"].includes(s);
     }).length;
-    const cancelled = orders.filter(
-      (o: Order) => String(o?.status).toLowerCase() === "cancelled"
-    ).length;
+    const cancelled = orders.filter((o: Order) => {
+      const s = String(o?.status).toLowerCase();
+      return ["cancel", "cancelled"].includes(s);
+    }).length;
     return {
       total: orders.length,
       delivered,
@@ -349,13 +359,26 @@ export default function OrdersPage() {
                         selectedOrder._id ||
                         selectedOrder.id}
                     </div>
-                    <Badge
-                      className={getStatusColor(
-                        String(selectedOrder.status || "")
+                    <div className="flex items-center gap-2">
+                      {selectedOrder?.invoiceUrl && (
+                        <a
+                          href={selectedOrder.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-full border border-[#02C1BE]/20 bg-[#02C1BE]/10 px-4 py-2 text-xs font-semibold text-[#02C1BE] transition hover:bg-[#01b1ae]/10"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Invoice
+                        </a>
                       )}
-                    >
-                      {String(selectedOrder.status || "Processing")}
-                    </Badge>
+                      <Badge
+                        className={getStatusColor(
+                          String(selectedOrder.status || "")
+                        )}
+                      >
+                        {String(selectedOrder.status || "Processing")}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-3">
@@ -384,7 +407,7 @@ export default function OrdersPage() {
                         {selectedOrder?.customer?.address}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {selectedOrder?.customer?.upazila},{" "}
+                        {selectedOrder?.customer?.thana},{" "}
                         {selectedOrder?.customer?.district},{" "}
                         {selectedOrder?.customer?.division}
                       </p>
@@ -547,6 +570,20 @@ export default function OrdersPage() {
                       </span>
                     </div>
                   </div>
+
+                  {selectedOrder?.invoiceUrl && (
+                    <div className="flex justify-center">
+                      <a
+                        href={selectedOrder.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#02C1BE] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_-30px_rgba(5,150,145,0.65)] transition hover:bg-[#01b1ae]"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Invoice PDF
+                      </a>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">No order selected.</div>

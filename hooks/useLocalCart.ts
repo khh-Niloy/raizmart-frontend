@@ -13,6 +13,7 @@ export type CartItem = {
   sku?: string;
   selectedOptions?: Record<string, string>; // attributeName -> value
   quantity: number;
+  isFreeDelivery?: boolean;
 };
 
 export type LocalCart = {
@@ -164,6 +165,26 @@ export function useLocalCart() {
     persist(next);
   }, [cart.items, persist]);
 
+  const updateProductInfo = useCallback((
+    productId: string,
+    updates: {
+      name?: string;
+      slug?: string;
+      image?: string;
+      price?: number;
+      basePrice?: number;
+      discountedPrice?: number;
+      isFreeDelivery?: boolean;
+    }
+  ) => {
+    const next = cart.items.map((it) =>
+      it.productId === productId
+        ? { ...it, ...updates }
+        : it
+    );
+    persist(next);
+  }, [cart.items, persist]);
+
   return {
     items: cart.items,
     totalQuantity,
@@ -174,6 +195,7 @@ export function useLocalCart() {
     clear,
     updateItemPrice,
     updatePricesForProduct,
+    updateProductInfo,
     has: (matcher: Omit<CartItem, "quantity">) =>
       cart.items.some((it) => itemKey(it) === itemKey(matcher)),
   };

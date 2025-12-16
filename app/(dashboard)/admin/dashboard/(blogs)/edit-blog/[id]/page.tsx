@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,6 +23,7 @@ import {
   useUpdateBlogMutation,
 } from "@/app/redux/features/blog-category/blog-category.api";
 import { useParams, useRouter } from "next/navigation";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Form validation schema - all fields optional for edit
 const blogSchema = z.object({
@@ -457,11 +459,12 @@ export default function EditBlogPage() {
             Thumbnail Image
           </Label>
           {currentImage && !image && (
-            <div className="mb-2">
-              <img
+            <div className="mb-2 relative w-full h-40">
+              <Image
                 src={currentImage}
                 alt="Current thumbnail"
-                className="max-h-40 rounded border object-contain"
+                fill
+                className="rounded border object-contain"
               />
               <div className="text-xs text-gray-500 mt-1">
                 Existing image. Upload below to change.
@@ -472,13 +475,17 @@ export default function EditBlogPage() {
             <Input
               id="image"
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               ref={fileInputRef}
               onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  setValue("image", undefined);
+                  return;
+                }
                 const file = e.target.files?.[0];
                 setValue("image", file);
-                setCurrentImage(undefined); // Clear existing image preview
-                // Allow re-selecting the same file by clearing the input value
+                setCurrentImage(undefined);
                 e.currentTarget.value = "";
               }}
             />
@@ -498,6 +505,7 @@ export default function EditBlogPage() {
           </div>
           {image && (
             <div className="mt-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={URL.createObjectURL(image as File)}
                 alt="New thumbnail preview"

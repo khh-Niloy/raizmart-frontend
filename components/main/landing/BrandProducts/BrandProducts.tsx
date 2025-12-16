@@ -2,8 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -78,10 +76,6 @@ export default function BrandProducts() {
     (product: Product) => product.status === "active"
   );
 
-  const listRef = React.useRef<HTMLDivElement | null>(null);
-  const scrollBy = (delta: number) =>
-    listRef.current?.scrollBy({ left: delta, behavior: "smooth" });
-
   return (
     <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 h-full">
       <div className="rounded-3xl border border-gray-100 bg-white shadow-[0_30px_90px_-60px_rgba(5,150,145,0.4)] px-4 sm:px-8 py-8 h-full flex flex-col">
@@ -101,7 +95,7 @@ export default function BrandProducts() {
               special financing options.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2">
+          {/* <div className="hidden md:flex items-center gap-2">
             <Button
               variant="outline"
               size="icon"
@@ -118,7 +112,7 @@ export default function BrandProducts() {
             >
               <ChevronRight className="w-5 h-5" />
             </Button>
-          </div>
+          </div> */}
         </header>
 
         {/* Brand toggles */}

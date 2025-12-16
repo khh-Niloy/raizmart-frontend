@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ export default function CategoryListing({ params }: { params: Promise<{ category
       discountPercentage?: number;
       discount?: number;
       sku?: string;
+      stock?: number;
     }>;
     [key: string]: unknown;
   }
@@ -161,6 +163,7 @@ export default function CategoryListing({ params }: { params: Promise<{ category
     })();
     
     const finalPrice = showDiscount && discounted ? Number(discounted) : (isNumeric(basePrice) ? Number(basePrice) : 0);
+    const inStock = hasVariants ? Number(variant?.stock ?? 0) > 0 : true;
     
     const matcher = {
       productId: product?._id as string,
@@ -172,6 +175,7 @@ export default function CategoryListing({ params }: { params: Promise<{ category
       discountedPrice: showDiscount && discounted ? Number(discounted) : undefined,
       sku: variant?.sku as string | undefined,
       selectedOptions: undefined,
+      isFreeDelivery: product?.isFreeDelivery,
     };
     const inCart = has(matcher);
     
@@ -188,9 +192,10 @@ export default function CategoryListing({ params }: { params: Promise<{ category
         <Link href={`/product/${product.slug}`} className="cursor-pointer block">
           {/* Product Image */}
           <div className="relative w-full h-40 sm:h-48 mb-3 bg-gray-50 rounded-xl overflow-hidden">
-            <img
+            <Image
               src={primaryImage}
               alt={product.name}
+              fill
               className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             />
           </div>
@@ -227,20 +232,22 @@ export default function CategoryListing({ params }: { params: Promise<{ category
         {/* Add to Cart Button */}
         <button
           className={`mt-3 w-full h-10 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-            inCart
+            inCart || !inStock
               ? "bg-gray-100 text-gray-500 cursor-not-allowed"
               : "bg-white hover:bg-[#02C1BE] hover:text-white hover:border-[#02C1BE] text-gray-700 border-gray-200"
           }`}
           onClick={(e) => {
             e.preventDefault();
-            if (inCart) return;
+            if (inCart || !inStock) return;
             if (!requireAuth()) return;
             addItem({ ...matcher, quantity: 1 });
           }}
-          disabled={inCart}
+          disabled={inCart || !inStock}
         >
           {inCart ? (
             "Added to Cart"
+          ) : !inStock ? (
+            "Unavailable"
           ) : (
             <>
               <ShoppingCart className="w-4 h-4" />

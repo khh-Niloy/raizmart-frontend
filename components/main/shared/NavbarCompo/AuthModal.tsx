@@ -58,13 +58,18 @@ export default function AuthModal({ children }: AuthModalProps) {
       }
       const identifier: string | undefined = data.identifier;
       const isEmail = !!identifier && /@/.test(identifier);
-      
+
       // Validate required fields
-      if (!data.name || !data.password || !data.confirmPassword || !identifier) {
+      if (
+        !data.name ||
+        !data.password ||
+        !data.confirmPassword ||
+        !identifier
+      ) {
         toast.error("Please fill in all required fields.");
         return;
       }
-      
+
       try {
         const payload = isEmail
           ? {
@@ -100,7 +105,7 @@ export default function AuthModal({ children }: AuthModalProps) {
         toast.error("Please fill in all required fields.");
         return;
       }
-      
+
       try {
         const identifier: string | undefined = data.identifier;
         const isEmail = !!identifier && /@/.test(identifier);
@@ -319,7 +324,8 @@ export default function AuthModal({ children }: AuthModalProps) {
             {!isSignUp && (
               <div className="flex justify-end mt-2">
                 <Link
-                  href="/forgot-password"
+                  href="/forget-pass"
+                  onClick={() => setIsOpen(false)}
                   className="text-sm underline font-bold hover:text-custom/80 transition-colors duration-200 cursor-pointer"
                 >
                   Forget Password?
@@ -383,7 +389,7 @@ export default function AuthModal({ children }: AuthModalProps) {
                 <div className="flex-grow h-px bg-gray-400 opacity-40" />
               </div>
               <Link
-                href={`http://localhost:5000/api/v1/auth/google?redirect=${pathname}`}
+                href={`${process.env.NEXT_PUBLIC_BASE_URL}auth/google?redirect=${encodeURIComponent(pathname)}`}
               >
                 <button
                   type="button"

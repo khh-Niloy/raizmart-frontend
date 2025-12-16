@@ -98,7 +98,7 @@ export default function MegaMenu() {
           }
         }
       `}</style>
-      <div className="flex items-center space-x-8 relative">
+      <div className="flex items-center space-x-8 relative flex-wrap">
         {categoriesList.map((category) => {
           const categorySubcategories = category.subcategories || [];
           const hasSubcategories = categorySubcategories.length > 0;
@@ -114,7 +114,7 @@ export default function MegaMenu() {
                 href={`/category/${category.slug}`}
                 className="flex items-center space-x-1 text-white hover:font-bold transition-all duration-300 ease-in-out font-medium py-2 hover:font-semibold"
               >
-                <span className="transition-transform duration-300 ease-in-out">
+                <span className="transition-transform duration-300 whitespace-nowrap ease-in-out">
                   {category.name}
                 </span>
                 {hasSubcategories && (

@@ -15,7 +15,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { Home, LayoutDashboard, Tag, Star, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon } from "lucide-react";
+import { Home, LayoutDashboard, Tag, TicketPercentIcon as CouponIcon, PercentIcon, TruckIcon, UsersIcon } from "lucide-react";
 
 // This is sample data.
 const data = {
@@ -38,6 +38,10 @@ const data = {
           title: "Stock",
           url: "/admin/dashboard/stock",
         },
+        {
+          title: "Order Summary",
+          url: "/admin/dashboard/order-summary",
+        },
       ],
     },
     {
@@ -49,6 +53,14 @@ const data = {
         {
           title: "All Orders",
           url: "/admin/dashboard/all-orders",
+        },
+        {
+          title: "User Order Summary",
+          url: "/admin/dashboard/user-order-summary",
+        },
+        {
+          title: "Top Customers",
+          url: "/admin/dashboard/top-customers",
         },
       ],
     },
@@ -191,16 +203,12 @@ const data = {
     },
 
     {
-      title: "Featured Management",
-      icon: Star,
+      title: "Admin",
+      icon: UsersIcon,
       items: [
-        // {
-        //   title: "Featured Category",
-        //   url: "/admin/dashboard/featured-category",
-        // },
         {
-          title: "Featured Product",
-          url: "/admin/dashboard/featured-product",
+          title: "All Admin",
+          url: "/admin/dashboard/all-admin",
         },
       ],
     },

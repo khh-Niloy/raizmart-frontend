@@ -5,11 +5,21 @@ import {
   useGetProductsQuery,
   useToggleFeaturedMutation,
   useUpdateProductMutation,
+  useToggleTrendingMutation,
+  useDeleteProductMutation,
 } from "@/app/redux/features/product/product.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Search,
   Plus,
@@ -22,6 +32,9 @@ import {
   Calendar,
   XCircle,
   CheckCircle,
+  TrendingUp,
+  TrendingDown,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,6 +93,7 @@ interface Product {
   }>;
   status: "active" | "inactive";
   isFeatured: boolean;
+  isTrending?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,6 +106,8 @@ export default function AllProductPage() {
   const [featuredFilter, setFeaturedFilter] = useState<
     "all" | "featured" | "not-featured"
   >("all");
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const {
     data: productsData,
@@ -102,8 +118,12 @@ export default function AllProductPage() {
   const products: Product[] = Array.isArray(productsData) ? productsData : [];
   const [toggleFeatured, { isLoading: isTogglingFeatured }] =
     useToggleFeaturedMutation();
+  const [toggleTrending, { isLoading: isTogglingTrending }] =
+    useToggleTrendingMutation();
   const [updateProduct, { isLoading: isUpdatingStatus }] =
     useUpdateProductMutation();
+  const [deleteProduct, { isLoading: isDeleting }] =
+    useDeleteProductMutation();
 
   // Filter products based on search and filters
   const filteredProducts = products.filter((product: Product) => {
@@ -139,6 +159,23 @@ export default function AllProductPage() {
     }
   };
 
+  const handleToggleTrending = async (
+    productId: string,
+    currentStatus: boolean
+  ) => {
+    try {
+      await toggleTrending({
+        id: productId,
+        isTrending: !currentStatus,
+      }).unwrap();
+      toast.success(
+        `Product ${!currentStatus ? "added to" : "removed from"} trending`
+      );
+    } catch {
+      toast.error("Failed to update trending status");
+    }
+  };
+
   const handleDeleteProduct = async (
     productId: string,
     currentStatus: "active" | "inactive"
@@ -160,6 +197,23 @@ export default function AllProductPage() {
       );
     } catch {
       toast.error("Failed to update product status");
+    }
+  };
+
+  const openDeleteDialog = (product: Product) => {
+    setProductToDelete(product);
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete?._id) return;
+    try {
+      await deleteProduct(productToDelete._id).unwrap();
+      toast.success("Product deleted successfully");
+      setIsDeleteOpen(false);
+      setProductToDelete(null);
+    } catch {
+      toast.error("Failed to delete product");
     }
   };
 
@@ -357,6 +411,15 @@ export default function AllProductPage() {
                               Featured
                             </Badge>
                           )}
+                          {product.isTrending && (
+                            <Badge
+                              variant="outline"
+                              className="text-orange-600 border-orange-600"
+                            >
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              Trending
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <DropdownMenu>
@@ -397,6 +460,27 @@ export default function AllProductPage() {
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() =>
+                              handleToggleTrending(
+                                product._id,
+                                !!product.isTrending
+                              )
+                            }
+                            disabled={isTogglingTrending}
+                          >
+                            {product.isTrending ? (
+                              <>
+                                <TrendingDown className="h-4 w-4 mr-2" />
+                                Remove from Trending
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-4 w-4 mr-2" />
+                                Add to Trending
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             className={
                               product.status === "active"
                                 ? "text-red-600"
@@ -418,6 +502,14 @@ export default function AllProductPage() {
                                 Activate Product
                               </>
                             )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => openDeleteDialog(product)}
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Product
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -480,6 +572,37 @@ export default function AllProductPage() {
           )}
         </div>
       </div>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">
+                {productToDelete?.name ?? "this product"}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

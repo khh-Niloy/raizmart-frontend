@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
@@ -42,11 +43,14 @@ export default function AllBrandPage() {
                       <div className="flex items-center gap-3 flex-1">
                         <span className="text-gray-900 font-medium">{brand.brandName ?? brand.name ?? "Unnamed"}</span>
                         {!!brand?.image && (
-                          <img
-                            src={brand.image?.startsWith?.('http') ? brand.image : '/' + brand.image?.replace?.(/^\/*/, '')}
-                            alt="Brand"
-                            className="h-8 w-8 object-contain rounded border border-gray-200 bg-white"
-                          />
+                          <div className="relative h-8 w-8">
+                            <Image
+                              src={brand.image?.startsWith?.('http') ? brand.image : '/' + brand.image?.replace?.(/^\/*/, '')}
+                              alt="Brand"
+                              fill
+                              className="object-contain rounded border border-gray-200 bg-white"
+                            />
+                          </div>
                         )}
                       </div>
                       <Link href={`/admin/dashboard/edit-brand/${brand.id ?? brand._id}`} className="cursor-pointer">

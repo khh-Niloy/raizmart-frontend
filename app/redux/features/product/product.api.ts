@@ -4,6 +4,36 @@ interface ApiResponse<T> {
   data?: T;
 }
 
+export interface ProductVariantOrderSummary {
+  sku?: string;
+  attributes?: Array<{
+    attributeName?: string;
+    attributeLabel?: string;
+  }>;
+  totalQuantity: number;
+  totalOrders: number;
+  customers: Array<{
+    name?: string;
+    email?: string;
+    phone?: string;
+  }>;
+}
+
+export interface ProductOrderSummary {
+  _id?: string;
+  productName?: string;
+  productSlug?: string;
+  images?: string[];
+  totalQuantity: number;
+  totalOrders: number;
+  variants: ProductVariantOrderSummary[];
+  customers: Array<{
+    name?: string;
+    email?: string;
+    phone?: string;
+  }>;
+}
+
 export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Create Product
@@ -32,10 +62,36 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["PRODUCTS"],
     }),
 
+    // Get Trending Products
+    getTrendingProducts: builder.query({
+      query: () => ({
+        url: "/products/trend",
+        method: "GET",
+      }),
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
+      providesTags: ["PRODUCTS"],
+    }),
+
     // Get Featured Products
     getFeaturedProducts: builder.query({
       query: () => ({
         url: "/products/featured",
+        method: "GET",
+      }),
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
+      providesTags: ["PRODUCTS"],
+    }),
+
+    // Get New Arrivals (last 7 days)
+    getNewArrivals: builder.query({
+      query: () => ({
+        url: "/products/new-arrivals",
         method: "GET",
       }),
       transformResponse: <T,>(response: unknown): T => {
@@ -71,6 +127,15 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ["PRODUCTS"],
     }),
 
+    // Delete Product (soft delete -> set inactive)
+    deleteProduct: builder.mutation({
+      query: (id: string) => ({
+        url: `/products/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
     // Toggle Free Delivery Status
     toggleFreeDelivery: builder.mutation({
       query: ({ id, isFreeDelivery }: { id: string; isFreeDelivery: boolean }) => ({
@@ -87,6 +152,16 @@ export const productApi = baseApi.injectEndpoints({
         url: `/products/${id}/featured`,
         method: "PATCH",
         data: { isFeatured },
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
+    // Toggle Trending Status
+    toggleTrending: builder.mutation({
+      query: ({ id, isTrending }: { id: string; isTrending: boolean }) => ({
+        url: `/products/${id}/trends`,
+        method: "PATCH",
+        data: { isTrending },
       }),
       invalidatesTags: ["PRODUCTS"],
     }),
@@ -139,6 +214,41 @@ export const productApi = baseApi.injectEndpoints({
       },
       providesTags: ["PRODUCTS"],
     }),
+    getProductOrderSummary: builder.query<
+      ProductOrderSummary[],
+      {
+        productId?: string;
+        limit?: number;
+        period?: "day" | "week" | "month";
+        startDate?: string;
+        endDate?: string;
+        status?: string;
+      } | void
+    >({
+      query: (params) => ({
+        url: "/products/order-summary",
+        method: "GET",
+        params: params
+          ? Object.entries(params).reduce((acc, [key, value]) => {
+              if (value !== undefined && value !== null && value !== "") {
+                acc[key] = value;
+              }
+              return acc;
+            }, {} as Record<string, unknown>)
+          : undefined,
+      }),
+      transformResponse: (response: unknown): ProductOrderSummary[] => {
+        const apiResponse = response as ApiResponse<ProductOrderSummary[]> | ProductOrderSummary[];
+        if (Array.isArray(apiResponse)) {
+          return apiResponse;
+        }
+        if (apiResponse && "data" in apiResponse) {
+          return Array.isArray(apiResponse.data) ? apiResponse.data : [];
+        }
+        return [];
+      },
+      providesTags: ["PRODUCTS"],
+    }),
   }),
 })
 
@@ -146,11 +256,16 @@ export const {
   useCreateProductMutation,
   useGetProductsQuery,
   useGetFeaturedProductsQuery,
+  useGetNewArrivalsQuery,
+  useGetTrendingProductsQuery,
   useGetProductByIdQuery,
   useUpdateProductMutation,
+  useDeleteProductMutation,
   useToggleFeaturedMutation,
+  useToggleTrendingMutation,
   useToggleFreeDeliveryMutation,
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,
   useGetAllProductsStockQuery,
+  useGetProductOrderSummaryQuery,
 } = productApi

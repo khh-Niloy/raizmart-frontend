@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
-import { BlogCardSkeleton, PageLoader } from "@/components/ui/loading";
+import { BlogCardSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, ArrowRight, BookOpen } from "lucide-react";
 
@@ -145,14 +146,15 @@ export default function BlogPage() {
                       {/* Image */}
                       {image && (
                         <div className="relative w-full h-48 sm:h-56 overflow-hidden bg-gray-100">
-                          <img
+                          <Image
                             src={
                               image.startsWith("http")
                                 ? image
                                 : `/${image.replace(/^\/*/, "")}`
                             }
                             alt={title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                           <div className="absolute top-4 left-4">
                             <span className="inline-flex items-center rounded-full bg-[#02C1BE]/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white uppercase tracking-wide">

@@ -42,9 +42,10 @@ export const couponApi = baseApi.injectEndpoints({
     createCoupon: builder.mutation({
       query: (payload: CouponPayload) => {
         // Adapt frontend payload to backend schema
+        const discountType = (payload?.discountType ?? "").toString().toLowerCase();
         const adapted: Record<string, unknown> = {
           ...payload,
-          discountType: (payload?.discountType ?? "").toString().toLowerCase(), // PERCENT|FIXED -> percentage|fixed
+          discountType: discountType === "free_delivery" ? "free_delivery" : discountType, // PERCENT|FIXED|FREE_DELIVERY -> percentage|fixed|free_delivery
           status:
             typeof payload?.isActive === "boolean"
               ? payload.isActive
@@ -78,10 +79,10 @@ export const couponApi = baseApi.injectEndpoints({
         if (!Array.isArray(items)) return items;
         return items.map((c: CouponResponse) => ({
           ...c,
-          // Backend uses percentage|fixed and status active|inactive
+          // Backend uses percentage|fixed|free_delivery and status active|inactive
           discountType: (c?.discountType ?? c?.type ?? "")
             .toString()
-            .toUpperCase(), // -> PERCENT|FIXED
+            .toUpperCase(), // -> PERCENT|FIXED|FREE_DELIVERY
           isActive:
             typeof c?.isActive === "boolean"
               ? c.isActive
@@ -125,9 +126,11 @@ export const couponApi = baseApi.injectEndpoints({
         // Adapt frontend payload to backend schema (all fields optional)
         const adapted: Record<string, unknown> = { ...data };
 
-        // Transform discountType if provided (PERCENT|FIXED -> percentage|fixed)
+        // Transform discountType if provided (PERCENT|FIXED|FREE_DELIVERY -> percentage|fixed|free_delivery)
         if (adapted.discountType !== undefined) {
-          adapted.discountType = adapted.discountType?.toString().toLowerCase();
+          const type = adapted.discountType?.toString().toLowerCase();
+          // Handle FREE_DELIVERY -> free_delivery
+          adapted.discountType = type === "free_delivery" ? "free_delivery" : type;
         }
 
         // Transform isActive to status if provided
@@ -175,6 +178,44 @@ export const couponApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["COUPONS"],
     }),
+
+    // Validate coupon
+    validateCoupon: builder.mutation({
+      query: (code: string) => ({
+        url: "/coupons/validate",
+        method: "POST",
+        data: { code },
+      }),
+      transformResponse: (response: unknown): { discountType: string; discountValue?: number } | null => {
+        const apiResponse = response as
+          | ApiResponse<{ discountType: string; discountValue?: number }>
+          | { success?: boolean; data?: { discountType: string; discountValue?: number } };
+        
+        // Handle both response formats: { data: {...} } or { success: true, data: {...} }
+        const data = (
+          apiResponse && "data" in apiResponse ? apiResponse.data : null
+        ) as { discountType: string; discountValue?: number } | null;
+        
+        if (!data || !data.discountType) return null;
+        
+        const discountType = (data.discountType ?? "").toString().toUpperCase();
+        
+        // For FREE_DELIVERY, return only discountType
+        if (discountType === "FREE_DELIVERY") {
+          return {
+            discountType: discountType,
+          };
+        }
+        
+        // For PERCENT and FIXED, require discountValue
+        if (!data.discountValue) return null;
+        
+        return {
+          discountType: discountType, // percentage|fixed -> PERCENT|FIXED
+          discountValue: Number(data.discountValue ?? 0),
+        };
+      },
+    }),
   }),
 });
 
@@ -185,4 +226,5 @@ export const {
   useUpdateCouponMutation,
   useToggleCouponStatusMutation,
   useDeleteCouponMutation,
+  useValidateCouponMutation,
 } = couponApi;

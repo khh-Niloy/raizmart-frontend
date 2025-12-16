@@ -37,6 +37,40 @@ interface SearchOrdersResponse {
   meta: OrderMeta;
 }
 
+export interface UserOrderSummaryProduct {
+  productId?: string;
+  productName?: string;
+  productSlug?: string;
+  sku?: string;
+  images?: string[];
+  attributes?: Array<{
+    attributeName?: string;
+    attributeLabel?: string;
+  }>;
+  totalQuantity: number;
+  totalAmount: number;
+}
+
+export interface UserOrderSummary {
+  user?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    picture?: string;
+    role?: string;
+    createdAt?: string;
+  };
+  totalSpent: number;
+  orderedProducts: UserOrderSummaryProduct[];
+  orderHistory?: Array<{
+    orderId?: string;
+    orderSlug?: string;
+    createdAt?: string;
+    grandTotal?: number;
+  }>;
+}
+
 export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMyOrders: builder.query<Order[], void>({
@@ -102,7 +136,7 @@ export const orderApi = baseApi.injectEndpoints({
     // Admin: Search orders by user info (kept as before)
     searchOrdersByUserAdmin: builder.query<
       SearchOrdersResponse,
-      { searchTerm: string; page?: number; limit?: number; sort?: string }
+      { searchTerm: string; page?: number; limit?: number; sort?: string; status?: string }
     >({
       query: (params) => ({
         url: "/orders/search",
@@ -119,6 +153,77 @@ export const orderApi = baseApi.injectEndpoints({
       },
       providesTags: ["ORDERS"],
     }),
+    // Admin: Download orders as PDF
+    downloadOrdersPDF: builder.query<
+      Blob,
+      { startDate: string; endDate: string; sort?: string; status?: string }
+    >({
+      queryFn: async (params) => {
+        try {
+          const { axiosInstance } = await import("@/lib/axios");
+          const response = await axiosInstance.get("/orders/download-pdf", {
+            params,
+            responseType: "blob",
+          });
+          return { data: response.data as Blob };
+        } catch (error: unknown) {
+          const axiosError = error as { response?: { status?: number; data?: unknown }; message?: string };
+          return {
+            error: {
+              status: axiosError.response?.status,
+              data: axiosError.response?.data || axiosError.message,
+            },
+          };
+        }
+      },
+    }),
+    getUsersOrderSummary: builder.query<
+      UserOrderSummary[],
+      {
+        top?: number;
+        period?: "day" | "week" | "month";
+        startDate?: string;
+        endDate?: string;
+      } | void
+    >({
+      query: (args) => ({
+        url: "/user/order-summary",
+        method: "GET",
+        params:
+          args && typeof args === "object"
+            ? Object.entries(args).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== null && value !== "") {
+                  acc[key] = value;
+                }
+                return acc;
+              }, {} as Record<string, unknown>)
+            : undefined,
+      }),
+      transformResponse: (response: unknown): UserOrderSummary[] => {
+        const wrapped = response as { data?: UserOrderSummary[] } | UserOrderSummary[];
+        if (Array.isArray(wrapped)) {
+          return wrapped;
+        }
+        if (wrapped && typeof wrapped === "object" && "data" in wrapped) {
+          const data = (wrapped as { data?: UserOrderSummary[] }).data;
+          return Array.isArray(data) ? data : [];
+        }
+        return [];
+      },
+      providesTags: ["ORDERS"],
+    }),
+    // Admin: Update order status
+    updateOrderStatus: builder.mutation<
+      { success: boolean; data?: Order },
+      { orderId: string; status: string }
+    >({
+      query: ({ orderId, status }) => ({
+        url: `/orders/${orderId}/status`,
+        method: "PATCH",
+        data: { status },
+      }),
+      invalidatesTags: ["ORDERS"],
+    }),
   }),
 });
 
@@ -129,6 +234,9 @@ export const {
   useGetOrderBySlugQuery,
   useGetAllOrdersAdminQuery,
   useSearchOrdersByUserAdminQuery,
+  useLazyDownloadOrdersPDFQuery,
+  useGetUsersOrderSummaryQuery,
+  useUpdateOrderStatusMutation,
 } = orderApi;
 
 

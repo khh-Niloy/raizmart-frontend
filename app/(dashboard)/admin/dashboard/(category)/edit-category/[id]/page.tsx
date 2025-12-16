@@ -1,19 +1,20 @@
 "use client";
 
 import React from "react";
-import { useForm, Controller } from "react-hook-form";
+import Image from "next/image";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   useGetCategoriesQuery,
   useUpdateCategoryMutation,
 } from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Validation schema
 const categorySchema = z.object({
@@ -38,10 +39,10 @@ export default function EditCategoryPage() {
 
   const {
     register,
-    control,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
@@ -98,17 +99,15 @@ export default function EditCategoryPage() {
       const formData = new FormData();
       formData.append("name", data.name);
       formData.append("isActive", String(data.isActive));
-      let sendingImage = false;
       if (
         data.image &&
         data.image instanceof FileList &&
         data.image.length > 0
       ) {
         formData.append("image", data.image[0]);
-        sendingImage = true;
       }
 
-      const res = await updateCategory({ id: categoryId, formData }).unwrap();
+      await updateCategory({ id: categoryId, formData }).unwrap();
       toast.success("Category updated successfully!");
     } catch (error) {
       console.error("Update category failed:", error);
@@ -160,15 +159,18 @@ export default function EditCategoryPage() {
               {currentImage && (
                 <div className="mb-2">
                   {/* If backend serves absolute/relative path, may need prefix if not full URL */}
-                  <img
-                    src={
-                      currentImage.startsWith("http")
-                        ? currentImage
-                        : "/" + currentImage.replace(/^\/*/, "")
-                    }
-                    alt="Current Category"
-                    className="h-24 w-auto max-w-xs rounded border border-gray-200 object-contain"
-                  />
+                  <div className="relative h-24 w-auto max-w-xs">
+                    <Image
+                      src={
+                        currentImage.startsWith("http")
+                          ? currentImage
+                          : "/" + currentImage.replace(/^\/*/, "")
+                      }
+                      alt="Current Category"
+                      fill
+                      className="rounded border border-gray-200 object-contain"
+                    />
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">
                     Existing image. Upload below to change.
                   </div>
@@ -177,8 +179,15 @@ export default function EditCategoryPage() {
               <Input
                 id="image"
                 type="file"
-                accept="image/*"
-                {...register("image")}
+                accept={IMAGE_ACCEPT}
+                {...register("image", {
+                  onChange: (event) => {
+                    const isValid = validateImageFileChange(event);
+                    if (!isValid) {
+                      setValue("image", undefined);
+                    }
+                  },
+                })}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.image && (
@@ -189,7 +198,7 @@ export default function EditCategoryPage() {
             </div>
 
             {/* Active Status */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label
                 htmlFor="isActive"
                 className="text-sm font-medium text-gray-700"
@@ -212,7 +221,7 @@ export default function EditCategoryPage() {
                   </div>
                 )}
               />
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 space-x-4">

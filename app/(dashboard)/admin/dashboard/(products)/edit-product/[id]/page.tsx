@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   useGetCategoriesQuery,
@@ -29,6 +30,7 @@ import {
   useGetProductByIdQuery,
   useUpdateProductMutation,
 } from "@/app/redux/features/product/product.api";
+import { useUserInfoQuery } from "@/app/redux/features/auth/auth.api";
 import {
   Control,
   FieldErrors,
@@ -37,6 +39,7 @@ import {
   UseFormSetValue,
 } from "react-hook-form";
 import { toast } from "sonner";
+import { IMAGE_ACCEPT, validateImageFileChange } from "@/lib/imageValidation";
 
 // Dynamically import Tiptap to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/ui/tiptap-editor"), {
@@ -50,6 +53,131 @@ const getYouTubeVideoId = (url: string): string | null => {
     /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
+};
+
+// Description Images Input Component for Edit Product
+interface EditDescriptionImagesInputProps {
+  value: File[];
+  onChange: (files: File[]) => void;
+  field: {
+    name: string;
+    onBlur: () => void;
+    ref: React.Ref<HTMLInputElement>;
+  };
+  product?: {
+    descriptionImages?: string[];
+    descriptionImage?: string;
+    description_image?: string;
+    [key: string]: unknown;
+  };
+}
+
+const EditDescriptionImagesInput: React.FC<EditDescriptionImagesInputProps> = ({
+  value,
+  onChange,
+  field,
+  product,
+}) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Get existing description images from product (support both new and old field names)
+  const existingImages = product 
+    ? ((product.descriptionImages || []) as string[]).length > 0
+      ? (product.descriptionImages as string[])
+      : product.descriptionImage
+      ? [product.descriptionImage as string]
+      : product.description_image
+      ? [product.description_image as string]
+      : []
+    : [];
+  
+  // Reset file input when all files are removed
+  useEffect(() => {
+    if (Array.isArray(value) && value.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [value]);
+
+  return (
+    <div className="space-y-2">
+      <Input
+        {...field}
+        ref={(e) => {
+          fileInputRef.current = e;
+          if (typeof field.ref === 'function') {
+            field.ref(e);
+          } else if (field.ref) {
+            (field.ref as React.MutableRefObject<HTMLInputElement | null>).current = e;
+          }
+        }}
+        type="file"
+        accept={IMAGE_ACCEPT}
+        multiple
+        onChange={(e) => {
+          const isValid = validateImageFileChange(e);
+          if (!isValid) {
+            return;
+          }
+          const files = Array.from(e.target.files || []);
+          const current = value || [];
+          onChange([...current, ...files]);
+          // Reset input after adding files so it doesn't show old selection
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }}
+        className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+      />
+      {/* Show existing images from product */}
+      {existingImages && existingImages.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500">Existing description images:</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {existingImages.map((imgUrl: string, index: number) => (
+              <div key={index} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imgUrl}
+                  alt={`Existing description image ${index + 1}`}
+                  className="w-full h-32 object-cover rounded border"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Show newly uploaded images */}
+      {Array.isArray(value) && value.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500">New description images to upload:</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {value.map((file: File, index: number) => (
+              <div key={index} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Description preview ${index + 1}`}
+                  className="w-full h-32 object-cover rounded border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                  onClick={() => {
+                    const updated = value.filter((_, i) => i !== index);
+                    onChange(updated);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 // Tech attribute types for dropdown
@@ -104,7 +232,7 @@ const specificationSchema = z.object({
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  descriptionImage: z.instanceof(File).optional(),
+  descriptionImages: z.array(z.instanceof(File)).optional().default([]),
   video: z.string().optional(),
   description: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
@@ -131,6 +259,7 @@ const productSchema = z.object({
       subSubCategory: z.string().optional(),
     })
   ).default([]),
+  isWarrantyAvailable: z.boolean().optional().default(false),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -179,6 +308,9 @@ interface ProductData {
   stock?: number;
   discountPercentage?: number;
   images?: string[];
+  descriptionImages?: string[];
+  descriptionImage?: string; // Keep for backward compatibility
+  description_image?: string; // Keep for backward compatibility
   subCategory?: string | { _id?: string };
   subSubCategory?: string | { _id?: string };
   searchTags?: string[];
@@ -249,11 +381,6 @@ interface AttributeValueManagerProps {
   existingImageUrls?: string[];
 }
 
-interface VariantPreviewProps {
-  attributes: ProductFormData['attributes'];
-  basePrice: string;
-}
-
 interface VariantCreatorProps {
   attributes: ProductFormData['attributes'];
   onAddVariant: (variant: ProductFormData['manualVariants'][number]) => void;
@@ -269,6 +396,10 @@ interface VariantListProps {
 export default function EditProductPage() {
   const params = useParams();
   const productId = params.id as string;
+
+  // Current admin user info (to control permissions)
+  const { data: userInfo } = useUserInfoQuery(undefined);
+  const isMasterAdmin = userInfo?.role === "MASTER_ADMIN";
 
   const { data: product, isLoading: isProductLoading } =
     useGetProductByIdQuery(productId);
@@ -288,7 +419,7 @@ export default function EditProductPage() {
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
       name: "",
-      descriptionImage: undefined,
+      descriptionImages: [],
       video: "",
       description: JSON.stringify({
         type: "doc",
@@ -363,8 +494,8 @@ export default function EditProductPage() {
   // Ensure data is an array (transformResponse already extracts data, so responses should be the arrays)
   const brands: Brand[] = Array.isArray(brandsResp) ? brandsResp : [];
   const categories: Category[] = Array.isArray(categoriesResp) ? categoriesResp : [];
-  const allSubcategories: Subcategory[] = Array.isArray(subcategoriesResp) ? subcategoriesResp : [];
-  const allSubSubcategories: SubSubcategory[] = Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [];
+  const allSubcategories: Subcategory[] = React.useMemo(() => Array.isArray(subcategoriesResp) ? subcategoriesResp : [], [subcategoriesResp]);
+  const allSubSubcategories: SubSubcategory[] = React.useMemo(() => Array.isArray(subSubcategoriesResp) ? subSubcategoriesResp : [], [subSubcategoriesResp]);
 
   // Watch selected category and subcategory to filter subcategories and sub-subcategories
   const selectedCategoryId = watch("category");
@@ -449,7 +580,7 @@ export default function EditProductPage() {
       const productData = product as ProductData;
       const formData: ProductFormData = {
         name: productData.name || "",
-        descriptionImage: undefined, // File uploads need to be handled separately
+        descriptionImages: [], // File uploads need to be handled separately, existing images shown separately
         video: (typeof productData.video === 'string' ? productData.video : '') || (productData as { video_url?: string }).video_url || "",
         description:
           (typeof productData.description === 'string' ? productData.description : '') || JSON.stringify({ type: "doc", content: [] }),
@@ -565,6 +696,7 @@ export default function EditProductPage() {
               )
             : "",
         })) || [],
+        isWarrantyAvailable: (productData as { isWarrantyAvailable?: boolean }).isWarrantyAvailable ?? false,
       };
 
       reset(formData);
@@ -670,8 +802,11 @@ export default function EditProductPage() {
       if (dirty.searchTags) formData.append("searchTags", data.searchTags || "");
 
       // Add description image if provided
-      if (dirty.descriptionImage && data.descriptionImage) {
-        formData.append("descriptionImage", data.descriptionImage);
+      // Add description images if changed
+      if (dirty.descriptionImages && Array.isArray(data.descriptionImages) && data.descriptionImages.length > 0) {
+        data.descriptionImages.forEach((file: File, index: number) => {
+          formData.append(`descriptionImages[${index}]`, file);
+        });
       }
 
       // Add video URL
@@ -792,6 +927,11 @@ export default function EditProductPage() {
         if (validAssignments.length > 0) {
           formData.append("categoryAssignments", JSON.stringify(validAssignments));
         }
+      }
+
+      // Add isWarrantyAvailable if changed
+      if (dirty.isWarrantyAvailable) {
+        formData.append("isWarrantyAvailable", String(data.isWarrantyAvailable || false));
       }
 
       console.log("FormData prepared for backend:", formData);
@@ -919,59 +1059,21 @@ export default function EditProductPage() {
                   )}
                 </div>
 
-                {/* Description Image */}
+                {/* Description Images */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    Description Image
+                    Description Images
                   </Label>
                   <Controller
                     control={control}
-                    name="descriptionImage"
+                    name="descriptionImages"
                     render={({ field: { value, onChange, ...field } }) => (
-                      <div className="space-y-2">
-                        <Input
-                          {...field}
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            onChange(file);
-                          }}
-                          className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        />
-                        {value && (
-                          <div className="relative group">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={URL.createObjectURL(value)}
-                              alt="Description preview"
-                              className="w-full h-48 object-cover rounded border"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
-                              onClick={() => onChange(undefined)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                        {product && ((product as ProductData).descriptionImage || (product as { description_image?: string }).description_image) && !value && (
-                          <div className="space-y-1">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={((product as ProductData).descriptionImage || (product as { description_image?: string }).description_image) as string}
-                              alt="Current description image"
-                              className="w-full h-48 object-cover rounded border"
-                            />
-                            <p className="text-xs text-gray-500">
-                              Current image. Upload a new image to replace it.
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      <EditDescriptionImagesInput
+                        value={(value as File[]) || []}
+                        onChange={onChange}
+                        field={field}
+                        product={product as ProductData}
+                      />
                     )}
                   />
                 </div>
@@ -1443,7 +1545,7 @@ export default function EditProductPage() {
               )}
             </div>
 
-            {/* Product Attributes Section */}
+            {/* Product Attributes Section (visible to all admins) */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -1478,26 +1580,30 @@ export default function EditProductPage() {
                     setValue={setValue}
                     errors={errors}
                     onRemove={() => removeAttribute(attrIndex)}
-                    canRemove={attributeFields.length > 1}
-                  existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
+                    canRemove={attributeFields.length > 0}
+                    existingAttributes={((product as ProductData)?.attributes || []) as ProductAttribute[]}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Manual Variant Creation */}
-            <VariantCreator
-              attributes={watch("attributes")}
-              onAddVariant={(variant) => appendManualVariant(variant)}
-            />
+            {/* Manual Variant Creation (MASTER_ADMIN only) */}
+            {isMasterAdmin ? (
+              <VariantCreator
+                attributes={watch("attributes")}
+                onAddVariant={(variant) => appendManualVariant(variant)}
+              />
+            ) : null}
 
-            {/* Variant List */}
-            <VariantList
-              variants={manualVariantFields}
-              onEditVariant={updateManualVariant}
-              onDeleteVariant={removeManualVariant}
-              attributes={watch("attributes")}
-            />
+            {/* Variant List (MASTER_ADMIN only) */}
+            {isMasterAdmin ? (
+              <VariantList
+                variants={manualVariantFields}
+                onEditVariant={updateManualVariant}
+                onDeleteVariant={removeManualVariant}
+                attributes={watch("attributes")}
+              />
+            ) : null}
 
             {/* Gallery Images */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -1537,13 +1643,17 @@ export default function EditProductPage() {
                 </div>
               )}
 
-              <input
+            <input
                 id="gallery-images-input"
                 type="file"
                 multiple
-                accept="image/*"
+              accept={IMAGE_ACCEPT}
                 className="hidden"
                 onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  return;
+                }
                   const files = Array.from(e.target.files || []);
                   const current = (watch("galleryImages") as unknown as File[]) || [];
                   setValue("galleryImages", [...current, ...files] as File[], { shouldDirty: true, shouldValidate: false });
@@ -1577,7 +1687,7 @@ export default function EditProductPage() {
               </div>
             </div>
 
-            {/* Simple Pricing (no attributes/variants) */}
+            {/* Simple Pricing (no attributes/variants) - visible to all admins */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Simple Pricing</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1711,6 +1821,28 @@ export default function EditProductPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Product Options */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Controller
+                  name="isWarrantyAvailable"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value || false}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Label
+                  htmlFor="isWarrantyAvailable"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  Warranty Available
+                </Label>
               </div>
             </div>
 
@@ -2016,9 +2148,13 @@ function AttributeValueManager({
               id={`color-images-${attrIndex}-${valueIndex}`}
               type="file"
               multiple
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="hidden"
               onChange={(e) => {
+                const isValid = validateImageFileChange(e);
+                if (!isValid) {
+                  return;
+                }
                 const files = Array.from(e.target.files || []);
                 const currentImages =
                   watch(
@@ -2056,6 +2192,7 @@ function AttributeValueManager({
                 `attributes.${attrIndex}.values.${valueIndex}.images`
               )?.map((file: File, imageIndex: number) => (
                 <div key={imageIndex} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={URL.createObjectURL(file)}
                     alt={`Color ${valueIndex + 1} image ${imageIndex + 1}`}

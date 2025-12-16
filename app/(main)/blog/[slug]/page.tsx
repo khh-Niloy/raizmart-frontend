@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useGetBlogByIdQuery, useGetBlogsQuery } from "@/app/redux/features/blog-category/blog-category.api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -148,7 +149,7 @@ export default function BlogDetailPage({
   }
 
   // Ensure data is an array (transformResponse already extracts data, so allBlogsResp should be the array)
-  const allBlogs: Blog[] = Array.isArray(allBlogsResp) ? allBlogsResp : [];
+  const allBlogs: Blog[] = React.useMemo(() => Array.isArray(allBlogsResp) ? allBlogsResp : [], [allBlogsResp]);
 
   // Find the blog ID from the slug
   const blogFromSlug = React.useMemo(() => {
@@ -273,6 +274,24 @@ export default function BlogDetailPage({
     ? (blog.category._id || blog.category.id)
     : (typeof blog.category === 'string' ? blog.category : undefined);
   const image = blog.image || blog.thumbnail;
+  
+  // Helper function to get image URL
+  const getImageUrl = (img: string | undefined): string => {
+    if (!img) return "";
+    // If it's already a full URL (http/https), return as is
+    if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("//")) {
+      return img;
+    }
+    // If it starts with /, it's an absolute path
+    if (img.startsWith("/")) {
+      return img;
+    }
+    // Otherwise, prepend / to make it relative to root
+    return `/${img.replace(/^\/*/, "")}`;
+  };
+  
+  const imageUrl = image ? getImageUrl(image) : "";
+  const isExternalImage = imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("//");
   const tags = Array.isArray(blog.tags) ? blog.tags : [];
   const content = blog.blogContent || blog.content;
   const createdAt = blog.createdAt
@@ -321,21 +340,38 @@ export default function BlogDetailPage({
             </Link>
 
             {/* Featured Image */}
-            {image && (
-              <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-3xl overflow-hidden shadow-[0_30px_90px_-60px_rgba(5,150,145,0.45)] border border-white/70">
-                <img
-                  src={
-                    image.startsWith("http") ? image : `/${image.replace(/^\/*/, "")}`
-                  }
-                  alt={title}
-                  className="w-full h-full object-cover"
-                />
+            {imageUrl && (
+              <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-3xl overflow-hidden shadow-[0_30px_90px_-60px_rgba(5,150,145,0.45)] border border-white/70 bg-gray-100">
+                {isExternalImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <Image
+                    src={imageUrl}
+                    alt={title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
+                    priority
+                    onError={() => {
+                      // Fallback handled by parent div background
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>
 
           {/* Article Content */}
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-14">
+          <div className="w-full mx-auto px-4 sm:px-6 lg:px-14">
             <article className="rounded-3xl border border-white/70 bg-white/95 p-6 sm:p-8 lg:p-12 shadow-[0_30px_90px_-60px_rgba(5,150,145,0.45)]">
               {/* Category */}
               <div className="mb-4">
@@ -412,6 +448,8 @@ export default function BlogDetailPage({
                   const relatedSlug = relatedBlog.slug || relatedId;
                   const relatedTitle = relatedBlog.blogTitle || relatedBlog.title || "Untitled";
                   const relatedImage = relatedBlog.image || relatedBlog.thumbnail;
+                  const relatedImageUrl = relatedImage ? getImageUrl(relatedImage) : "";
+                  const isRelatedExternal = relatedImageUrl.startsWith("http://") || relatedImageUrl.startsWith("https://") || relatedImageUrl.startsWith("//");
                   const relatedCategory = (typeof relatedBlog.category === 'object' && relatedBlog.category !== null)
                     ? (relatedBlog.category.name || relatedBlog.categoryName || "Uncategorized")
                     : (relatedBlog.categoryName || "Uncategorized");
@@ -422,17 +460,28 @@ export default function BlogDetailPage({
                       href={`/blog/${relatedSlug}`}
                       className="group flex flex-col h-full rounded-3xl border border-white/70 bg-white/95 overflow-hidden shadow-[0_30px_90px_-70px_rgba(5,150,145,0.45)] transition hover:-translate-y-1 hover:shadow-[0_30px_90px_-55px_rgba(5,150,145,0.6)]"
                     >
-                      {relatedImage && (
+                      {relatedImageUrl && (
                         <div className="relative w-full h-48 sm:h-56 overflow-hidden bg-gray-100">
-                          <img
-                            src={
-                              relatedImage.startsWith("http")
-                                ? relatedImage
-                                : `/${relatedImage.replace(/^\/*/, "")}`
-                            }
-                            alt={relatedTitle}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
+                          {isRelatedExternal ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={relatedImageUrl}
+                              alt={relatedTitle}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <Image
+                              src={relatedImageUrl}
+                              alt={relatedTitle}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                          )}
                           <div className="absolute top-4 left-4">
                             <span className="inline-flex items-center rounded-full bg-[#02C1BE]/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white uppercase tracking-wide">
                               {relatedCategory}

@@ -54,6 +54,15 @@ export const brandApi = baseApi.injectEndpoints({
       transformResponse: <T,>(response: unknown): T => response as T,
       providesTags: ["PRODUCTS", "BRANDS"],
     }),
+
+    // Delete Brand
+    deleteBrand: builder.mutation({
+      query: (id: string) => ({
+        url: `/brands/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["BRANDS"],
+    }),
   }),
 })
 
@@ -62,4 +71,5 @@ export const {
   useUpdateBrandMutation,
   useGetBrandsQuery,
   useGetBrandProductsQuery,
+  useDeleteBrandMutation,
 } = brandApi

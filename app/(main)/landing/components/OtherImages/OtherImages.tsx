@@ -1,8 +1,8 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useGetOthersImagesQuery } from '@/app/redux/features/other-images/other-images.api';
-import { ExternalLink } from 'lucide-react';
 
 export default function OtherImages() {
   const { data, isLoading, error } = useGetOthersImagesQuery(undefined);
@@ -12,7 +12,7 @@ export default function OtherImages() {
   // console.log('Other Images loading:', isLoading);
   // console.log('Other Images error:', error);
 
-  const othersImages = data?.data || [];
+  const othersImages = data || [];
   
   // Filter only active other images
   interface OtherImage {
@@ -67,11 +67,12 @@ export default function OtherImages() {
     <div className="space-y-4">
       {displayImages.map((image: OtherImage, index: number) => (
         <div key={image._id} className="relative h-[232px] rounded-lg overflow-hidden">
-          <img
+          <Image
             src={image.imageUrl}
             alt={`Other image ${index + 1}`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
+            fill
+            className="object-cover"
+            onError={() => {
               // console.error('❌ Other image failed to load:', image.imageUrl);
             }}
             onLoad={() => {

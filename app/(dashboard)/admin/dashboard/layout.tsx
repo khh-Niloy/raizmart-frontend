@@ -18,14 +18,14 @@ export default function DashboardLayout({
     // Wait for user info to load
     if (isLoading) return;
 
-    // If user is not authenticated or not an ADMIN, redirect to home
-    if (!userInfo || userInfo.role !== "ADMIN") {
+    // If user is not authenticated or not an ADMIN/MASTER_ADMIN, redirect to home
+    if (!userInfo || (userInfo.role !== "ADMIN" && userInfo.role !== "MASTER_ADMIN")) {
       router.push("/");
     }
   }, [userInfo, isLoading, router]);
 
-  // Show nothing while loading or if not admin
-  if (isLoading || !userInfo || userInfo.role !== "ADMIN") {
+  // Show nothing while loading or if not admin/master admin
+  if (isLoading || !userInfo || (userInfo.role !== "ADMIN" && userInfo.role !== "MASTER_ADMIN")) {
     return null;
   }
 
