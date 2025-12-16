@@ -1,12 +1,50 @@
-import OtherImages from "@/components/main/landing/OtherImages/OtherImages";
-import Slider from "@/components/main/landing/Slider/Slider";
+import dynamic from "next/dynamic";
 import React from "react";
-import WhyChooseUs from "@/components/main/landing/whyChooseUs/WhyChooseUs";
-import FeaturedProducts from "@/components/main/landing/FeaturedProducts/FeaturedProducts";
-import BrandProducts from "@/components/main/landing/BrandProducts/BrandProducts";
-import NewArrivals from "@/components/main/landing/NewArrivals/NewArrivals";
-import TrendingProducts from "@/components/main/landing/TrendingProducts/TrendingProducts";
 import ExploreCollectionsButton from "@/components/main/landing/ExploreCollectionsButton";
+import WhyChooseUs from "@/components/main/landing/whyChooseUs/WhyChooseUs";
+
+const Slider = dynamic(() => import("@/components/main/landing/Slider/Slider"), {
+  loading: () => (
+    <div className="relative h-[260px] sm:h-[320px] md:h-[380px] lg:h-[440px] xl:h-[520px] w-full rounded-3xl bg-gray-200 animate-pulse" />
+  ),
+});
+
+const OtherImages = dynamic(
+  () => import("@/components/main/landing/OtherImages/OtherImages"),
+  {
+    loading: () => (
+      <div className="h-[260px] w-full rounded-2xl bg-gray-100 animate-pulse" />
+    ),
+  }
+);
+
+const FeaturedProducts = dynamic(
+  () => import("@/components/main/landing/FeaturedProducts/FeaturedProducts"),
+  {
+    loading: () => <div className="h-[420px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
+  }
+);
+
+const BrandProducts = dynamic(
+  () => import("@/components/main/landing/BrandProducts/BrandProducts"),
+  {
+    loading: () => <div className="h-[420px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
+  }
+);
+
+const NewArrivals = dynamic(
+  () => import("@/components/main/landing/NewArrivals/NewArrivals"),
+  {
+    loading: () => <div className="h-[420px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
+  }
+);
+
+const TrendingProducts = dynamic(
+  () => import("@/components/main/landing/TrendingProducts/TrendingProducts"),
+  {
+    loading: () => <div className="h-[420px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
+  }
+);
 
 const faqs = [
   {

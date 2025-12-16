@@ -49,14 +49,31 @@ export const productApi = baseApi.injectEndpoints({
       invalidatesTags: ["PRODUCTS"],
     }),
 
-    // Get All Products
+    // Get All Products (with pagination)
     getProducts: builder.query({
-      query: () => ({
-        url: "/products",
-        method: "GET",
-      }),
+      query: (params?: {
+        page?: number;
+        limit?: number;
+        sort?: string;
+        status?: string;
+      }) => {
+        const qs = new URLSearchParams(
+          Object.entries(params || {}).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString();
+        return {
+          url: `/products${qs ? `?${qs}` : ""}`,
+          method: "GET",
+        };
+      },
       transformResponse: <T,>(response: unknown): T => {
-        const apiResponse = response as ApiResponse<T>;
+        // Backend now returns { items, meta } format
+        const apiResponse = response as ApiResponse<T> | { items: T[]; meta: unknown };
+        if (apiResponse && 'items' in apiResponse) {
+          return apiResponse as T;
+        }
         return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
       },  
       providesTags: ["PRODUCTS"],
@@ -88,10 +105,23 @@ export const productApi = baseApi.injectEndpoints({
       providesTags: ["PRODUCTS"],
     }),
 
-    // Get New Arrivals (last 7 days)
+    // Get New Arrivals (filtered by isNewArrival flag)
     getNewArrivals: builder.query({
       query: () => ({
         url: "/products/new-arrivals",
+        method: "GET",
+      }),
+      transformResponse: <T,>(response: unknown): T => {
+        const apiResponse = response as ApiResponse<T>;
+        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      },
+      providesTags: ["PRODUCTS"],
+    }),
+
+    // Get Brand Products (filtered by isBrandProduct flag)
+    getBrandProducts: builder.query({
+      query: () => ({
+        url: "/products/brands",
         method: "GET",
       }),
       transformResponse: <T,>(response: unknown): T => {
@@ -162,6 +192,26 @@ export const productApi = baseApi.injectEndpoints({
         url: `/products/${id}/trends`,
         method: "PATCH",
         data: { isTrending },
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
+    // Toggle New Arrival Status
+    toggleNewArrival: builder.mutation({
+      query: ({ id, isNewArrival }: { id: string; isNewArrival: boolean }) => ({
+        url: `/products/${id}/new-arrival`,
+        method: "PATCH",
+        data: { isNewArrival },
+      }),
+      invalidatesTags: ["PRODUCTS"],
+    }),
+
+    // Toggle Brand Product Status
+    toggleBrandProduct: builder.mutation({
+      query: ({ id, isBrandProduct }: { id: string; isBrandProduct: boolean }) => ({
+        url: `/products/${id}/brand-product`,
+        method: "PATCH",
+        data: { isBrandProduct },
       }),
       invalidatesTags: ["PRODUCTS"],
     }),
@@ -257,12 +307,15 @@ export const {
   useGetProductsQuery,
   useGetFeaturedProductsQuery,
   useGetNewArrivalsQuery,
+  useGetBrandProductsQuery,
   useGetTrendingProductsQuery,
   useGetProductByIdQuery,
   useUpdateProductMutation,
   useDeleteProductMutation,
   useToggleFeaturedMutation,
   useToggleTrendingMutation,
+  useToggleNewArrivalMutation,
+  useToggleBrandProductMutation,
   useToggleFreeDeliveryMutation,
   useGetProductsBySlugsQuery,
   useGetProductBySlugQuery,
