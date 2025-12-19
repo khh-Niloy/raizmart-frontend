@@ -156,6 +156,7 @@ export default function ProductOrderSummaryPage() {
           { value: "hold", label: "Hold" },
           { value: "cancel", label: "Cancel" },
           { value: "sent_with_pathao", label: "Sent with Pathao" },
+          { value: "sent_with_steadfast", label: "Sent with Steadfast" },
           { value: "dispatch", label: "Dispatch" },
           { value: "delivered", label: "Delivered" },
           { value: "returned", label: "Returned" },

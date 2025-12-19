@@ -87,6 +87,30 @@ export default function OrdersPage() {
     }
   }, [userInfo, isLoadingUser, openAuth]);
 
+  // Map technical statuses to user-friendly labels (hide Pathao/Steadfast details)
+  const getCustomerFriendlyStatus = (status: string): string => {
+    const s = status.toLowerCase();
+    switch (s) {
+      case "sent_with_pathao":
+      case "sent_with_steadfast":
+        return "Shipped";
+      case "dispatch":
+        return "Shipped";
+      case "pending":
+        return "Processing";
+      case "approved":
+        return "Confirmed";
+      case "hold":
+        return "On Hold";
+      case "cancel":
+      case "cancelled":
+        return "Cancelled";
+      default:
+        // Capitalize first letter for other statuses
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const s = status.toLowerCase();
     switch (s) {
@@ -94,6 +118,7 @@ export default function OrdersPage() {
         return "text-green-600 bg-green-100";
       case "dispatch":
       case "sent_with_pathao":
+      case "sent_with_steadfast":
       case "shipped":
         return "text-blue-600 bg-blue-100";
       case "pending":
@@ -123,7 +148,7 @@ export default function OrdersPage() {
     ).length;
     const processing = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();
-      return ["processing", "pending", "approved", "dispatch", "sent_with_pathao", "requested", "confirmed", "shipped"].includes(s);
+      return ["processing", "pending", "approved", "dispatch", "sent_with_pathao", "sent_with_steadfast", "requested", "confirmed", "shipped"].includes(s);
     }).length;
     const cancelled = orders.filter((o: Order) => {
       const s = String(o?.status).toLowerCase();
@@ -273,7 +298,7 @@ export default function OrdersPage() {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
                     >
-                      {status || "Processing"}
+                      {getCustomerFriendlyStatus(status) || "Processing"}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -376,7 +401,7 @@ export default function OrdersPage() {
                           String(selectedOrder.status || "")
                         )}
                       >
-                        {String(selectedOrder.status || "Processing")}
+                        {getCustomerFriendlyStatus(String(selectedOrder.status || "Processing"))}
                       </Badge>
                     </div>
                   </div>

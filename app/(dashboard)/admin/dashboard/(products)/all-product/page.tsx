@@ -147,10 +147,11 @@ export default function AllProductPage() {
 
   // Filter products based on search and filters
   const filteredProducts = products.filter((product: Product) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand?.brandName.toLowerCase().includes(searchTerm.toLowerCase());
+      (product.name?.toLowerCase() || "").includes(searchLower) ||
+      (product.category?.name?.toLowerCase() || "").includes(searchLower) ||
+      (product.brand?.brandName?.toLowerCase() || "").includes(searchLower);
 
     const matchesStatus =
       statusFilter === "all" || product.status === statusFilter;
