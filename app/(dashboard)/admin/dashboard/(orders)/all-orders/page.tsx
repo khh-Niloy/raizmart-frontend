@@ -174,6 +174,7 @@ export default function AdminAllOrdersPage() {
               { value: "hold", label: "Hold" },
               { value: "cancel", label: "Cancel" },
               { value: "sent_with_pathao", label: "Send with Pathao" },
+              { value: "sent_with_steadfast", label: "Send with Steadfast" },
               { value: "dispatch", label: "Dispatch" },
               { value: "delivered", label: "Delivered" },
               { value: "returned", label: "Returned" },
@@ -353,6 +354,7 @@ export default function AdminAllOrdersPage() {
                 case "dispatch":
                   return "bg-purple-50 text-purple-700";
                 case "sent_with_pathao":
+                case "sent_with_steadfast":
                   return "bg-purple-50 text-purple-700";
                 case "delivered":
                   return "bg-green-50 text-green-700";
@@ -370,10 +372,11 @@ export default function AdminAllOrdersPage() {
               const status = (currentStatus || "").toLowerCase();
               const allowedTransitions: Record<string, string[]> = {
                 pending: ["approved", "hold", "cancel"],
-                approved: ["sent_with_pathao", "hold", "cancel"],
+                approved: ["sent_with_pathao", "sent_with_steadfast", "hold", "cancel"],
                 hold: ["approved", "cancel"],
                 dispatch: ["delivered", "returned"],
                 sent_with_pathao: ["delivered", "returned"],
+                sent_with_steadfast: ["delivered", "returned"],
                 delivered: [], // Final state - no transitions allowed (cannot go to returned)
                 cancel: [], // Final state - no transitions allowed
                 returned: [], // Final state - no transitions allowed
@@ -412,6 +415,7 @@ export default function AdminAllOrdersPage() {
                 { value: "hold", label: "Hold" },
                 { value: "cancel", label: "Cancel" },
                 { value: "sent_with_pathao", label: "Send with Pathao" },
+                { value: "sent_with_steadfast", label: "Send with Steadfast" },
                 { value: "dispatch", label: "Dispatch" },
                 { value: "delivered", label: "Delivered" },
                 { value: "returned", label: "Returned" },
