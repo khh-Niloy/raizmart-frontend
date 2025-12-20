@@ -117,6 +117,20 @@ export default function AllProductPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search term
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, featuredFilter]);
 
   const {
     data: productsResponse,
@@ -126,6 +140,8 @@ export default function AllProductPage() {
     limit,
     sort: "newest",
     status: statusFilter !== "all" ? statusFilter : undefined,
+    q: debouncedSearch || undefined,
+    isFeatured: featuredFilter === "featured" ? true : featuredFilter === "not-featured" ? false : undefined,
   });
   
   // Handle new paginated response format { items, meta }
@@ -145,23 +161,8 @@ export default function AllProductPage() {
   const [deleteProduct, { isLoading: isDeleting }] =
     useDeleteProductMutation();
 
-  // Filter products based on search and filters
-  const filteredProducts = products.filter((product: Product) => {
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      (product.name?.toLowerCase() || "").includes(searchLower) ||
-      (product.category?.name?.toLowerCase() || "").includes(searchLower) ||
-      (product.brand?.brandName?.toLowerCase() || "").includes(searchLower);
-
-    const matchesStatus =
-      statusFilter === "all" || product.status === statusFilter;
-    const matchesFeatured =
-      featuredFilter === "all" ||
-      (featuredFilter === "featured" && product.isFeatured) ||
-      (featuredFilter === "not-featured" && !product.isFeatured);
-
-    return matchesSearch && matchesStatus && matchesFeatured;
-  });
+  // Products are now filtered on the server side
+  const filteredProducts = products;
 
   const handleToggleFeatured = async (
     productId: string,
