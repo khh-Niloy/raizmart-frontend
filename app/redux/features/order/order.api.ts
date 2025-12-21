@@ -224,6 +224,18 @@ export const orderApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["ORDERS"],
     }),
+    // Admin: Bulk update order status
+    bulkUpdateOrderStatus: builder.mutation<
+      { success: boolean; message?: string; data?: { successCount: number; errorCount: number } },
+      { orderIds: string[]; status: string }
+    >({
+      query: ({ orderIds, status }) => ({
+        url: `/orders/bulk-update-status`,
+        method: "PATCH",
+        data: { orderIds, status },
+      }),
+      invalidatesTags: ["ORDERS"],
+    }),
   }),
 });
 
@@ -237,6 +249,7 @@ export const {
   useLazyDownloadOrdersPDFQuery,
   useGetUsersOrderSummaryQuery,
   useUpdateOrderStatusMutation,
+  useBulkUpdateOrderStatusMutation,
 } = orderApi;
 
 

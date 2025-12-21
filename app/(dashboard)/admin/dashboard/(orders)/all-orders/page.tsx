@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,9 @@ import {
   useSearchOrdersByUserAdminQuery,
   useLazyDownloadOrdersPDFQuery,
   useUpdateOrderStatusMutation,
+  useBulkUpdateOrderStatusMutation,
 } from "@/app/redux/features/order/order.api";
+import { toast } from "sonner";
 
 const formatDateInput = (d?: Date | string) => {
   if (!d) return "";
@@ -29,6 +31,81 @@ const formatDateInput = (d?: Date | string) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+interface OrderItemAttribute {
+  attributeName?: string;
+  attributeLabel?: string;
+  attributeValue?: string;
+  name?: string;
+  value?: string;
+  [key: string]: unknown;
+}
+
+interface OrderItem {
+  _id?: string;
+  productId?: string;
+  variantId?: string;
+  quantity?: number;
+  productName?: string;
+  productSlug?: string;
+  sku?: string;
+  price?: number;
+  images?: string[];
+  unitPriceOriginal?: number | string;
+  unitPriceFinal?: number | string;
+  unitDiscountPct?: number | string;
+  lineSubtotal?: number | string;
+  lineDiscount?: number | string;
+  lineTotal?: number | string;
+  productDetails?: {
+    name?: string;
+    slug?: string;
+    images?: string[];
+  };
+  variantDetails?: {
+    sku?: string;
+    attributeCombination?: Array<{
+      attributeName?: string;
+      attributeValue?: string;
+      attributeLabel?: string;
+    }>;
+  };
+  attributes?: OrderItemAttribute[];
+  humanPricing?: Record<string, string>;
+  [key: string]: unknown;
+}
+
+interface Order {
+  _id: string;
+  order_slug?: string;
+  status?: string;
+  couponCode?: string;
+  createdAt?: string;
+  customer?: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+  };
+  userId?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  delivery?: {
+    method?: string;
+    division?: string;
+    charge?: number;
+  };
+  items?: OrderItem[];
+  totals?: {
+    subtotal?: number;
+    discountTotal?: number;
+    shippingTotal?: number;
+    grandTotal?: number;
+  };
+  humanTotals?: Record<string, string>;
+  [key: string]: unknown;
+}
+
 export default function AdminAllOrdersPage() {
   const [sort, setSort] = useState<string>("-createdAt");
   const [status, setStatus] = useState<string>("");
@@ -38,6 +115,8 @@ export default function AdminAllOrdersPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
   const allParams = useMemo(
     () => ({
@@ -69,6 +148,8 @@ export default function AdminAllOrdersPage() {
     useLazyDownloadOrdersPDFQuery();
   const [updateOrderStatus, { isLoading: isUpdatingStatus }] =
     useUpdateOrderStatusMutation();
+  const [bulkUpdateStatus, { isLoading: isBulkUpdating }] =
+    useBulkUpdateOrderStatusMutation();
 
   useEffect(() => {
     if (isSearching) {
@@ -89,9 +170,136 @@ export default function AdminAllOrdersPage() {
     }
   };
 
+  const handleBulkStatusChange = async (newStatus: string) => {
+    try {
+      const res = await bulkUpdateStatus({
+        orderIds: Array.from(selectedOrders),
+        status: newStatus,
+      }).unwrap();
+      toast.success(res.message);
+      setSelectedOrders(new Set());
+      setIsBulkMode(false);
+      refresh();
+    } catch (error: any) {
+      const errorMsg =
+        error?.data?.message ||
+        (error?.data?.errors?.length > 0
+          ? `${error.data.message}: ${error.data.errors
+              .map((e: any) => e.message)
+              .join(", ")}`
+          : "Failed to update orders");
+      toast.error(errorMsg);
+    }
+  };
+
+  const toggleAllOrders = (checked: boolean) => {
+    if (checked) {
+      const allIds = orders.map((o: any) => o._id);
+      setSelectedOrders(new Set(allIds));
+    } else {
+      setSelectedOrders(new Set());
+    }
+  };
+
+  const toggleOrderSelection = (orderId: string, checked: boolean) => {
+    setSelectedOrders((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(orderId);
+      else next.delete(orderId);
+      return next;
+    });
+  };
+
+  const toggleOrder = (orderId: string) => {
+    setExpandedOrders((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const getStatusColor = (status?: string) => {
+    const s = (status || "").toLowerCase();
+    switch (s) {
+      case "pending":
+        return "bg-yellow-50 text-yellow-700";
+      case "approved":
+        return "bg-blue-50 text-blue-700";
+      case "hold":
+        return "bg-orange-50 text-orange-700";
+      case "cancel":
+        return "bg-red-50 text-red-700";
+      case "sent_with_pathao":
+        return "bg-orange-100 text-orange-700";
+      case "sent_with_steadfast":
+        return "bg-cyan-100 text-cyan-700";
+      case "delivered":
+        return "bg-green-50 text-green-700";
+      case "return_pending":
+        return "bg-rose-50 text-rose-700";
+      case "returned":
+        return "bg-gray-50 text-gray-700";
+      default:
+        return "bg-gray-50 text-gray-700";
+    }
+  };
+
+  const getAllowedTransitions = (currentStatus?: string): string[] => {
+    const status = (currentStatus || "").toLowerCase();
+    const allowedTransitions: Record<string, string[]> = {
+      pending: ["approved", "hold", "cancel"],
+      approved: [
+        "sent_with_pathao",
+        "sent_with_steadfast",
+        "hold",
+        "cancel",
+      ],
+      hold: ["approved", "cancel"],
+      sent_with_pathao: ["delivered", "return_pending"],
+      sent_with_steadfast: ["delivered", "return_pending"],
+      delivered: [],
+      cancel: [],
+      return_pending: ["returned", "delivered"],
+      returned: [],
+    };
+    return allowedTransitions[status] || [];
+  };
+
+  const getStatusOptionsForOrder = (currentStatus?: string) => {
+    const allowed = getAllowedTransitions(currentStatus);
+    const allStatuses = [
+      { value: "pending", label: "Pending" },
+      { value: "approved", label: "Approved" },
+      { value: "hold", label: "Hold" },
+      { value: "cancel", label: "Cancel" },
+      { value: "sent_with_pathao", label: "Send with Pathao" },
+      { value: "sent_with_steadfast", label: "Send with Steadfast" },
+      { value: "delivered", label: "Delivered" },
+      { value: "return_pending", label: "Return Pending" },
+      { value: "returned", label: "Returned" },
+    ];
+    return allStatuses.filter((status) => allowed.includes(status.value));
+  };
+
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    try {
+      await updateOrderStatus({
+        orderId,
+        status: newStatus,
+      }).unwrap();
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to update order status");
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (!startDate || !endDate) {
-      alert("Please select both start date and end date to download PDF");
+      toast.error("Please select both start date and end date to download PDF");
       return;
     }
 
@@ -120,9 +328,13 @@ export default function AdminAllOrdersPage() {
           : error && typeof error === "object" && "message" in error
           ? (error as { message?: string }).message
           : undefined;
-      alert(errorMessage || "Failed to download PDF");
+      toast.error(errorMessage || "Failed to download PDF");
     }
   };
+
+  const selectedOrderObjects = orders.filter((o: Order) =>
+    selectedOrders.has(o._id)
+  );
 
   return (
     <div className="space-y-4">
@@ -160,6 +372,15 @@ export default function AdminAllOrdersPage() {
           >
             {isDownloadingPDF ? "Downloading..." : "Download PDF"}
           </Button>
+          <Button
+            variant={isBulkMode ? "destructive" : "secondary"}
+            onClick={() => {
+              setIsBulkMode(!isBulkMode);
+              setSelectedOrders(new Set());
+            }}
+          >
+            {isBulkMode ? "Cancel Bulk Update" : "Bulk Update"}
+          </Button>
         </div>
       </div>
 
@@ -194,6 +415,65 @@ export default function AdminAllOrdersPage() {
               </Button>
             ))}
           </div>
+           {isBulkMode && selectedOrderObjects.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t mt-2">
+              <span className="text-sm font-medium text-muted-foreground mr-2">
+                Apply to {selectedOrderObjects.length} orders:
+              </span>
+              {(() => {
+                const allowedTransitionsPerOrder = selectedOrderObjects.map(
+                  (o: any) => getAllowedTransitions(o.status)
+                );
+
+                const commonTransitions = allowedTransitionsPerOrder.reduce(
+                  (acc: string[], transitions: string[]) =>
+                    acc.filter((t: string) => transitions.includes(t)),
+                  allowedTransitionsPerOrder[0] || []
+                );
+
+                const options = [
+                  { value: "pending", label: "Pending" },
+                  { value: "approved", label: "Approved" },
+                  { value: "hold", label: "Hold" },
+                  { value: "cancel", label: "Cancel" },
+                  { value: "sent_with_pathao", label: "Send with Pathao" },
+                  { value: "sent_with_steadfast", label: "Send with Steadfast" },
+                  { value: "delivered", label: "Delivered" },
+                  { value: "return_pending", label: "Return Pending" },
+                  { value: "returned", label: "Returned" },
+                ].filter((s) => commonTransitions.includes(s.value));
+
+                if (options.length === 0) {
+                  return (
+                    <span className="text-sm text-amber-600 italic">
+                      No common status transitions available for selected orders.
+                    </span>
+                  );
+                }
+
+                return options.map((s) => (
+                  <Button
+                    key={s.value}
+                    size="sm"
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary hover:text-white"
+                    disabled={isBulkUpdating}
+                    onClick={() => handleBulkStatusChange(s.value)}
+                  >
+                    {s.label}
+                  </Button>
+                ));
+              })()}
+            </div>
+          )}
+          {isBulkMode && selectedOrderObjects.length === 0 && selectedOrders.size > 0 && (
+             <div className="flex items-center gap-2 pt-2 border-t mt-2">
+               <span className="text-sm text-muted-foreground italic">
+                 {selectedOrders.size} orders selected on other tabs/pages. 
+                 Switch to the corresponding tab to update them.
+               </span>
+             </div>
+          )}
         </div>
         <div className="p-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -261,178 +541,25 @@ export default function AdminAllOrdersPage() {
                 No orders found.
               </div>
             )}
-          {(() => {
-            interface OrderItemAttribute {
-              attributeName?: string;
-              attributeLabel?: string;
-              attributeValue?: string;
-              name?: string;
-              value?: string;
-              [key: string]: unknown;
-            }
-
-            interface OrderItem {
-              _id?: string;
-              productId?: string;
-              variantId?: string;
-              quantity?: number;
-              price?: number;
-              images?: string[];
-              productDetails?: {
-                name?: string;
-                slug?: string;
-                images?: string[];
-              };
-              variantDetails?: {
-                sku?: string;
-                attributeCombination?: Array<{
-                  attributeName?: string;
-                  attributeValue?: string;
-                  attributeLabel?: string;
-                }>;
-              };
-              attributes?: OrderItemAttribute[];
-              humanPricing?: Record<string, string>;
-              [key: string]: unknown;
-            }
-
-            interface Order {
-              _id: string;
-              order_slug?: string;
-              status?: string;
-              couponCode?: string;
-              createdAt?: string;
-              customer?: {
-                fullName?: string;
-                email?: string;
-                phone?: string;
-              };
-              userId?: {
-                name?: string;
-                email?: string;
-                phone?: string;
-              };
-              delivery?: {
-                method?: string;
-                division?: string;
-                charge?: number;
-              };
-              items?: OrderItem[];
-              totals?: {
-                subtotal?: number;
-                discountTotal?: number;
-                shippingTotal?: number;
-                grandTotal?: number;
-              };
-              humanTotals?: Record<string, string>;
-              [key: string]: unknown;
-            }
-
-            const toggleOrder = (orderId: string) => {
-              setExpandedOrders((prev) => {
-                const newSet = new Set(prev);
-                if (newSet.has(orderId)) {
-                  newSet.delete(orderId);
-                } else {
-                  newSet.add(orderId);
-                }
-                return newSet;
-              });
-            };
-
-            const getStatusColor = (status?: string) => {
-              const s = (status || "").toLowerCase();
-              switch (s) {
-                case "pending":
-                  return "bg-yellow-50 text-yellow-700";
-                case "approved":
-                  return "bg-blue-50 text-blue-700";
-                case "hold":
-                  return "bg-orange-50 text-orange-700";
-                case "cancel":
-                  return "bg-red-50 text-red-700";
-                case "sent_with_pathao":
-                  return "bg-orange-100 text-orange-700";
-                case "sent_with_steadfast":
-                  return "bg-cyan-100 text-cyan-700";
-                case "delivered":
-                  return "bg-green-50 text-green-700";
-                case "return_pending":
-                  return "bg-rose-50 text-rose-700";
-                case "returned":
-                  return "bg-gray-50 text-gray-700";
-                default:
-                  return "bg-gray-50 text-gray-700";
-              }
-            };
-
-            // Define allowed status transitions (must match backend logic)
-            const getAllowedTransitions = (
-              currentStatus?: string
-            ): string[] => {
-              const status = (currentStatus || "").toLowerCase();
-              const allowedTransitions: Record<string, string[]> = {
-                pending: ["approved", "hold", "cancel"],
-                approved: ["sent_with_pathao", "sent_with_steadfast", "hold", "cancel"],
-                hold: ["approved", "cancel"],
-                sent_with_pathao: ["delivered", "return_pending"],
-                sent_with_steadfast: ["delivered", "return_pending"],
-                delivered: [], // Final state
-                cancel: [], // Final state
-                return_pending: ["returned", "delivered"],
-                returned: [], // Final state
-              };
-              return allowedTransitions[status] || [];
-            };
-
-            const handleStatusChange = async (
-              orderId: string,
-              newStatus: string
-            ) => {
-              try {
-                await updateOrderStatus({
-                  orderId,
-                  status: newStatus,
-                }).unwrap();
-                refresh();
-              } catch (error: unknown) {
-                const errorMessage =
-                  error && typeof error === "object" && "data" in error
-                    ? (error as { data?: { message?: string } }).data?.message
-                    : error && typeof error === "object" && "message" in error
-                    ? (error as { message?: string }).message
-                    : "Failed to update order status";
-                alert(errorMessage);
-                console.error(error);
-              }
-            };
-
-            // Get status options for a specific order based on current status
-            const getStatusOptionsForOrder = (currentStatus?: string) => {
-              const allowed = getAllowedTransitions(currentStatus);
-              const allStatuses = [
-                { value: "pending", label: "Pending" },
-                { value: "approved", label: "Approved" },
-                { value: "hold", label: "Hold" },
-                { value: "cancel", label: "Cancel" },
-                { value: "sent_with_pathao", label: "Send with Pathao" },
-                { value: "sent_with_steadfast", label: "Send with Steadfast" },
-                { value: "delivered", label: "Delivered" },
-                { value: "return_pending", label: "Return Pending" },
-                { value: "returned", label: "Returned" },
-              ];
-
-              // Return only allowed transitions
-              return allStatuses.filter((status) =>
-                allowed.includes(status.value)
-              );
-            };
-
-            return (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      {isBulkMode && (
+                        <th className="px-4 py-3 text-left">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                            checked={
+                              orders.length > 0 &&
+                              selectedOrders.size === orders.length
+                            }
+                            onChange={(e) =>
+                              toggleAllOrders(e.target.checked)
+                            }
+                          />
+                        </th>
+                      )}
                       <th className="text-left px-4 py-3 text-sm font-semibold">
                         Order ID
                       </th>
@@ -466,13 +593,26 @@ export default function AdminAllOrdersPage() {
                         : "-";
 
                       return (
-                        <>
+                        <React.Fragment key={o._id}>
                           <tr
-                            key={o._id}
                             className={`border-b transition-colors ${
                               idx % 2 === 0 ? "bg-background" : "bg-muted/10"
-                            } hover:bg-muted/20`}
+                            } hover:bg-muted/20 ${
+                              selectedOrders.has(o._id) ? "bg-primary/5" : ""
+                            }`}
                           >
+                            {isBulkMode && (
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                  checked={selectedOrders.has(o._id)}
+                                  onChange={(e) =>
+                                    toggleOrderSelection(o._id, e.target.checked)
+                                  }
+                                />
+                              </td>
+                            )}
                             <td className="px-4 py-3">
                               <div className="font-semibold">
                                 {o.order_slug || `Order ${idx + 1}`}
@@ -569,7 +709,10 @@ export default function AdminAllOrdersPage() {
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={6} className="px-0">
+                              <td
+                                colSpan={isBulkMode ? 7 : 6}
+                                className="px-0"
+                              >
                                 <div
                                   className={`rounded-md border-t overflow-hidden ${
                                     idx % 2 === 0
@@ -1135,15 +1278,13 @@ export default function AdminAllOrdersPage() {
                                 </div>
                               </td>
                             </tr>
-                          )}
-                        </>
-                      );
-                    })}
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
-            );
-          })()}
         </div>
       </Card>
     </div>
