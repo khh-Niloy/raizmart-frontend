@@ -45,7 +45,7 @@ export const brandApi = baseApi.injectEndpoints({
     }),
 
     // Get products by brand name
-    getBrandProducts: builder.query({
+    getProductsByBrand: builder.query({
       query: ({ brand, page = 1, limit = 12, sort = "newest" }: { brand: string; page?: number; limit?: number; sort?: string }) => ({
         url: `/brands/${encodeURIComponent(brand)}?page=${page}&limit=${limit}&sort=${sort}`,
         method: "GET",
@@ -69,6 +69,6 @@ export const {
   useCreateBrandMutation,
   useUpdateBrandMutation,
   useGetBrandsQuery,
-  useGetBrandProductsQuery,
+  useGetProductsByBrandQuery,
   useDeleteBrandMutation,
 } = brandApi
