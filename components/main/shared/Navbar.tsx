@@ -70,8 +70,10 @@ export default function Navbar() {
           limit: "12",
           sort: "newest",
         }).toString();
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+        const searchUrl = `${baseUrl.replace(/\/$/, "")}/products/search?${qs}`;
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}products/search?${qs}`,
+          searchUrl,
           { signal: ctrl.signal, cache: "no-store" }
         );
         const json = await res.json();
@@ -180,8 +182,8 @@ export default function Navbar() {
       : initialNavbarLinks;
 
   const renderSearchDropdown = (wrapperClass: string) => (
-    <div className={wrapperClass}>
-      <div className="p-3">
+    <div className={`${wrapperClass} lg:w-[800px] lg:max-h-[600px] md:w-[700px] md:max-h-[400px] w-full h-[300px] overflow-hidden bg-white border border-gray-200 rounded-xl shadow-xl`}>
+      <div className="p-3 max-h-[500px] overflow-y-auto">
         {isSearching && (
           <div className="py-6 text-center text-gray-500 text-sm">
             Searching...
@@ -193,7 +195,7 @@ export default function Navbar() {
           </div>
         )}
         {!isSearching && searchItems.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {searchItems.map((p) => (
               <Link
                 key={p._id}
@@ -317,7 +319,7 @@ export default function Navbar() {
                   {/* Results dropdown */}
                   {isSearchOpen &&
                     renderSearchDropdown(
-                      "absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50"
+                      "absolute left-0 right-0 mt-2 z-50"
                     )}
                 </div>
               </div>
@@ -447,7 +449,7 @@ export default function Navbar() {
             />
             {isSearchOpen &&
               renderSearchDropdown(
-                "absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto"
+                "absolute left-0 right-0 mt-2 z-50"
               )}
           </div>
         </div>

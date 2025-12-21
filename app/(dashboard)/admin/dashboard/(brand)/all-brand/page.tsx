@@ -17,8 +17,7 @@ interface Brand {
 
 export default function AllBrandPage() {
   const { data, isFetching } = useGetBrandsQuery(undefined);
-  console.log("Brands data:", data);
-  // Ensure data is an array (transformResponse already extracts data, so data should be the array)
+  
   const brands: Brand[] = Array.isArray(data) ? data : [];
 
   return (

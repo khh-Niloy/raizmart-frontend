@@ -19,31 +19,14 @@ export const brandApi = baseApi.injectEndpoints({
       invalidatesTags: ["BRANDS"],
     }),
 
-    // Get Brands (with pagination)
+    // Get All Brands (No pagination)
     getBrands: builder.query({
-      query: (params?: {
-        page?: number;
-        limit?: number;
-        sort?: string;
-      }) => {
-        const qs = new URLSearchParams(
-          Object.entries(params || {}).reduce((acc, [k, v]) => {
-            if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString();
-        return {
-          url: `/brands${qs ? `?${qs}` : ""}`,
-          method: "GET",
-        };
-      },
-      transformResponse: <T,>(response: unknown): T => {
-        // Backend now returns { items, meta } format
-        const apiResponse = response as ApiResponse<T> | { items: T[]; meta: unknown };
-        if (apiResponse && 'items' in apiResponse) {
-          return apiResponse as T;
-        }
-        return (apiResponse && 'data' in apiResponse ? apiResponse.data : apiResponse) as T;
+      query: () => ({
+        url: "/brands",
+        method: "GET",
+      }),
+      transformResponse: (response: any) => {
+        return response?.data || response?.items || [];
       },
       providesTags: ["BRANDS"],
     }),
