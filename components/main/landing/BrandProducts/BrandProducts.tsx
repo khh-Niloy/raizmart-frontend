@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { useGetProductsQuery } from "@/app/redux/features/product/product.api";
+import { useGetBrandProductsQuery } from "@/app/redux/features/product/product.api";
 import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { resolveImageUrl, pickProductImage } from "@/lib/utils";
@@ -43,13 +43,11 @@ interface ProductsResponse {
 export default function BrandProducts() {
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 5;
+  // Limit to 6 to show pagination for 7 items
+  const productsPerPage = 6;
   
-  // Use getProducts with a higher limit to get more items for client-side filtering
-  const { data: productsData, isLoading: productsLoading, isError } = useGetProductsQuery({ 
-    status: 'active', 
-    limit: 120 
-  });
+  // Use dedicated hook to fetch ALL brand products (server-filtered)
+  const { data: productsData, isLoading: productsLoading, isError } = useGetBrandProductsQuery(undefined);
   const { data: brandsData, isLoading: brandsLoading } = useGetBrandsQuery(undefined);
 
   // Parse products
@@ -73,46 +71,63 @@ export default function BrandProducts() {
   // Parse brands
   const allBrands = Array.isArray(brandsData) ? brandsData : [];
 
-  // Filter products by active status and selected brand
+  // Parse brands and filter to only show those that have active brand products
+  const brandsWithProducts = useMemo(() => {
+    const brands = Array.isArray(brandsData) ? brandsData : [];
+    // Count how many active brand products each brand has
+    const brandCounts = allItems.reduce((acc, product) => {
+      // Must be active and have isBrandProduct=true
+      if (product.status === "active" && product.isBrandProduct === true) {
+        const rawBrandId = typeof product.brand === "string" 
+          ? product.brand 
+          : product.brand?._id;
+        
+        if (rawBrandId) {
+          const brandId = String(rawBrandId);
+          acc[brandId] = (acc[brandId] || 0) + 1;
+        }
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return brands.filter(brand => brandCounts[String(brand._id)] > 0);
+  }, [brandsData, allItems]);
+
+  // Automatically select the first brand if "all" is selected or current selection is invalid
+  React.useEffect(() => {
+    if (brandsWithProducts.length > 0) {
+      const isValidSelection = brandsWithProducts.some(b => String(b._id) === selectedBrand);
+      if (selectedBrand === "all" || !isValidSelection) {
+        setSelectedBrand(String(brandsWithProducts[0]._id));
+      }
+    }
+  }, [brandsWithProducts, selectedBrand]);
+
+  // Filter products by active status, isBrandProduct, and selected brand
   const filteredProducts = useMemo(() => {
-    // We already fetch active status from API, but double check and ensure they HAVE a brand assigned
-    const productsWithBrand = allItems.filter(
-      (product: Product) => product.status === "active" && product.brand
+    // Basic filter: active + has brand + isBrandProduct
+    const validProducts = allItems.filter(
+      (product: Product) => 
+        product.status === "active" && 
+        product.brand && 
+        product.isBrandProduct === true
     );
 
-    if (selectedBrand === "all") {
-      return productsWithBrand;
-    }
-
-    return productsWithBrand.filter((product) => {
+    // Filter by specific brand
+    const filtered = validProducts.filter((product) => {
       const productBrandId = typeof product.brand === "string" 
         ? product.brand 
         : product.brand?._id;
-      return productBrandId === selectedBrand;
+      return String(productBrandId) === selectedBrand;
     });
+
+    return filtered;
   }, [allItems, selectedBrand]);
 
   // Reset pagination when brand changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [selectedBrand]);
-
-  // Parse brands and filter to only show those that have active products
-  const brandsWithProducts = useMemo(() => {
-    const brands = Array.isArray(brandsData) ? brandsData : [];
-    // Count how many active products each brand has
-    const brandCounts = allItems.reduce((acc, product) => {
-      const brandId = typeof product.brand === "string" 
-        ? product.brand 
-        : product.brand?._id;
-      if (brandId) {
-        acc[brandId] = (acc[brandId] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    return brands.filter(brand => brandCounts[brand._id] > 0);
-  }, [brandsData, allItems]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
@@ -147,22 +162,12 @@ export default function BrandProducts() {
         {/* Brand Tabs */}
         <div className="mb-8 overflow-x-auto scrollbar-hide">
           <div className="flex gap-3 min-w-max pb-2">
-            <button
-              onClick={() => setSelectedBrand("all")}
-              className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 border-2 ${
-                selectedBrand === "all"
-                  ? "bg-[#02C1BE] border-[#02C1BE] text-white shadow-lg shadow-[#02C1BE]/30"
-                  : "bg-white border-gray-100 text-gray-600 hover:border-[#02C1BE]/30 hover:bg-gray-50"
-              }`}
-            >
-              All Brands
-            </button>
             {brandsWithProducts.map((brand: any) => (
               <button
                 key={brand._id}
-                onClick={() => setSelectedBrand(brand._id)}
+                onClick={() => setSelectedBrand(String(brand._id))}
                 className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 border-2 ${
-                  selectedBrand === brand._id
+                  selectedBrand === String(brand._id)
                     ? "bg-[#02C1BE] border-[#02C1BE] text-white shadow-lg shadow-[#02C1BE]/30"
                     : "bg-white border-gray-100 text-gray-600 hover:border-[#02C1BE]/30 hover:bg-gray-50"
                 }`}

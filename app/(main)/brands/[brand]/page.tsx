@@ -3,7 +3,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useGetBrandProductsQuery } from "@/app/redux/features/brand/brand.api";
+import { useGetProductsByBrandQuery } from "@/app/redux/features/brand/brand.api";
 import { ProductGridSkeleton } from "@/components/ui/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ export default function BrandListing({ params }: { params: Promise<{ brand: stri
   const router = useRouter();
   const { page, limit, sort } = paginationValues(searchParams);
 
-  const { data, isLoading, isError } = useGetBrandProductsQuery({ 
+  const { data, isLoading, isError } = useGetProductsByBrandQuery({ 
     brand: resolved.brand, 
     page, 
     limit, 

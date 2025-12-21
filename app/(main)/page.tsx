@@ -25,13 +25,19 @@ const FeaturedProducts = dynamic(
   }
 );
 
+const FeaturedCategories = dynamic(
+  () => import("@/components/main/landing/FeaturedCategories/FeaturedCategories"),
+  {
+    loading: () => <div className="h-[200px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
+  }
+);
+
 const BrandProducts = dynamic(
   () => import("@/components/main/landing/BrandProducts/BrandProducts"),
   {
     loading: () => <div className="h-[420px] w-full rounded-2xl bg-gray-100 animate-pulse" />,
   }
 );
-
 const NewArrivals = dynamic(
   () => import("@/components/main/landing/NewArrivals/NewArrivals"),
   {
@@ -129,6 +135,9 @@ export default function HomePage() {
 
           <div className="mx-auto w-[95%]">
             <div className="flex flex-col gap-4 ">
+              <div className="">
+                <FeaturedCategories />
+              </div>
               <div id="featured-products" className="">
                 <FeaturedProducts />
               </div>
