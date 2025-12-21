@@ -444,7 +444,7 @@ export default function AllProductPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                        <CardTitle className="text-md font-semibold text-gray-900 line-clamp-2">
                           {product.name}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-2">
@@ -632,33 +632,9 @@ export default function AllProductPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Category & Brand */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Tag className="h-4 w-4" />
-                        <span>{product.category?.name}</span>
-                        {product.subCategory && (
-                          <>
-                            <span>•</span>
-                            <span>{product.subCategory.name}</span>
-                          </>
-                        )}
-                        {product.subSubCategory && (
-                          <>
-                            <span>•</span>
-                            <span>{product.subSubCategory.name}</span>
-                          </>
-                        )}
-                      </div>
-                      {product.brand && (
-                        <div className="text-sm text-gray-600">
-                          Brand: {product.brand.brandName}
-                        </div>
-                      )}
-                    </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-2 gap-4 border-t">
                       <div className="text-center">
                         <div className="text-lg font-semibold text-gray-900">
                           {getVariantCount(product.variants)}

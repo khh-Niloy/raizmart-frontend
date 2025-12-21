@@ -175,8 +175,8 @@ export default function AdminAllOrdersPage() {
               { value: "cancel", label: "Cancel" },
               { value: "sent_with_pathao", label: "Send with Pathao" },
               { value: "sent_with_steadfast", label: "Send with Steadfast" },
-              { value: "dispatch", label: "Dispatch" },
               { value: "delivered", label: "Delivered" },
+              { value: "return_pending", label: "Return Pending" },
               { value: "returned", label: "Returned" },
             ].map((tab) => (
               <Button
@@ -351,13 +351,14 @@ export default function AdminAllOrdersPage() {
                   return "bg-orange-50 text-orange-700";
                 case "cancel":
                   return "bg-red-50 text-red-700";
-                case "dispatch":
-                  return "bg-purple-50 text-purple-700";
                 case "sent_with_pathao":
+                  return "bg-orange-100 text-orange-700";
                 case "sent_with_steadfast":
-                  return "bg-purple-50 text-purple-700";
+                  return "bg-cyan-100 text-cyan-700";
                 case "delivered":
                   return "bg-green-50 text-green-700";
+                case "return_pending":
+                  return "bg-rose-50 text-rose-700";
                 case "returned":
                   return "bg-gray-50 text-gray-700";
                 default:
@@ -374,12 +375,12 @@ export default function AdminAllOrdersPage() {
                 pending: ["approved", "hold", "cancel"],
                 approved: ["sent_with_pathao", "sent_with_steadfast", "hold", "cancel"],
                 hold: ["approved", "cancel"],
-                dispatch: ["delivered", "returned"],
-                sent_with_pathao: ["delivered", "returned"],
-                sent_with_steadfast: ["delivered", "returned"],
-                delivered: [], // Final state - no transitions allowed (cannot go to returned)
-                cancel: [], // Final state - no transitions allowed
-                returned: [], // Final state - no transitions allowed
+                sent_with_pathao: ["delivered", "return_pending"],
+                sent_with_steadfast: ["delivered", "return_pending"],
+                delivered: [], // Final state
+                cancel: [], // Final state
+                return_pending: ["returned", "delivered"],
+                returned: [], // Final state
               };
               return allowedTransitions[status] || [];
             };
@@ -416,8 +417,8 @@ export default function AdminAllOrdersPage() {
                 { value: "cancel", label: "Cancel" },
                 { value: "sent_with_pathao", label: "Send with Pathao" },
                 { value: "sent_with_steadfast", label: "Send with Steadfast" },
-                { value: "dispatch", label: "Dispatch" },
                 { value: "delivered", label: "Delivered" },
+                { value: "return_pending", label: "Return Pending" },
                 { value: "returned", label: "Returned" },
               ];
 
