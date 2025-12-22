@@ -3,11 +3,16 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
-import { useGetSubSubcategoriesQuery, useDeleteSubSubcategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { 
+  useGetSubSubcategoriesQuery, 
+  useDeleteSubSubcategoryMutation,
+  useToggleSubSubcategoryFeaturedMutation
+} from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,12 +33,14 @@ interface SubSubCategory {
   category?: string | { name?: string };
   slug?: string;
   createdAt?: string;
+  isFeatured?: boolean;
 }
 
 export default function AllSubSubCategoryPage() {
   const { data: subSubCategoriesResponse, isFetching } = useGetSubSubcategoriesQuery(undefined);
-  console.log(subSubCategoriesResponse);
+  // console.log(subSubCategoriesResponse);
   const [deleteSubSubcategory, { isLoading: isDeleting }] = useDeleteSubSubcategoryMutation();
+  const [toggleFeatured] = useToggleSubSubcategoryFeaturedMutation();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [subSubCategoryToDelete, setSubSubCategoryToDelete] = useState<SubSubCategory | null>(null);
   // Ensure data is an array (transformResponse already extracts data, so subSubCategoriesResponse should be the array)
@@ -59,6 +66,20 @@ export default function AllSubSubCategoryPage() {
       toast.error("Failed to delete sub-sub-category. Please try again.");
     }
   };
+
+  const handleToggleFeatured = async (subSubCategory: SubSubCategory, checked: boolean) => {
+    const id = subSubCategory.id ?? subSubCategory._id;
+    if (!id) return;
+
+    try {
+      await toggleFeatured({ id, isFeatured: checked }).unwrap();
+      toast.success(`Sub-sub-category ${checked ? 'added to' : 'removed from'} featured`);
+    } catch (error) {
+      toast.error("Failed to update featured status");
+      console.error("Featured toggle error:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -102,6 +123,13 @@ export default function AllSubSubCategoryPage() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-2 mr-4">
+                            <Switch
+                              checked={subSubCategory.isFeatured || false}
+                              onCheckedChange={(checked) => handleToggleFeatured(subSubCategory, checked)}
+                            />
+                            <span className="text-sm text-gray-600">Featured</span>
+                          </div>
                           <Link href={`/admin/dashboard/edit-sub-sub-category/${subSubCategory.id ?? subSubCategory._id}`} className="cursor-pointer">
                             <Button variant="outline" size="sm">
                               <Edit className="w-4 h-4 mr-1" />

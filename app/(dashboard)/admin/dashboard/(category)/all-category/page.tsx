@@ -2,8 +2,13 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { useGetCategoriesQuery, useDeleteCategoryMutation } from "@/app/redux/features/category-subcategory/category-subcategory.api";
+import { 
+  useGetCategoriesQuery, 
+  useDeleteCategoryMutation,
+  useToggleCategoryFeaturedMutation 
+} from "@/app/redux/features/category-subcategory/category-subcategory.api";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 import { Edit, Trash2 } from "lucide-react";
 import {
@@ -22,11 +27,13 @@ interface Category {
   name?: string;
   categoryName?: string;
   image?: string;
+  isFeatured?: boolean;
 }
 
 export default function AllCategoryPage() {
   const { data, isFetching } = useGetCategoriesQuery(undefined);
   const [deleteCategory, { isLoading: isDeleting }] = useDeleteCategoryMutation();
+  const [toggleFeatured] = useToggleCategoryFeaturedMutation();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   
@@ -51,6 +58,19 @@ export default function AllCategoryPage() {
     } catch (error) {
       toast.error("Failed to delete category");
       console.error("Delete error:", error);
+    }
+  };
+
+  const handleToggleFeatured = async (category: Category, checked: boolean) => {
+    const categoryId = category.id ?? category._id;
+    if (!categoryId) return;
+
+    try {
+      await toggleFeatured({ id: categoryId, isFeatured: checked }).unwrap();
+      toast.success(`Category ${checked ? 'added to' : 'removed from'} featured`);
+    } catch (error) {
+      toast.error("Failed to update featured status");
+      console.error("Featured toggle error:", error);
     }
   };
 
@@ -90,7 +110,14 @@ export default function AllCategoryPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mr-4">
+                          <Switch
+                            checked={cat.isFeatured || false}
+                            onCheckedChange={(checked) => handleToggleFeatured(cat, checked)}
+                          />
+                          <span className="text-sm text-gray-600">Featured</span>
+                        </div>
                         <Link
                           href={`/admin/dashboard/edit-category/${
                             cat.id ?? cat._id

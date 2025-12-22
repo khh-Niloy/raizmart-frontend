@@ -117,6 +117,20 @@ export default function AllProductPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search term
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, featuredFilter]);
 
   const {
     data: productsResponse,
@@ -126,6 +140,8 @@ export default function AllProductPage() {
     limit,
     sort: "newest",
     status: statusFilter !== "all" ? statusFilter : undefined,
+    q: debouncedSearch || undefined,
+    isFeatured: featuredFilter === "featured" ? true : featuredFilter === "not-featured" ? false : undefined,
   });
   
   // Handle new paginated response format { items, meta }
@@ -145,22 +161,8 @@ export default function AllProductPage() {
   const [deleteProduct, { isLoading: isDeleting }] =
     useDeleteProductMutation();
 
-  // Filter products based on search and filters
-  const filteredProducts = products.filter((product: Product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand?.brandName.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" || product.status === statusFilter;
-    const matchesFeatured =
-      featuredFilter === "all" ||
-      (featuredFilter === "featured" && product.isFeatured) ||
-      (featuredFilter === "not-featured" && !product.isFeatured);
-
-    return matchesSearch && matchesStatus && matchesFeatured;
-  });
+  // Products are now filtered on the server side
+  const filteredProducts = products;
 
   const handleToggleFeatured = async (
     productId: string,
@@ -442,7 +444,7 @@ export default function AllProductPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+                        <CardTitle className="text-md font-semibold text-gray-900 line-clamp-2">
                           {product.name}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-2">
@@ -630,33 +632,9 @@ export default function AllProductPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Category & Brand */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Tag className="h-4 w-4" />
-                        <span>{product.category?.name}</span>
-                        {product.subCategory && (
-                          <>
-                            <span>•</span>
-                            <span>{product.subCategory.name}</span>
-                          </>
-                        )}
-                        {product.subSubCategory && (
-                          <>
-                            <span>•</span>
-                            <span>{product.subSubCategory.name}</span>
-                          </>
-                        )}
-                      </div>
-                      {product.brand && (
-                        <div className="text-sm text-gray-600">
-                          Brand: {product.brand.brandName}
-                        </div>
-                      )}
-                    </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-2 gap-4 border-t">
                       <div className="text-center">
                         <div className="text-lg font-semibold text-gray-900">
                           {getVariantCount(product.variants)}

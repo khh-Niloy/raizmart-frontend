@@ -56,15 +56,27 @@ export const productApi = baseApi.injectEndpoints({
         limit?: number;
         sort?: string;
         status?: string;
+        q?: string;
+        isFeatured?: boolean;
       }) => {
+        const { q, ...otherParams } = params || {};
         const qs = new URLSearchParams(
-          Object.entries(params || {}).reduce((acc, [k, v]) => {
+          Object.entries(otherParams).reduce((acc, [k, v]) => {
             if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
             return acc;
           }, {} as Record<string, string>)
-        ).toString();
+        );
+
+        if (q) {
+          qs.append("q", q);
+          return {
+            url: `/products/search?${qs.toString()}`,
+            method: "GET",
+          };
+        }
+
         return {
-          url: `/products${qs ? `?${qs}` : ""}`,
+          url: `/products?${qs.toString()}`,
           method: "GET",
         };
       },

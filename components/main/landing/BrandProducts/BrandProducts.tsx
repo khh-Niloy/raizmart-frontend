@@ -1,18 +1,20 @@
-"use client";
-
-import React from "react";
+"use client"
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useGetBrandProductsQuery } from "@/app/redux/features/product/product.api";
+import { useGetBrandsQuery } from "@/app/redux/features/brand/brand.api";
 import { ProductCardSkeleton } from "@/components/ui/loading";
 import { resolveImageUrl, pickProductImage } from "@/lib/utils";
+import PaginationButtons from "@/components/main/pagination/PaginationButtons";
 
 interface Product {
   _id: string;
   name: string;
   slug: string;
   status: string;
-  price?: number;
+  brand?: string | { _id: string; name: string; slug?: string };
+  price?: number | string;
   discountedPrice?: number;
   images?: string[];
   isFreeDelivery?: boolean;
@@ -39,9 +41,19 @@ interface ProductsResponse {
 }
 
 export default function BrandProducts() {
-  const { data, isLoading, isError } = useGetBrandProductsQuery(undefined);
-  const response = data as Product[] | ProductsResponse | undefined;
+  const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  // Limit to 6 to show pagination for 7 items
+  const productsPerPage = 6;
+  
+  // Use dedicated hook to fetch ALL brand products (server-filtered)
+  const { data: productsData, isLoading: productsLoading, isError } = useGetBrandProductsQuery(undefined);
+  const { data: brandsData, isLoading: brandsLoading } = useGetBrandsQuery(undefined);
+
+  // Parse products
+  const response = productsData as Product[] | ProductsResponse | undefined;
   let allItems: Product[] = [];
+  
   if (Array.isArray(response)) {
     allItems = response;
   } else if (response) {
@@ -55,15 +67,81 @@ export default function BrandProducts() {
       }
     }
   }
-  // Filter to show only active products
-  const items = allItems.filter(
-    (product: Product) => product.status === "active"
-  );
+
+  // Parse brands
+  const allBrands = Array.isArray(brandsData) ? brandsData : [];
+
+  // Parse brands and filter to only show those that have active brand products
+  const brandsWithProducts = useMemo(() => {
+    const brands = Array.isArray(brandsData) ? brandsData : [];
+    // Count how many active brand products each brand has
+    const brandCounts = allItems.reduce((acc, product) => {
+      // Must be active and have isBrandProduct=true
+      if (product.status === "active" && product.isBrandProduct === true) {
+        const rawBrandId = typeof product.brand === "string" 
+          ? product.brand 
+          : product.brand?._id;
+        
+        if (rawBrandId) {
+          const brandId = String(rawBrandId);
+          acc[brandId] = (acc[brandId] || 0) + 1;
+        }
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return brands.filter(brand => brandCounts[String(brand._id)] > 0);
+  }, [brandsData, allItems]);
+
+  // Automatically select the first brand if "all" is selected or current selection is invalid
+  React.useEffect(() => {
+    if (brandsWithProducts.length > 0) {
+      const isValidSelection = brandsWithProducts.some(b => String(b._id) === selectedBrand);
+      if (selectedBrand === "all" || !isValidSelection) {
+        setSelectedBrand(String(brandsWithProducts[0]._id));
+      }
+    }
+  }, [brandsWithProducts, selectedBrand]);
+
+  // Filter products by active status, isBrandProduct, and selected brand
+  const filteredProducts = useMemo(() => {
+    // Basic filter: active + has brand + isBrandProduct
+    const validProducts = allItems.filter(
+      (product: Product) => 
+        product.status === "active" && 
+        product.brand && 
+        product.isBrandProduct === true
+    );
+
+    // Filter by specific brand
+    const filtered = validProducts.filter((product) => {
+      const productBrandId = typeof product.brand === "string" 
+        ? product.brand 
+        : product.brand?._id;
+      return String(productBrandId) === selectedBrand;
+    });
+
+    return filtered;
+  }, [allItems, selectedBrand]);
+
+  // Reset pagination when brand changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedBrand]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * productsPerPage;
+    return filteredProducts.slice(startIndex, startIndex + productsPerPage);
+  }, [filteredProducts, currentPage]);
+
+  const isLoading = productsLoading || brandsLoading;
 
   return (
     <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-14 h-full">
       <div className="rounded-3xl border border-gray-100 bg-white shadow-[0_30px_90px_-60px_rgba(5,150,145,0.4)] px-4 sm:px-8 py-8 h-full flex flex-col">
-        <header className="flex flex-col gap-4 mb-3 md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#02C1BE]">
               Shop by brand
@@ -79,27 +157,27 @@ export default function BrandProducts() {
               special financing options.
             </p>
           </div>
-          {/* <div className="hidden md:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              onClick={() => scrollBy(-500)}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              onClick={() => scrollBy(500)}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div> */}
         </header>
 
-        {/* Product list */}
+        {/* Brand Tabs */}
+        <div className="mb-8 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3 min-w-max pb-2">
+            {brandsWithProducts.map((brand: any) => (
+              <button
+                key={brand._id}
+                onClick={() => setSelectedBrand(String(brand._id))}
+                className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 border-2 ${
+                  selectedBrand === String(brand._id)
+                    ? "bg-[#02C1BE] border-[#02C1BE] text-white shadow-lg shadow-[#02C1BE]/30"
+                    : "bg-white border-gray-100 text-gray-600 hover:border-[#02C1BE]/30 hover:bg-gray-50"
+                }`}
+              >
+                {brand.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="grid flex-1 grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -111,9 +189,10 @@ export default function BrandProducts() {
               </div>
             ))}
           </div>
-        ) : isError ? null : items?.length ? (
-          <div className="grid flex-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((product: Product) => {
+        ) : isError ? null : paginatedProducts?.length ? (
+          <div className="space-y-8">
+            <div className="grid flex-1 gap-4 sm:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-5">
+              {paginatedProducts.map((product: Product) => {
               const colorAttr = Array.isArray(product?.attributes)
                 ? product.attributes.find(
                     (a) =>
@@ -175,7 +254,7 @@ export default function BrandProducts() {
                     <img
                       src={typeof primaryImage === "string" ? primaryImage : "/next.svg"}
                       alt={String(product.name)}
-                      className="w-full h-48 object-contain"
+                      className="w-full h-32 object-contain"
                     />
 
                     {product?.isFreeDelivery && (
@@ -202,20 +281,43 @@ export default function BrandProducts() {
                         </>
                       ) : (
                         <div className="text-lg font-semibold text-[#111827]">
-                          {finalPrice > 0
-                            ? `৳ ${finalPrice.toLocaleString()}`
-                            : ""}
+                          {finalPrice > 0 ? (
+                            `৳ ${finalPrice.toLocaleString()}`
+                          ) : typeof product.price === "string" && product.price ? (
+                            <span className="text-orange-500 font-bold">{product.price}</span>
+                          ) : (
+                            ""
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
                 </Link>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pt-4">
+                <PaginationButtons
+                  meta={{
+                    page: currentPage,
+                    pages: totalPages,
+                    total: filteredProducts.length
+                  }}
+                  updateParams={({ page }) => {
+                    if (page) setCurrentPage(page);
+                  }}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-slate-50/60 p-10 text-center text-gray-500">
-            No brand products available at the moment. Check back soon!
+            {selectedBrand === "all" 
+              ? "No brand products available at the moment. Check back soon!"
+              : "No products found for this brand. Try another one!"}
           </div>
         )}
       </div>

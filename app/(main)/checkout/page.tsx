@@ -234,11 +234,13 @@ export default function CheckoutPage() {
 
   React.useEffect(() => {
     if (userInfo) {
-      setFullName((prev) => (prev ? prev : userInfo.name || ""));
-      setEmail((prev) => (prev ? prev : userInfo.email || ""));
-      setPhone((prev) => (prev ? prev : userInfo.phone || ""));
+      if (!fullName && userInfo.name) setFullName(userInfo.name);
+      if (!email && userInfo.email) setEmail(userInfo.email);
+      // Try 'phone', then fallbacks 'phoneNumber' or 'contact' if they exist in userInfo
+      const userPhone = userInfo.phone || (userInfo as any).phoneNumber || (userInfo as any).contact;
+      if (!phone && userPhone) setPhone(userPhone);
     }
-  }, [userInfo]);
+  }, [userInfo, fullName, email, phone]);
 
   return (
     <div className="container mx-auto px-4 lg:px-8 py-10 lg:py-14">
@@ -600,6 +602,8 @@ export default function CheckoutPage() {
               
               if (!phone.trim()) {
                 errors.phone = "Phone number is required";
+              } else if (!/^\d{11}$/.test(phone.trim())) {
+                errors.phone = "Phone number must be exactly 11 digits";
               }
               
               if (!division) {

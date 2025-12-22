@@ -140,6 +140,33 @@ export const categorySubcategoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["SUBCATEGORIES"],
     }),
+
+    toggleCategoryFeatured: builder.mutation({
+      query: ({ id, isFeatured }: { id: string; isFeatured: boolean }) => ({
+        url: `/categories/${id}/featured`,
+        method: "PATCH",
+        data: { isFeatured },
+      }),
+      invalidatesTags: ["CATEGORIES"],
+    }),
+
+    toggleSubcategoryFeatured: builder.mutation({
+      query: ({ id, isFeatured }: { id: string; isFeatured: boolean }) => ({
+        url: `/subcategories/${id}/featured`,
+        method: "PATCH",
+        data: { isFeatured },
+      }),
+      invalidatesTags: ["SUBCATEGORIES"],
+    }),
+
+    toggleSubSubcategoryFeatured: builder.mutation({
+      query: ({ id, isFeatured }: { id: string; isFeatured: boolean }) => ({
+        url: `/sub-subcategories/${id}/featured`,
+        method: "PATCH",
+        data: { isFeatured },
+      }),
+      invalidatesTags: ["SUB_SUBCATEGORIES"],
+    }),
   }),
 })
 
@@ -156,4 +183,7 @@ export const {
   useUpdateSubSubcategoryMutation,
   useGetSubSubcategoriesQuery,
   useDeleteSubSubcategoryMutation,
+  useToggleCategoryFeaturedMutation,
+  useToggleSubcategoryFeaturedMutation,
+  useToggleSubSubcategoryFeaturedMutation,
 } = categorySubcategoryApi
